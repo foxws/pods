@@ -30,6 +30,42 @@ export type ContainerData = {
   cpu: number | null
   memory: number | null
 }
+export type ContainerDetailData = {
+  container: HostContainerData
+  created_at: string | null
+  memory_limit: number | null
+  restart_policy: string | null
+  restarts: number
+  user: string | null
+  auto_update: string | null
+  digest: string | null
+  health_check: {
+    command: string
+    interval: string | null
+    last_check: string | null
+  } | null
+  mounts: ContainerMountData[]
+  networks: {
+    name: string
+    ip: string | null
+  }[]
+  secrets: {
+    name: string
+    type: string
+    target: string
+  }[]
+  environment: {
+    name: string
+    value: string
+  }[]
+}
+export type ContainerMountData = {
+  type: string
+  source: string
+  destination: string
+  mode: string | null
+}
+export type ContainerOperation = 'start' | 'stop' | 'restart'
 export type CursorPaginatedDataCollection<TKey, TValue> = CursorPaginator<TKey, TValue>
 export type CursorPaginator<TKey, TValue> = {
   data: TKey extends string ? Record<TKey, TValue> : TValue[]
@@ -61,6 +97,22 @@ export type EnvironmentData = {
   hostname: string | null
   last_seen_at: string | null
 }
+export type HostContainerData = {
+  id: string
+  name: string
+  image: string | null
+  state: string
+  health: string | null
+  exit_code: number | null
+  application: string | null
+  quadlet: string | null
+  unit: string | null
+  pod: string | null
+  ports: string[]
+  cpu: number | null
+  memory: number | null
+  started_at: string | null
+}
 export type HostStatsData = {
   cpu_cores: number
   cpu_usage: number
@@ -84,6 +136,28 @@ export type HostStatsData = {
   linger: boolean | null
   units_active: number | null
   units_failed: number | null
+}
+export type HostVolumeData = {
+  name: string
+  quadlet: string | null
+  driver: string
+  mountpoint: string | null
+  size: number | null
+  type: string
+  containers: string[]
+  applications: string[]
+}
+export type ImageData = {
+  id: string
+  repository: string | null
+  tag: string | null
+  size: number | null
+  created_at: string | null
+  used_by: string[]
+  containers: number
+  dangling: boolean
+  auto_update: string | null
+  update: string | null
 }
 export type JournalEntryData = {
   time: string
@@ -115,11 +189,40 @@ export type LengthAwarePaginator<TKey, TValue> = {
 }
 export type LengthAwarePaginatorInterface<TKey, TValue> = LengthAwarePaginator<TKey, TValue>
 export type Locale = 'en-US' | 'nl-NL'
+export type NetworkData = {
+  name: string
+  quadlet: string | null
+  driver: string
+  subnet: string | null
+  gateway: string | null
+  dns: boolean
+  internal: boolean
+  ipv6: boolean
+  containers: number
+  applications: string[]
+  default: boolean
+}
 export type PaginatedDataCollection<TKey, TValue> = LengthAwarePaginator<TKey, TValue>
+export type PruneResultData = {
+  removed: string[]
+  reclaimed: number | null
+}
+export type QuadletCheckData = {
+  valid: boolean
+  errors: string[]
+  units: string[]
+}
 export type QuadletFileData = {
   name: string
   path: string
   content: string
+}
+export type QuadletSourceData = {
+  commit: string | null
+  files: {
+    name: string
+    content: string
+  }[]
 }
 export type SecretData = {
   name: string

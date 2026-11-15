@@ -1,6 +1,11 @@
 import { index as applications } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import { index as containers } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import overview from '@/actions/Modules/Web/Environments/Controllers/EnvironmentOverviewController'
+import { index as images } from '@/actions/Modules/Web/Images/Controllers/ImageController'
+import journal from '@/actions/Modules/Web/Journal/Controllers/JournalController'
+import { index as networks } from '@/actions/Modules/Web/Networks/Controllers/NetworkController'
 import { index as secrets } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
+import { index as volumes } from '@/actions/Modules/Web/Volumes/Controllers/VolumeController'
 import { usePage } from '@inertiajs/vue3'
 import type { CommandPaletteGroup, NavigationMenuItem } from '@nuxt/ui'
 import { computed } from 'vue'
@@ -11,14 +16,54 @@ export type NavigationLink = {
   icon: string
   to: string
   active: boolean
+  /** Shown in the bottom tab bar on phones; the rest sit behind More. */
+  inTabBar: boolean
 }
 
-const planned: { label: string; icon: string }[] = [
-  { label: 'Containers', icon: 'i-lucide-box' },
-  { label: 'Pods', icon: 'i-lucide-boxes' },
-  { label: 'Images', icon: 'i-lucide-disc-3' },
-  { label: 'Volumes', icon: 'i-lucide-hard-drive' },
-  { label: 'Networks', icon: 'i-lucide-network' },
+type Section = Omit<NavigationLink, 'to' | 'active'> & {
+  url: (environment: string) => string
+  exact?: boolean
+}
+
+const sections: Section[] = [
+  {
+    label: 'Overview',
+    shortLabel: 'Overview',
+    icon: 'i-lucide-house',
+    url: (id) => overview.url(id),
+    exact: true,
+    inTabBar: true,
+  },
+  {
+    label: 'Applications',
+    shortLabel: 'Apps',
+    icon: 'i-lucide-layers',
+    url: (id) => applications.url(id),
+    inTabBar: true,
+  },
+  {
+    label: 'Containers',
+    shortLabel: 'Containers',
+    icon: 'i-lucide-box',
+    url: (id) => containers.url(id),
+    inTabBar: false,
+  },
+  { label: 'Images', shortLabel: 'Images', icon: 'i-lucide-disc-3', url: (id) => images.url(id), inTabBar: false },
+  {
+    label: 'Volumes',
+    shortLabel: 'Volumes',
+    icon: 'i-lucide-hard-drive',
+    url: (id) => volumes.url(id),
+    inTabBar: false,
+  },
+  {
+    label: 'Networks',
+    shortLabel: 'Networks',
+    icon: 'i-lucide-network',
+    url: (id) => networks.url(id),
+    inTabBar: false,
+  },
+  { label: 'Secrets', shortLabel: 'Secrets', icon: 'i-lucide-key-round', url: (id) => secrets.url(id), inTabBar: true },
 ]
 
 /**
@@ -29,66 +74,50 @@ export function useNavigation() {
 
   const environment = computed(() => page.props.environment ?? null)
 
-  const isCurrent = (url: string): boolean =>
-    page.url === url || page.url.startsWith(`${url}/`) || page.url.startsWith(`${url}?`)
+  const isCurrent = (url: string, exact = false): boolean =>
+    page.url === url || page.url.startsWith(`${url}?`) || (!exact && page.url.startsWith(`${url}/`))
 
   const links = computed<NavigationLink[]>(() => {
     if (!environment.value) {
       return []
     }
 
-    const overviewUrl = overview.url(environment.value.id)
-    const applicationsUrl = applications.url(environment.value.id)
-    const secretsUrl = secrets.url(environment.value.id)
+    const id = environment.value.id
 
-    return [
-      {
-        label: 'Overview',
-        shortLabel: 'Overview',
-        icon: 'i-lucide-house',
-        to: overviewUrl,
-        active: page.url === overviewUrl || page.url.startsWith(`${overviewUrl}?`),
-      },
-      {
-        label: 'Applications',
-        shortLabel: 'Apps',
-        icon: 'i-lucide-layers',
-        to: applicationsUrl,
-        active: isCurrent(applicationsUrl),
-      },
-      {
-        label: 'Secrets',
-        shortLabel: 'Secrets',
-        icon: 'i-lucide-key-round',
-        to: secretsUrl,
-        active: isCurrent(secretsUrl),
-      },
-    ]
+    return sections.map(({ url, exact, ...section }) => ({
+      ...section,
+      to: url(id),
+      active: isCurrent(url(id), exact),
+    }))
   })
 
-  const sidebarItems = computed<NavigationMenuItem[][]>(() => {
-    if (!links.value.length) {
-      return []
-    }
+  const tabBarLinks = computed(() => links.value.filter((link) => link.inTabBar))
 
-    const [overviewLink, applicationsLink, secretsLink] = links.value.map<NavigationMenuItem>(
-      ({ label, icon, to, active }) => ({
-        label,
-        icon,
-        to,
-        active,
-      }),
-    )
-    const soon = planned.map<NavigationMenuItem>(({ label, icon }) => ({ label, icon, disabled: true }))
+  const journalLink = computed<NavigationMenuItem>(() =>
+    environment.value
+      ? {
+          label: 'Journal',
+          icon: 'i-lucide-scroll-text',
+          to: journal.url(environment.value.id),
+          active: isCurrent(journal.url(environment.value.id)),
+        }
+      : { label: 'Journal', icon: 'i-lucide-scroll-text', disabled: true },
+  )
 
-    return [[overviewLink, applicationsLink, ...soon, secretsLink]]
-  })
+  const sidebarItems = computed<NavigationMenuItem[][]>(() => [
+    links.value.map<NavigationMenuItem>(({ label, icon, to, active }) => ({ label, icon, to, active })),
+  ])
 
   const searchGroups = computed<CommandPaletteGroup[]>(() => [
     {
       id: 'navigation',
       label: 'Go to',
-      items: links.value.map(({ label, icon, to }) => ({ label, icon, to })),
+      items: [
+        ...links.value.map(({ label, icon, to }) => ({ label, icon, to })),
+        ...(environment.value
+          ? [{ label: 'Journal', icon: 'i-lucide-scroll-text', to: journal.url(environment.value.id) }]
+          : []),
+      ],
     },
     {
       id: 'environments',
@@ -101,5 +130,5 @@ export function useNavigation() {
     },
   ])
 
-  return { environment, links, sidebarItems, searchGroups }
+  return { environment, links, tabBarLinks, journalLink, sidebarItems, searchGroups }
 }

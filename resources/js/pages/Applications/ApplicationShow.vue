@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import { show as containerShow } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
+import ApplicationRemoveModal from '@/components/Applications/ApplicationRemoveModal.vue'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import JournalLog from '@/components/Applications/JournalLog.vue'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
@@ -54,6 +56,8 @@ useHostPolling(['application', 'logs'], () => !!summary.value && isTransitioning
 const isRunning = computed(() => summary.value?.status === 'running')
 
 const { run } = useApplicationOperations(() => props.environment)
+
+const isRemoving = ref(false)
 </script>
 
 <template>
@@ -126,6 +130,14 @@ const { run } = useApplicationOperations(() => props.environment)
             :disabled="!summary || isTransitioning(summary.status)"
             @click="run(name, 'redeploy')"
           />
+          <UButton
+            label="Remove"
+            icon="i-lucide-trash-2"
+            color="error"
+            variant="ghost"
+            class="col-span-2 justify-center sm:col-span-1"
+            @click="isRemoving = true"
+          />
         </div>
       </div>
 
@@ -175,7 +187,11 @@ const { run } = useApplicationOperations(() => props.environment)
                   aria-hidden="true"
                 />
                 <div class="flex min-w-0 flex-1 flex-col">
-                  <span class="font-medium text-highlighted">{{ container.name }}</span>
+                  <Link
+                    :href="containerShow.url([environment.id, container.name])"
+                    class="font-medium text-highlighted hover:text-primary"
+                    >{{ container.name }}</Link
+                  >
                   <span class="truncate font-mono text-xs text-muted">{{ container.image }}</span>
                 </div>
                 <span class="w-14 text-right text-sm text-muted">{{
@@ -359,6 +375,12 @@ const { run } = useApplicationOperations(() => props.environment)
       <p class="text-sm text-muted">
         <Link :href="applicationsIndex.url(environment.id)">Back to applications</Link>
       </p>
+
+      <ApplicationRemoveModal
+        v-model:open="isRemoving"
+        :environment="environment"
+        :application="name"
+      />
     </template>
   </UDashboardPanel>
 </template>

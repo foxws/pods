@@ -1,0 +1,590 @@
+<script setup lang="ts">
+import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import QuadletFetchController from '@/actions/Modules/Web/Quadlets/Controllers/QuadletFetchController'
+import HostError from '@/components/Environments/HostError.vue'
+import QuadletCheckStatus from '@/components/Quadlets/QuadletCheckStatus.vue'
+import AppNavbar from '@/components/Ui/AppNavbar.vue'
+import PageHeading from '@/components/Ui/PageHeading.vue'
+import { useQuadletCheck, useQuadletInstall, type SecretInput } from '@/composables/quadlets'
+import type { EnvironmentData, HostProperty, QuadletSourceData, SecretData } from '@/types'
+import { pluralize } from '@/utils/application'
+import { describeQuadlet, isQuadletFile, secretsIn, type QuadletFile } from '@/utils/quadlet'
+import { Head, useHttp } from '@inertiajs/vue3'
+import type { BreadcrumbItem, TabsItem } from '@nuxt/ui'
+import { computed, reactive, ref, watch } from 'vue'
+
+const props = defineProps<{
+  environment: EnvironmentData
+  secrets?: HostProperty<SecretData[]>
+}>()
+
+type Source = 'git' | 'upload' | 'write'
+
+const source = ref<Source>('git')
+const sources: TabsItem[] = [
+  { label: 'Git repository', value: 'git', icon: 'i-lucide-git-branch' },
+  { label: 'Upload files', value: 'upload', icon: 'i-lucide-upload' },
+  { label: 'Write quadlet', value: 'write', icon: 'i-lucide-pencil' },
+]
+
+const available = ref<QuadletFile[]>([])
+const selected = ref<string[]>([])
+const commit = ref<string | null>(null)
+
+const fetcher = useHttp<{ repository: string; reference: string; path: string }, HostProperty<QuadletSourceData>>({
+  repository: '',
+  reference: 'main',
+  path: '',
+})
+const fetchError = ref<string | null>(null)
+
+const git = reactive({ repository: '', reference: 'main', path: '' })
+const gitErrors = computed<Partial<Record<'repository' | 'reference' | 'path', string>>>(() => fetcher.errors)
+const isFetching = computed(() => fetcher.processing)
+
+const fetchRepository = async (): Promise<void> => {
+  fetchError.value = null
+  fetcher.repository = git.repository
+  fetcher.reference = git.reference
+  fetcher.path = git.path
+
+  try {
+    const response = await fetcher.post(QuadletFetchController.url(props.environment.id))
+
+    if (response.error || !response.data) {
+      fetchError.value = response.error ?? 'lpod returned no files.'
+
+      return
+    }
+
+    commit.value = response.data.commit
+    showFiles(response.data.files)
+
+    if (!application.name && git.path) {
+      application.name = git.path.replace(/\/+$/, '').split('/').pop() ?? ''
+    }
+  } catch {
+    fetchError.value = fetcher.hasErrors ? null : 'The repository could not be fetched.'
+  }
+}
+
+const showFiles = (files: QuadletFile[]): void => {
+  available.value = files
+  selected.value = files.filter((file) => isQuadletFile(file.name)).map((file) => file.name)
+}
+
+const uploaded = ref<File[] | null>(null)
+
+watch(uploaded, async (list) => {
+  showFiles(await Promise.all((list ?? []).map(async (file) => ({ name: file.name, content: await file.text() }))))
+  commit.value = null
+})
+
+const written = reactive({ name: '', content: '[Container]\nImage=\n\n[Install]\nWantedBy=default.target\n' })
+
+watch(source, () => {
+  available.value = []
+  selected.value = []
+  commit.value = null
+})
+
+const files = computed<QuadletFile[]>(() => {
+  if (source.value === 'write') {
+    return written.name ? [{ name: written.name, content: written.content }] : []
+  }
+
+  return available.value.filter((file) => selected.value.includes(file.name))
+})
+
+const skipped = computed(() => available.value.filter((file) => !isQuadletFile(file.name)))
+
+const toggle = (name: string, isSelected: boolean | 'indeterminate'): void => {
+  selected.value =
+    isSelected === true ? [...new Set([...selected.value, name])] : selected.value.filter((item) => item !== name)
+}
+
+const existing = computed(
+  () => new Map((props.secrets?.data ?? []).filter((secret) => !secret.missing).map((secret) => [secret.name, secret])),
+)
+
+const referenced = computed(() => {
+  const usage = new Map<string, string[]>()
+
+  for (const file of files.value) {
+    for (const name of secretsIn(file.content)) {
+      usage.set(name, [...(usage.get(name) ?? []), file.name])
+    }
+  }
+
+  return [...usage.entries()].map(([name, usedIn]) => ({ name, usedIn, existing: existing.value.get(name) ?? null }))
+})
+
+const missing = computed(() => referenced.value.filter((secret) => !secret.existing))
+
+const values = reactive<Record<string, string>>({})
+
+const generate = (name: string): void => {
+  const bytes = crypto.getRandomValues(new Uint8Array(24))
+
+  values[name] = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '')
+}
+
+const application = reactive({ name: '', start: true, replace: false })
+
+const unfilled = computed(() => missing.value.filter((secret) => !values[secret.name]))
+
+const { result, checking } = useQuadletCheck(() => props.environment, files)
+const { form, install } = useQuadletInstall(() => props.environment)
+
+const submit = (): void => {
+  form.application = application.name
+  form.files = files.value
+  form.start = application.start
+  form.replace = application.replace
+  form.secrets = missing.value.map<SecretInput>((secret) => ({
+    name: secret.name,
+    driver: 'file',
+    value: values[secret.name] ?? '',
+  }))
+  install(() => {
+    for (const key of Object.keys(values)) {
+      values[key] = ''
+    }
+  })
+}
+
+const counts = computed(() => {
+  const ofKind = (kind: string): number => files.value.filter((file) => file.name.endsWith(`.${kind}`)).length
+
+  return {
+    pods: ofKind('pod'),
+    containers: ofKind('container'),
+    volumes: ofKind('volume'),
+    networks: ofKind('network'),
+    kube: ofKind('kube'),
+  }
+})
+
+const unitsSummary = computed(() =>
+  [
+    counts.value.pods ? pluralize(counts.value.pods, 'pod') : null,
+    counts.value.kube ? pluralize(counts.value.kube, 'kube') : null,
+    pluralize(counts.value.containers, 'container'),
+    counts.value.volumes ? pluralize(counts.value.volumes, 'volume') : null,
+    counts.value.networks ? pluralize(counts.value.networks, 'network') : null,
+  ]
+    .filter(Boolean)
+    .join(' · '),
+)
+
+const blocker = computed(() => {
+  if (!files.value.length) {
+    return 'Choose at least one Quadlet file'
+  }
+
+  if (!application.name) {
+    return 'Name the application'
+  }
+
+  if (unfilled.value.length) {
+    return `Fill in ${pluralize(unfilled.value.length, 'more secret')} to continue`
+  }
+
+  return result.value?.data?.valid === false ? 'Fix the errors the dry run found' : null
+})
+
+const quadletDir = computed(() =>
+  props.environment.scope === 'rootful' ? '/etc/containers/systemd' : '~/.config/containers/systemd',
+)
+
+const breadcrumb = computed<BreadcrumbItem[]>(() => [
+  { label: 'Applications', to: applicationsIndex.url(props.environment.id) },
+  { label: 'Install application' },
+])
+
+const serverErrors = computed(() =>
+  Object.entries(form.errors)
+    .filter(([key]) => key !== 'application')
+    .map(([, message]) => message),
+)
+</script>
+
+<template>
+  <Head title="Install application" />
+
+  <UDashboardPanel id="application-create">
+    <template #header>
+      <AppNavbar
+        :breadcrumb="breadcrumb"
+        :back="{ label: 'Applications', to: applicationsIndex.url(environment.id) }"
+      />
+    </template>
+
+    <template #body>
+      <PageHeading title="Install application">
+        <template #description>
+          Install Quadlet files with <code class="font-mono text-highlighted">podman quadlet install</code>. Pods checks
+          the files and the secrets they need before anything runs.
+        </template>
+      </PageHeading>
+
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <div class="flex min-w-0 flex-col gap-4">
+          <UCard>
+            <template #header>
+              <h2 class="flex items-center gap-2 font-semibold text-highlighted">
+                <UBadge
+                  label="1"
+                  color="neutral"
+                  variant="soft"
+                />
+                Source
+              </h2>
+            </template>
+
+            <div class="flex flex-col gap-4">
+              <UTabs
+                v-model="source"
+                :items="sources"
+                :content="false"
+                size="sm"
+                color="neutral"
+                :ui="{ list: 'overflow-x-auto', trigger: 'shrink-0' }"
+              />
+
+              <div
+                v-if="source === 'git'"
+                class="grid gap-4 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end"
+                @keydown.enter.prevent="fetchRepository"
+              >
+                <UFormField
+                  label="Repository URL"
+                  :error="gitErrors.repository"
+                >
+                  <UInput
+                    v-model="git.repository"
+                    placeholder="https://codeberg.org/foxws/quadlets.git"
+                    class="w-full font-mono"
+                  />
+                </UFormField>
+                <UFormField
+                  label="Branch or tag"
+                  :error="gitErrors.reference"
+                >
+                  <UInput
+                    v-model="git.reference"
+                    class="w-full font-mono"
+                  />
+                </UFormField>
+                <UFormField
+                  label="Directory"
+                  :error="gitErrors.path"
+                >
+                  <UInput
+                    v-model="git.path"
+                    placeholder="nextcloud/"
+                    class="w-full font-mono"
+                  />
+                </UFormField>
+                <UButton
+                  label="Fetch"
+                  icon="i-lucide-git-pull-request-arrow"
+                  color="neutral"
+                  variant="outline"
+                  :loading="isFetching"
+                  @click="fetchRepository"
+                />
+              </div>
+
+              <UFileUpload
+                v-if="source === 'upload'"
+                multiple
+                label="Drop Quadlet files here"
+                description=".container, .pod, .volume, .network, .kube and .env files"
+                accept=".container,.pod,.volume,.network,.kube,.image,.build,.env,.yaml,.yml"
+                class="min-h-32 w-full"
+                v-model="uploaded"
+              />
+
+              <div
+                v-if="source === 'write'"
+                class="flex flex-col gap-3"
+              >
+                <UFormField
+                  label="File name"
+                  description="Ends with .container, .pod, .volume, .network or .kube."
+                >
+                  <UInput
+                    v-model="written.name"
+                    :model-modifiers="{ trim: true }"
+                    placeholder="whoami.container"
+                    class="w-full font-mono"
+                  />
+                </UFormField>
+                <UTextarea
+                  v-model="written.content"
+                  :rows="12"
+                  autoresize
+                  spellcheck="false"
+                  class="w-full font-mono"
+                  :ui="{ base: 'text-xs leading-5' }"
+                  aria-label="Quadlet file"
+                />
+              </div>
+
+              <HostError
+                v-if="fetchError"
+                :error="fetchError"
+              />
+
+              <p
+                v-if="commit"
+                class="flex items-center gap-2 text-sm text-muted"
+              >
+                <UIcon
+                  name="i-lucide-git-commit-horizontal"
+                  class="size-4"
+                />
+                Fetched commit <span class="font-mono text-highlighted">{{ commit }}</span> ·
+                {{ pluralize(available.length, 'file') }} found
+              </p>
+            </div>
+          </UCard>
+
+          <UCard
+            v-if="source !== 'write'"
+            :ui="{ body: 'p-0 sm:p-0' }"
+          >
+            <template #header>
+              <div class="flex items-center justify-between gap-2">
+                <h2 class="flex items-center gap-2 font-semibold text-highlighted">
+                  <UBadge
+                    label="2"
+                    color="neutral"
+                    variant="soft"
+                  />
+                  Quadlet files
+                </h2>
+                <span class="text-sm text-muted">{{ selected.length }} of {{ available.length }} selected</span>
+              </div>
+            </template>
+
+            <ul
+              v-if="available.length"
+              class="divide-y divide-default"
+            >
+              <li
+                v-for="file in available"
+                :key="file.name"
+              >
+                <label class="flex cursor-pointer items-center gap-3 px-4 py-3">
+                  <UCheckbox
+                    :model-value="selected.includes(file.name)"
+                    :disabled="!isQuadletFile(file.name)"
+                    @update:model-value="toggle(file.name, $event)"
+                  />
+                  <span class="flex min-w-0 flex-1 flex-col">
+                    <span class="font-mono text-sm text-highlighted">{{ file.name }}</span>
+                    <span class="truncate font-mono text-xs text-muted">{{
+                      isQuadletFile(file.name) ? describeQuadlet(file) : 'not a Quadlet file'
+                    }}</span>
+                  </span>
+                  <UBadge
+                    :label="file.name.split('.').pop()"
+                    color="neutral"
+                    variant="outline"
+                  />
+                </label>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="p-4 text-sm text-muted"
+            >
+              {{ source === 'git' ? 'Fetch a repository to see its files.' : 'Upload files to see them here.' }}
+            </p>
+
+            <template
+              v-if="available.length"
+              #footer
+            >
+              <p class="text-sm text-muted">
+                Files go to <span class="font-mono">{{ quadletDir }}/{{ application.name || 'NAME' }}/</span>.
+                <template v-if="skipped.length">
+                  {{ skipped.map((file) => file.name).join(', ') }}
+                  {{
+                    skipped.length === 1
+                      ? "is skipped because it isn't a Quadlet file."
+                      : "are skipped because they aren't Quadlet files."
+                  }}
+                </template>
+              </p>
+            </template>
+          </UCard>
+
+          <UCard :ui="{ body: 'p-0 sm:p-0' }">
+            <template #header>
+              <div class="flex items-center justify-between gap-2">
+                <h2 class="flex items-center gap-2 font-semibold text-highlighted">
+                  <UBadge
+                    :label="source === 'write' ? '2' : '3'"
+                    color="neutral"
+                    variant="soft"
+                  />
+                  Secrets
+                </h2>
+                <UBadge
+                  v-if="missing.length"
+                  :label="`${missing.length} missing`"
+                  color="warning"
+                  variant="subtle"
+                />
+              </div>
+            </template>
+
+            <ul
+              v-if="referenced.length"
+              class="divide-y divide-default"
+            >
+              <li
+                v-for="secret in referenced"
+                :key="secret.name"
+                class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center"
+              >
+                <span class="flex min-w-0 flex-1 flex-col">
+                  <span class="flex items-center gap-2 font-mono text-sm text-highlighted">
+                    <UIcon
+                      :name="secret.existing ? 'i-lucide-key-round' : 'i-lucide-triangle-alert'"
+                      :class="secret.existing ? 'text-success' : 'text-warning'"
+                      class="size-4"
+                    />
+                    {{ secret.name }}
+                  </span>
+                  <span class="truncate font-mono text-xs text-muted">
+                    {{
+                      secret.existing
+                        ? `Already exists · ${secret.existing.driver ?? 'file'} driver${secret.existing.used_by.length ? ` · also used by ${secret.existing.used_by.join(', ')}` : ''}`
+                        : secret.usedIn.join(', ')
+                    }}
+                  </span>
+                </span>
+                <div
+                  v-if="!secret.existing"
+                  class="flex gap-2 sm:w-80"
+                >
+                  <UInput
+                    v-model="values[secret.name]"
+                    type="password"
+                    autocomplete="off"
+                    placeholder="Enter a value"
+                    :aria-label="`Value of ${secret.name}`"
+                    class="flex-1 font-mono"
+                  />
+                  <UButton
+                    label="Generate"
+                    color="neutral"
+                    variant="outline"
+                    @click="generate(secret.name)"
+                  />
+                </div>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="p-4 text-sm text-muted"
+            >
+              {{ files.length ? 'These files use no secrets.' : 'Secrets the files need show up here.' }}
+            </p>
+          </UCard>
+
+          <UCard>
+            <template #header>
+              <h2 class="flex items-center gap-2 font-semibold text-highlighted">
+                <UBadge
+                  :label="source === 'write' ? '3' : '4'"
+                  color="neutral"
+                  variant="soft"
+                />
+                Options
+              </h2>
+            </template>
+
+            <div class="flex flex-col gap-4">
+              <UFormField
+                label="Application name"
+                required
+                :error="form.errors.application"
+              >
+                <UInput
+                  v-model="application.name"
+                  :model-modifiers="{ trim: true }"
+                  placeholder="nextcloud"
+                  class="w-full font-mono sm:w-80"
+                />
+              </UFormField>
+              <USwitch
+                v-model="application.start"
+                label="Start after installing"
+                description="Runs systemctl start for the new units."
+              />
+              <USwitch
+                v-model="application.replace"
+                label="Replace existing files"
+                description="podman quadlet install --replace, for updating an installed application."
+              />
+            </div>
+          </UCard>
+        </div>
+
+        <div class="flex min-w-0 flex-col gap-4 lg:sticky lg:top-0 lg:self-start">
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h2 class="font-semibold text-highlighted">Summary</h2>
+                <QuadletCheckStatus
+                  :result="result"
+                  :checking="checking"
+                />
+              </div>
+            </template>
+
+            <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
+              <dt class="text-muted">Application</dt>
+              <dd class="font-mono">{{ application.name || '–' }}</dd>
+              <dt class="text-muted">Units</dt>
+              <dd>{{ files.length ? unitsSummary : '–' }}</dd>
+              <dt class="text-muted">Secrets</dt>
+              <dd>{{ missing.length ? `${missing.length} to create` : 'none to create' }}</dd>
+              <dt class="text-muted">Runs on</dt>
+              <dd>{{ environment.hostname ?? environment.host }}</dd>
+            </dl>
+
+            <template #footer>
+              <div class="flex flex-col gap-3">
+                <UAlert
+                  v-for="error in serverErrors"
+                  :key="error"
+                  color="error"
+                  variant="subtle"
+                  :title="error"
+                />
+                <UButton
+                  :label="`Install ${application.name || 'application'}`"
+                  icon="i-lucide-download"
+                  block
+                  size="lg"
+                  :loading="form.processing"
+                  :disabled="!!blocker"
+                  @click="submit"
+                />
+                <p class="text-center text-xs text-muted">
+                  {{ blocker ?? 'Secret values are sent straight to podman secret create and never stored by Pods.' }}
+                </p>
+              </div>
+            </template>
+          </UCard>
+        </div>
+      </div>
+    </template>
+  </UDashboardPanel>
+</template>
