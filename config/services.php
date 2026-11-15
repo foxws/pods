@@ -18,6 +18,16 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'pods' => [
+        'lpod_binary' => env('PODS_LPOD_BINARY', 'lpod'),
+        'cache_ttl' => (int) env('PODS_CACHE_TTL', 5),
+        'local' => [
+            'host' => env('PODS_LOCAL_SSH_HOST', 'host.containers.internal'),
+            'port' => (int) env('PODS_LOCAL_SSH_PORT', 22),
+            'user' => env('PODS_LOCAL_SSH_USER'),
+        ],
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
