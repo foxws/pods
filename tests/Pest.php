@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Integrations\Ssh\Contracts\RunsHostCommands;
+use Integrations\Ssh\Testing\FakeHostRunner;
 use Tests\CreatesApplication;
 
 expect()
@@ -31,3 +33,38 @@ uses(TestCase::class, CreatesApplication::class, RefreshDatabase::class)
         $this->seed();
     })
     ->in(__DIR__);
+
+/**
+ * Binds a fake host that answers lpod commands with the contract fixtures.
+ */
+function fakeLpod(): FakeHostRunner
+{
+    $fixture = lpodFixture(...);
+
+    $runner = new FakeHostRunner([
+        'version --json' => $fixture('version'),
+        'host --json' => $fixture('host'),
+        'apps --json' => $fixture('apps'),
+        'secrets --json' => $fixture('secrets'),
+        '* status --json' => $fixture('app-status'),
+        '* files --json' => $fixture('app-files'),
+        '* logs --json *' => $fixture('app-logs'),
+        '* up --no-block --json' => $fixture('ok'),
+        '* down --no-block --json' => $fixture('ok'),
+        '* restart --no-block --json' => $fixture('ok'),
+        'secret create *' => $fixture('ok'),
+        '* secret add *' => $fixture('ok'),
+    ]);
+
+    app()->instance(RunsHostCommands::class, $runner);
+
+    return $runner;
+}
+
+/**
+ * Gives the JSON of an lpod contract fixture.
+ */
+function lpodFixture(string $name): string
+{
+    return file_get_contents(__DIR__."/Fixtures/lpod/contract-1/{$name}.json");
+}
