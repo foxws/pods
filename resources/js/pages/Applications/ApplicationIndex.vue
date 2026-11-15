@@ -3,6 +3,8 @@ import { show } from '@/actions/Modules/Web/Applications/Controllers/Application
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
+import AppNavbar from '@/components/Ui/AppNavbar.vue'
+import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
 import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData } from '@/types'
 import { describeApplication, describeUnits, quadletName } from '@/utils/application'
@@ -87,28 +89,26 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
 
   <UDashboardPanel id="applications">
     <template #header>
-      <UDashboardNavbar title="Applications">
-        <template #leading>
-          <UDashboardSidebarCollapse />
+      <AppNavbar />
+    </template>
+
+    <template #body>
+      <PageHeading title="Applications">
+        <template #description>
+          Quadlet applications installed for user
+          <span class="font-medium text-highlighted">{{ environment.user }}</span>
+          on
+          <span class="font-medium text-highlighted">{{ environment.hostname ?? environment.host }}</span>.
         </template>
 
-        <template #right>
+        <template #actions>
           <UButton
             icon="i-lucide-plus"
             label="Install application"
             disabled
           />
         </template>
-      </UDashboardNavbar>
-    </template>
-
-    <template #body>
-      <p class="text-muted">
-        Quadlet applications installed for user
-        <span class="font-medium text-highlighted">{{ environment.user }}</span>
-        on
-        <span class="font-medium text-highlighted">{{ environment.hostname ?? environment.host }}</span>.
-      </p>
+      </PageHeading>
 
       <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <template v-if="host?.data">

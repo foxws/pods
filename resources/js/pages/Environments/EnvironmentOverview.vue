@@ -4,6 +4,8 @@ import { index as environmentsIndex } from '@/actions/Modules/Web/Environments/C
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
+import AppNavbar from '@/components/Ui/AppNavbar.vue'
+import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useHostPolling } from '@/composables/applications'
 import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, SecretData } from '@/types'
 import { describeApplication } from '@/utils/application'
@@ -120,27 +122,27 @@ const podmanLine = computed(() =>
 
   <UDashboardPanel id="overview">
     <template #header>
-      <UDashboardNavbar title="Overview">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-      </UDashboardNavbar>
+      <AppNavbar />
     </template>
 
     <template #body>
-      <div class="flex min-w-0 flex-col gap-1">
-        <h1 class="text-2xl font-semibold text-highlighted">{{ environment.hostname ?? environment.name }}</h1>
-        <p
-          v-if="stats"
-          class="text-muted"
-        >
-          {{ hostLine }}
-        </p>
-        <USkeleton
-          v-else-if="!host"
-          class="h-5 w-80 max-w-full"
-        />
-      </div>
+      <PageHeading :title="environment.hostname ?? environment.name">
+        <template #description>
+          <span v-if="stats">{{ hostLine }}</span>
+          <USkeleton
+            v-else-if="!host"
+            class="h-5 w-80 max-w-full"
+          />
+        </template>
+
+        <template #actions>
+          <UButton
+            icon="i-lucide-plus"
+            label="Install application"
+            disabled
+          />
+        </template>
+      </PageHeading>
 
       <template v-if="hostError">
         <HostError :error="hostError" />

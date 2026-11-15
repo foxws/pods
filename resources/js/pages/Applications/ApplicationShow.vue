@@ -4,6 +4,7 @@ import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers
 import JournalLog from '@/components/Applications/JournalLog.vue'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
+import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
 import type { ApplicationDetailData, EnvironmentData, HostProperty, JournalEntryData, QuadletFileData } from '@/types'
 import { formatBytes, formatPort, formatRelative } from '@/utils/format'
@@ -60,15 +61,10 @@ const { run } = useApplicationOperations(() => props.environment)
 
   <UDashboardPanel id="application">
     <template #header>
-      <UDashboardNavbar>
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-
-        <template #title>
-          <UBreadcrumb :items="breadcrumb" />
-        </template>
-      </UDashboardNavbar>
+      <AppNavbar
+        :breadcrumb="breadcrumb"
+        :back="{ label: 'Applications', to: applicationsIndex.url(environment.id) }"
+      />
     </template>
 
     <template #body>

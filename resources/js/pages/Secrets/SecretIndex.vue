@@ -2,6 +2,8 @@
 import { show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import HostError from '@/components/Environments/HostError.vue'
 import SecretCreateModal from '@/components/Secrets/SecretCreateModal.vue'
+import AppNavbar from '@/components/Ui/AppNavbar.vue'
+import PageHeading from '@/components/Ui/PageHeading.vue'
 import type { ApplicationData, EnvironmentData, HostProperty, SecretData } from '@/types'
 import { formatRelative } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
@@ -34,26 +36,24 @@ const columns: TableColumn<SecretData>[] = [
 
   <UDashboardPanel id="secrets">
     <template #header>
-      <UDashboardNavbar title="Secrets">
-        <template #leading>
-          <UDashboardSidebarCollapse />
+      <AppNavbar />
+    </template>
+
+    <template #body>
+      <PageHeading title="Secrets">
+        <template #description>
+          Podman secrets your Quadlets reference with
+          <code class="font-mono text-highlighted">Secret=</code>. Values are never shown after creation.
         </template>
 
-        <template #right>
+        <template #actions>
           <UButton
             icon="i-lucide-plus"
             label="Create secret"
             @click="isCreating = true"
           />
         </template>
-      </UDashboardNavbar>
-    </template>
-
-    <template #body>
-      <p class="text-muted">
-        Podman secrets your Quadlets reference with
-        <code class="font-mono text-highlighted">Secret=</code>. Values are never shown after creation.
-      </p>
+      </PageHeading>
 
       <HostError
         v-if="secrets?.error"

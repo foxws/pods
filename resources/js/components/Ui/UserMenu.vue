@@ -1,18 +1,12 @@
 <script setup lang="ts">
-import SettingsModal from '@/components/Settings/SettingsModal.vue'
 import { useAuth } from '@/composables/auth'
+import { useSettings } from '@/composables/settings'
 import type { DropdownMenuItem } from '@nuxt/ui'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 const { user, hasRole, logOut } = useAuth()
 
-const isSettingsOpen = ref(false)
-const settingsSection = ref('account')
-
-const openSettings = (section: string) => {
-  settingsSection.value = section
-  isSettingsOpen.value = true
-}
+const { open: openSettings } = useSettings()
 
 const items = computed<DropdownMenuItem[][]>(() => [
   [
@@ -48,21 +42,17 @@ const items = computed<DropdownMenuItem[][]>(() => [
 </script>
 
 <template>
-  <div>
-    <UDropdownMenu
-      :items="items"
-      :content="{ align: 'end', collisionPadding: 12 }"
-    >
-      <UAvatar
-        :alt="user?.name ?? 'User'"
-        class="cursor-pointer"
-        size="sm"
-      />
-    </UDropdownMenu>
-
-    <SettingsModal
-      v-model:open="isSettingsOpen"
-      v-model:section="settingsSection"
+  <UDropdownMenu
+    :items="items"
+    :content="{ align: 'end', collisionPadding: 12 }"
+  >
+    <UButton
+      :avatar="{ alt: user?.name ?? 'User', size: 'sm' }"
+      color="neutral"
+      variant="ghost"
+      square
+      aria-label="Account"
+      class="rounded-full p-0.5"
     />
-  </div>
+  </UDropdownMenu>
 </template>

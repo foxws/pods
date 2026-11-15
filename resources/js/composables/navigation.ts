@@ -19,7 +19,6 @@ const planned: { label: string; icon: string }[] = [
   { label: 'Images', icon: 'i-lucide-disc-3' },
   { label: 'Volumes', icon: 'i-lucide-hard-drive' },
   { label: 'Networks', icon: 'i-lucide-network' },
-  { label: 'Journal', icon: 'i-lucide-scroll-text' },
 ]
 
 /**
@@ -72,20 +71,17 @@ export function useNavigation() {
       return []
     }
 
-    const [overviewLink, applicationsLink, secretsLink] = links.value.map<NavigationMenuItem>(({ label, icon, to, active }) => ({
-      label,
-      icon,
-      to,
-      active,
-    }))
-    const soon = planned.map<NavigationMenuItem>(({ label, icon }) => ({
-      label,
-      icon,
-      disabled: true,
-      badge: { label: 'Soon', color: 'neutral', variant: 'outline', size: 'sm' },
-    }))
+    const [overviewLink, applicationsLink, secretsLink] = links.value.map<NavigationMenuItem>(
+      ({ label, icon, to, active }) => ({
+        label,
+        icon,
+        to,
+        active,
+      }),
+    )
+    const soon = planned.map<NavigationMenuItem>(({ label, icon }) => ({ label, icon, disabled: true }))
 
-    return [[overviewLink, applicationsLink, ...soon.slice(0, 5), secretsLink, ...soon.slice(5)]]
+    return [[overviewLink, applicationsLink, ...soon, secretsLink]]
   })
 
   const searchGroups = computed<CommandPaletteGroup[]>(() => [

@@ -2,6 +2,8 @@
 import { index as applications } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { destroy } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentController'
 import EnvironmentCreateModal from '@/components/Environments/EnvironmentCreateModal.vue'
+import AppNavbar from '@/components/Ui/AppNavbar.vue'
+import PageHeading from '@/components/Ui/PageHeading.vue'
 import type { EnvironmentData } from '@/types'
 import { formatRelative } from '@/utils/format'
 import { Head, Link, router } from '@inertiajs/vue3'
@@ -38,22 +40,23 @@ const remove = () => {
 
   <UDashboardPanel id="environments">
     <template #header>
-      <UDashboardNavbar title="Environments">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
+      <AppNavbar />
+    </template>
 
-        <template #right>
+    <template #body>
+      <PageHeading
+        title="Environments"
+        description="The Podman hosts and users Pods manages over SSH."
+      >
+        <template #actions>
           <UButton
             icon="i-lucide-plus"
             label="Add environment"
             @click="isCreating = true"
           />
         </template>
-      </UDashboardNavbar>
-    </template>
+      </PageHeading>
 
-    <template #body>
       <UCard variant="subtle">
         <template #header>
           <h2 class="font-semibold text-highlighted">SSH key of this Pods instance</h2>
