@@ -14,7 +14,6 @@ use Foxws\Essentials\Configurables\ModelShouldBeStrict;
 use Foxws\Essentials\Configurables\PreventStrayRequests;
 use Foxws\Essentials\Configurables\ProhibitDestructiveCommands;
 use Foxws\Essentials\Configurables\ResourceWithoutWrapping;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\Tags\Tag;
 
 return [
@@ -56,7 +55,6 @@ return [
     */
 
     'morph_map' => [
-        'media' => Media::class,
         'tag' => Tag::class,
         'user' => User::class,
     ],

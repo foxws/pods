@@ -54,7 +54,6 @@ const items = computed<DropdownMenuItem[][]>(() => [
       :content="{ align: 'end', collisionPadding: 12 }"
     >
       <UAvatar
-        :src="user?.avatar ?? undefined"
         :alt="user?.name ?? 'User'"
         class="cursor-pointer"
         size="sm"

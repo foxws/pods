@@ -126,7 +126,6 @@ export type UserData = {
   id: string
   name: string | null
   email: string
-  avatar: string | null
   state: StateData
   two_factor_enabled: boolean
   roles?: string[]

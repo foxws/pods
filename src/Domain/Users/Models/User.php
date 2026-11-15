@@ -25,17 +25,13 @@ use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Scout\Searchable;
-use Spatie\Image\Enums\Fit;
-use Spatie\MediaLibrary\HasMedia;
-use Spatie\MediaLibrary\InteractsWithMedia;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\ModelStates\HasStates;
 use Spatie\Permission\Traits\HasRoles;
 
 #[CollectedBy(UserCollection::class)]
 #[RouteKey('ulid')]
 #[UseEloquentBuilder(UserQueryBuilder::class)]
-class User extends Authenticatable implements HasMedia, MustVerifyEmail, PasskeyUser
+class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     use HasApiTokens;
 
@@ -45,7 +41,6 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail, Passkey
     use HasRoles;
     use HasStates;
     use HasUlid;
-    use InteractsWithMedia;
     use Notifiable;
     use PasskeyAuthenticatable;
     use Searchable;
@@ -100,28 +95,6 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail, Passkey
         return ['api', 'web'];
     }
 
-    public function registerMediaCollections(): void
-    {
-        $this
-            ->addMediaCollection('avatar')
-            ->singleFile()
-            ->acceptsMimeTypes([
-                'image/avif',
-                'image/gif',
-                'image/jpeg',
-                'image/png',
-                'image/webp',
-            ]);
-    }
-
-    public function registerMediaConversions(?Media $media = null): void
-    {
-        $this
-            ->addMediaConversion('thumb')
-            ->nonQueued()
-            ->fit(Fit::Crop, 256, 256);
-    }
-
     /**
      * The database engine searches these columns; other engines index them.
      *
@@ -156,16 +129,6 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail, Passkey
     public function receivesBroadcastNotificationsOn(): string
     {
         return $this->broadcastChannel();
-    }
-
-    /**
-     * @return Attribute<?string, never>
-     */
-    protected function avatar(): Attribute
-    {
-        return Attribute::make(
-            get: fn (): ?string => $this->getFirstMediaUrl('avatar', 'thumb') ?: null,
-        )->shouldCache();
     }
 
     /**
