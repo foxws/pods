@@ -29,19 +29,22 @@ class SshHostRunner implements RunsHostCommands
     }
 
     /**
-     * Builds the ssh argument list. The remote command is a single string that the
-     * host's shell parses, so each lpod argument is escaped on its own.
+     * sshd hands the remote command to the user's login shell, which may be fish or
+     * zsh rather than sh. Only this wrapper reaches that shell: it has no backslash or
+     * single quote inside its quotes, so every common shell parses it the same way,
+     * and the real command travels as base64 for sh to decode and run.
+     */
+    protected const string RemoteWrapper = 'sh -c \'eval "$(printf %s "$1" | base64 -d)"\' pods';
+
+    /**
+     * Builds the ssh argument list.
      *
      * @param  list<string>  $arguments
      * @return list<string>
      */
     public function command(Environment $environment, array $arguments): array
     {
-        $remote = implode(' ', [
-            'PATH="$HOME/.local/bin:$PATH"',
-            escapeshellarg((string) config('services.pods.lpod_binary')),
-            ...array_map(escapeshellarg(...), $arguments),
-        ]);
+        $remote = self::RemoteWrapper.' '.base64_encode($this->shellCommand($arguments));
 
         return [
             'ssh',
@@ -59,6 +62,21 @@ class SshHostRunner implements RunsHostCommands
             $environment->host,
             $remote,
         ];
+    }
+
+    /**
+     * The POSIX sh command that runs lpod, with each argument escaped on its own.
+     *
+     * @param  list<string>  $arguments
+     */
+    public function shellCommand(array $arguments): string
+    {
+        return implode(' ', [
+            'PATH="$HOME/.local/bin:$PATH"',
+            'exec',
+            escapeshellarg((string) config('services.pods.lpod_binary')),
+            ...array_map(escapeshellarg(...), $arguments),
+        ]);
     }
 
     protected function knownHostsFile(Environment $environment): string

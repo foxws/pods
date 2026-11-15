@@ -9,13 +9,14 @@ use Integrations\Ssh\SshHostRunner;
 it('escapes every lpod argument for the remote shell', function () {
     $environment = Environment::factory()->create(['host' => 'podman-01.home.arpa', 'port' => 2222, 'user' => 'blue']);
 
-    $command = app(SshHostRunner::class)->command($environment, ['app', 'logs', "it's; reboot"]);
+    $command = app(SshHostRunner::class)->command($environment, ['app', 'logs', "it's; reboot \\"]);
 
-    expect(array_slice($command, -3))->toBe([
-        '--',
-        'podman-01.home.arpa',
-        'PATH="$HOME/.local/bin:$PATH" \'lpod\' \'app\' \'logs\' \'it\'\\\'\'s; reboot\'',
-    ]);
+    [$separator, $host, $remote] = array_slice($command, -3);
+
+    expect([$separator, $host])->toBe(['--', 'podman-01.home.arpa'])
+        ->and($remote)->toMatch('#^sh -c \'[^\\\\\']*\' pods [A-Za-z0-9+/=]+$#')
+        ->and(base64_decode(substr($remote, strrpos($remote, ' ') + 1), true))
+        ->toBe('PATH="$HOME/.local/bin:$PATH" exec \'lpod\' \'app\' \'logs\' \'it\'\\\'\'s; reboot \\\'');
 });
 
 it('only trusts the pinned host key', function () {
