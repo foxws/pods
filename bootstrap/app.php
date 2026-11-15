@@ -62,6 +62,11 @@ return Application::configure(basePath: $basePath)
             'role' => RoleMiddleware::class,
         ]);
 
+        // Quadlet files travel to the host byte for byte
+        $middleware->trimStrings(except: [
+            fn (Request $request): bool => $request->is('actions/environments/*/quadlets', 'actions/environments/*/quadlets/*'),
+        ]);
+
         // Configure web middleware
         $middleware->web(append: [
             AddCspHeaders::class,
@@ -80,7 +85,7 @@ return Application::configure(basePath: $basePath)
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Secret values are never stored, not even as old input after a failed validation
-        $exceptions->dontFlash(['value']);
+        $exceptions->dontFlash(['value', 'secrets']);
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

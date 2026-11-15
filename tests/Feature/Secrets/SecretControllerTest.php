@@ -148,3 +148,41 @@ it('forbids users who are not the owner', function () {
 
     $lpod->assertNothingRan();
 });
+
+it('replaces a secret value on stdin and restarts the applications that use it', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->put(action([SecretController::class, 'update'], [$this->environment, 'immich-db-password']), [
+            'driver' => 'file',
+            'value' => 'a new value',
+            'restart' => ['immich'],
+        ])
+        ->assertRedirect()
+        ->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(fn (array $arguments, ?string $input) => $arguments === ['secret', 'create', 'immich-db-password', '--driver', 'file', '--replace', '--stdin', '--json']
+        && $input === 'a new value');
+    $lpod->assertRan(['immich', 'restart', '--no-block', '--json']);
+});
+
+it('deletes a secret', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->delete(action([SecretController::class, 'destroy'], [$this->environment, 'backup-s3-key']))
+        ->assertRedirect()
+        ->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(['secret', 'rm', 'backup-s3-key', '--json']);
+});
+
+it('forbids users who are not the owner to delete a secret', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs(User::factory()->create())
+        ->delete(action([SecretController::class, 'destroy'], [$this->environment, 'backup-s3-key']))
+        ->assertForbidden();
+
+    $lpod->assertNothingRan();
+});

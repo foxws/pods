@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { index as applicationsIndex, show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import {
+  create,
+  index as applicationsIndex,
+  show,
+} from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { index as environmentsIndex } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentController'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
@@ -139,7 +143,7 @@ const podmanLine = computed(() =>
           <UButton
             icon="i-lucide-plus"
             label="Install application"
-            disabled
+            :to="create.url(environment.id)"
           />
         </template>
       </PageHeading>

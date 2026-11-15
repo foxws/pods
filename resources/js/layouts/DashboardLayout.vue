@@ -9,12 +9,12 @@ import { useFlash } from '@/composables/flash'
 import { useNavigation } from '@/composables/navigation'
 import { provideSettings } from '@/composables/settings'
 import type { NavigationMenuItem } from '@nuxt/ui'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 const { nonce } = useAppearance()
 useFlash()
 
-const { environment, links, sidebarItems, searchGroups } = useNavigation()
+const { environment, tabBarLinks, journalLink, sidebarItems, searchGroups } = useNavigation()
 
 const isSidebarOpen = ref(false)
 
@@ -22,11 +22,11 @@ const { logOut } = useAuth()
 
 const { isOpen: isSettingsOpen, section: settingsSection, open: openSettings } = provideSettings()
 
-const footerItems: NavigationMenuItem[] = [
-  { label: 'Journal', icon: 'i-lucide-scroll-text', disabled: true },
+const footerItems = computed<NavigationMenuItem[]>(() => [
+  journalLink.value,
   { label: 'Settings', icon: 'i-lucide-settings', onSelect: () => openSettings('account') },
   { label: 'Log out', icon: 'i-lucide-log-out', class: 'lg:hidden', onSelect: logOut },
-]
+])
 </script>
 
 <template>
@@ -77,8 +77,8 @@ const footerItems: NavigationMenuItem[] = [
         <slot />
 
         <MobileTabBar
-          v-if="links.length"
-          :links="links"
+          v-if="tabBarLinks.length"
+          :links="tabBarLinks"
           class="lg:hidden"
           @more="isSidebarOpen = true"
         />

@@ -97,3 +97,49 @@ it('does not route application names that could be read as options', function ()
 
     $lpod->assertNothingRan();
 });
+
+it('shows the install page with the secrets that already exist', function () {
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('Applications/ApplicationCreate')
+            ->loadDeferredProps(fn ($reload) => $reload->has('secrets.data', 6)));
+});
+
+it('removes an application and the data it owns once confirmed', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->delete(action([ApplicationController::class, 'destroy'], [$this->environment, 'immich']), [
+            'confirmation' => 'immich',
+            'volumes' => true,
+            'secrets' => true,
+        ])
+        ->assertRedirect(action([ApplicationController::class, 'index'], $this->environment))
+        ->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(['immich', 'remove', '--volumes', '--secrets', '--json']);
+});
+
+it('does not remove an application without typing its name', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->delete(action([ApplicationController::class, 'destroy'], [$this->environment, 'immich']), ['confirmation' => 'immic'])
+        ->assertSessionHasErrors(['confirmation' => 'Type the name of the application to confirm.']);
+
+    $lpod->assertNothingRan();
+});
+
+it('forbids users who are not the owner to remove an application', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs(User::factory()->create())
+        ->delete(action([ApplicationController::class, 'destroy'], [$this->environment, 'immich']), ['confirmation' => 'immich'])
+        ->assertForbidden();
+
+    $lpod->assertNothingRan();
+});

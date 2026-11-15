@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import { create, show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import ImageUpdateController from '@/actions/Modules/Web/Images/Controllers/ImageUpdateController'
+import ApplicationRemoveModal from '@/components/Applications/ApplicationRemoveModal.vue'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { useHostAction } from '@/composables/hostActions'
 import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData } from '@/types'
 import { describeApplication, describeUnits, quadletName } from '@/utils/application'
 import { missingSecretIn } from '@/utils/attention'
@@ -49,32 +52,63 @@ useHostPolling(['applications', 'host'], isBusy)
 
 const { run } = useApplicationOperations(() => props.environment)
 
-const actions = (application: ApplicationData): DropdownMenuItem[] => [
-  {
-    label: 'Start',
-    icon: 'i-lucide-play',
-    disabled: application.status === 'running',
-    onSelect: () => run(application.name, 'up'),
+const removing = ref<string | null>(null)
+const isRemoving = computed({
+  get: () => removing.value !== null,
+  set: (open) => {
+    if (!open) {
+      removing.value = null
+    }
   },
-  {
-    label: 'Restart',
-    icon: 'i-lucide-rotate-cw',
-    disabled: application.status !== 'running',
-    onSelect: () => run(application.name, 'restart'),
-  },
-  {
-    label: 'Pull and redeploy',
-    icon: 'i-lucide-download',
-    disabled: isTransitioning(application.status),
-    onSelect: () => run(application.name, 'redeploy'),
-  },
-  {
-    label: 'Stop',
-    icon: 'i-lucide-square',
-    color: 'error',
-    disabled: application.status === 'inactive',
-    onSelect: () => run(application.name, 'down'),
-  },
+})
+
+const { send, processing } = useHostAction()
+
+const actions = (application: ApplicationData): DropdownMenuItem[][] => [
+  [
+    {
+      label: 'Open',
+      icon: 'i-lucide-square-arrow-out-up-right',
+      to: show.url([props.environment.id, application.name]),
+    },
+  ],
+  [
+    {
+      label: 'Start',
+      icon: 'i-lucide-play',
+      disabled: application.status === 'running',
+      onSelect: () => run(application.name, 'up'),
+    },
+    {
+      label: 'Restart',
+      icon: 'i-lucide-rotate-cw',
+      disabled: application.status !== 'running',
+      onSelect: () => run(application.name, 'restart'),
+    },
+    {
+      label: 'Pull and redeploy',
+      icon: 'i-lucide-download',
+      disabled: isTransitioning(application.status),
+      onSelect: () => run(application.name, 'redeploy'),
+    },
+    {
+      label: 'Stop',
+      icon: 'i-lucide-square',
+      color: 'error',
+      disabled: application.status === 'inactive',
+      onSelect: () => run(application.name, 'down'),
+    },
+  ],
+  [
+    {
+      label: 'Remove application',
+      icon: 'i-lucide-trash-2',
+      color: 'error',
+      onSelect: () => {
+        removing.value = application.name
+      },
+    },
+  ],
 ]
 
 const columns: TableColumn<ApplicationData>[] = [
@@ -109,9 +143,17 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
 
         <template #actions>
           <UButton
+            label="Check for updates"
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="outline"
+            :loading="processing"
+            @click="send('post', ImageUpdateController.url(environment.id))"
+          />
+          <UButton
             icon="i-lucide-plus"
             label="Install application"
-            disabled
+            :to="create.url(environment.id)"
           />
         </template>
       </PageHeading>
@@ -318,6 +360,13 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
           </div>
         </template>
       </UTable>
+
+      <ApplicationRemoveModal
+        v-if="removing"
+        v-model:open="isRemoving"
+        :environment="environment"
+        :application="removing"
+      />
     </template>
   </UDashboardPanel>
 </template>
