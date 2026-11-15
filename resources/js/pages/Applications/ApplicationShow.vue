@@ -56,9 +56,9 @@ const { run } = useApplicationOperations(() => props.environment)
 </script>
 
 <template>
-  <UDashboardPanel id="application">
-    <Head :title="name" />
+  <Head :title="name" />
 
+  <UDashboardPanel id="application">
     <template #header>
       <UDashboardNavbar>
         <template #leading>

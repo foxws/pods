@@ -34,9 +34,9 @@ const remove = () => {
 </script>
 
 <template>
-  <UDashboardPanel id="environments">
-    <Head title="Environments" />
+  <Head title="Environments" />
 
+  <UDashboardPanel id="environments">
     <template #header>
       <UDashboardNavbar title="Environments">
         <template #leading>

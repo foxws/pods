@@ -83,9 +83,9 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
 </script>
 
 <template>
-  <UDashboardPanel id="applications">
-    <Head title="Applications" />
+  <Head title="Applications" />
 
+  <UDashboardPanel id="applications">
     <template #header>
       <UDashboardNavbar title="Applications">
         <template #leading>

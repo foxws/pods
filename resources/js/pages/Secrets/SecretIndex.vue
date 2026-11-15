@@ -30,9 +30,9 @@ const columns: TableColumn<SecretData>[] = [
 </script>
 
 <template>
-  <UDashboardPanel id="secrets">
-    <Head title="Secrets" />
+  <Head title="Secrets" />
 
+  <UDashboardPanel id="secrets">
     <template #header>
       <UDashboardNavbar title="Secrets">
         <template #leading>

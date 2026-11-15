@@ -116,9 +116,9 @@ const podmanLine = computed(() =>
 </script>
 
 <template>
-  <UDashboardPanel id="overview">
-    <Head title="Overview" />
+  <Head title="Overview" />
 
+  <UDashboardPanel id="overview">
     <template #header>
       <UDashboardNavbar title="Overview">
         <template #leading>
