@@ -9,8 +9,17 @@ use Domain\Applications\DataObjects\ApplicationDetailData;
 use Domain\Applications\DataObjects\HostStatsData;
 use Domain\Applications\DataObjects\JournalEntryData;
 use Domain\Applications\DataObjects\QuadletFileData;
+use Domain\Containers\DataObjects\ContainerDetailData;
+use Domain\Containers\DataObjects\HostContainerData;
+use Domain\Containers\Enums\ContainerOperation;
 use Domain\Environments\Models\Environment;
+use Domain\Images\DataObjects\ImageData;
+use Domain\Networks\DataObjects\NetworkData;
+use Domain\Quadlets\DataObjects\QuadletCheckData;
+use Domain\Quadlets\DataObjects\QuadletSourceData;
 use Domain\Secrets\DataObjects\SecretData;
+use Domain\Shared\DataObjects\PruneResultData;
+use Domain\Volumes\DataObjects\HostVolumeData;
 use Illuminate\Support\Facades\Cache;
 use Integrations\Lpod\Exceptions\LpodException;
 use Integrations\Lpod\Exceptions\UnsupportedContractException;
@@ -109,6 +118,224 @@ class LpodClient
         $this->forget($environment, 'secrets', "apps.{$application}");
     }
 
+    public function deleteSecret(Environment $environment, string $name): void
+    {
+        $this->json($environment, ['secret', 'rm', $name, '--json']);
+
+        $this->forget($environment, 'secrets');
+    }
+
+    /**
+     * Stops the application and removes its Quadlet files, plus the data it owns when asked.
+     */
+    public function removeApplication(Environment $environment, string $application, bool $volumes = false, bool $images = false, bool $secrets = false): void
+    {
+        $this->json($environment, [
+            $application, 'remove',
+            ...($volumes ? ['--volumes'] : []),
+            ...($images ? ['--images'] : []),
+            ...($secrets ? ['--secrets'] : []),
+            '--json',
+        ]);
+
+        $this->forget($environment, 'apps', "apps.{$application}", 'host', 'containers', 'images', 'volumes', 'networks', 'secrets');
+    }
+
+    /**
+     * @return list<HostContainerData>
+     */
+    public function containers(Environment $environment): array
+    {
+        $payload = $this->cached($environment, 'containers', ['containers', '--json']);
+
+        return array_map(HostContainerData::fromLpod(...), array_values($payload['containers'] ?? []));
+    }
+
+    public function container(Environment $environment, string $container): ContainerDetailData
+    {
+        $payload = $this->cached($environment, "containers.{$container}", ['container', $container, 'inspect', '--json']);
+
+        return ContainerDetailData::fromLpod($payload['container']);
+    }
+
+    /**
+     * @return list<JournalEntryData>
+     */
+    public function containerLogs(Environment $environment, string $container, int $lines = 200): array
+    {
+        $payload = $this->json($environment, ['container', $container, 'logs', '--json', '--lines', (string) $lines]);
+
+        return array_map(JournalEntryData::fromLpod(...), array_values($payload['entries'] ?? []));
+    }
+
+    /**
+     * Runs the operation through the container's systemd unit, or podman itself when no Quadlet manages it.
+     */
+    public function operateContainer(Environment $environment, string $container, ContainerOperation $operation): void
+    {
+        $this->json($environment, ['container', $container, $operation->value, '--json']);
+
+        $this->forget($environment, 'containers', "containers.{$container}", 'apps', 'host');
+    }
+
+    /**
+     * @return list<ImageData>
+     */
+    public function images(Environment $environment): array
+    {
+        $payload = $this->cached($environment, 'images', ['images', '--json']);
+
+        return array_map(ImageData::fromLpod(...), array_values($payload['images'] ?? []));
+    }
+
+    public function pullImage(Environment $environment, string $reference): void
+    {
+        $this->json($environment, ['image', 'pull', $reference, '--json'], timeout: 600);
+
+        $this->forget($environment, 'images', 'host');
+    }
+
+    public function removeImage(Environment $environment, string $image): void
+    {
+        $this->json($environment, ['image', 'rm', $image, '--json']);
+
+        $this->forget($environment, 'images', 'host');
+    }
+
+    public function pruneImages(Environment $environment): PruneResultData
+    {
+        $result = PruneResultData::fromLpod($this->json($environment, ['images', 'prune', '--json'], timeout: 300));
+
+        $this->forget($environment, 'images', 'host');
+
+        return $result;
+    }
+
+    /**
+     * Asks podman auto-update which images have a newer version, without pulling them.
+     */
+    public function checkForUpdates(Environment $environment): void
+    {
+        $this->json($environment, ['auto-update', '--dry-run', '--json'], timeout: 300);
+
+        $this->forget($environment, 'images', 'apps');
+    }
+
+    /**
+     * @return list<HostVolumeData>
+     */
+    public function volumes(Environment $environment): array
+    {
+        $payload = $this->cached($environment, 'volumes', ['volumes', '--json']);
+
+        return array_map(HostVolumeData::fromLpod(...), array_values($payload['volumes'] ?? []));
+    }
+
+    public function removeVolume(Environment $environment, string $volume): void
+    {
+        $this->json($environment, ['volume', 'rm', $volume, '--json']);
+
+        $this->forget($environment, 'volumes', 'host');
+    }
+
+    public function pruneVolumes(Environment $environment): PruneResultData
+    {
+        $result = PruneResultData::fromLpod($this->json($environment, ['volumes', 'prune', '--json'], timeout: 300));
+
+        $this->forget($environment, 'volumes', 'host');
+
+        return $result;
+    }
+
+    /**
+     * @return list<NetworkData>
+     */
+    public function networks(Environment $environment): array
+    {
+        $payload = $this->cached($environment, 'networks', ['networks', '--json']);
+
+        return array_map(NetworkData::fromLpod(...), array_values($payload['networks'] ?? []));
+    }
+
+    public function removeNetwork(Environment $environment, string $network): void
+    {
+        $this->json($environment, ['network', 'rm', $network, '--json']);
+
+        $this->forget($environment, 'networks');
+    }
+
+    public function pruneNetworks(Environment $environment): PruneResultData
+    {
+        $result = PruneResultData::fromLpod($this->json($environment, ['networks', 'prune', '--json']));
+
+        $this->forget($environment, 'networks');
+
+        return $result;
+    }
+
+    /**
+     * Gives the journal of every unit Pods manages, newest last.
+     *
+     * @return list<JournalEntryData>
+     */
+    public function journal(Environment $environment, int $lines = 500, ?int $priority = null, ?string $since = null): array
+    {
+        $payload = $this->json($environment, [
+            'journal', '--json', '--lines', (string) $lines,
+            ...($priority !== null ? ['--priority', (string) $priority] : []),
+            ...($since !== null ? ['--since', $since] : []),
+        ]);
+
+        return array_map(JournalEntryData::fromLpod(...), array_values($payload['entries'] ?? []));
+    }
+
+    /**
+     * Runs the files through podman quadlet --dryrun on the host. The files travel on stdin.
+     *
+     * @param  list<array{name: string, content: string}>  $files
+     */
+    public function checkQuadlets(Environment $environment, array $files): QuadletCheckData
+    {
+        return QuadletCheckData::fromLpod($this->json($environment, ['quadlet', 'check', '--stdin', '--json'], input: $this->encodeFiles($files)));
+    }
+
+    /**
+     * Installs the files as one application with podman quadlet install, then reloads systemd.
+     *
+     * @param  list<array{name: string, content: string}>  $files
+     */
+    public function installQuadlets(Environment $environment, string $application, array $files, bool $start = true, bool $replace = false): void
+    {
+        $this->json($environment, [
+            'quadlet', 'install', $application,
+            ...($replace ? ['--replace'] : []),
+            ...($start ? ['--start'] : []),
+            '--stdin', '--json',
+        ], input: $this->encodeFiles($files), timeout: 600);
+
+        $this->forget($environment, 'apps', "apps.{$application}", 'host', 'containers', 'volumes', 'networks', 'secrets');
+    }
+
+    /**
+     * Fetches the Quadlet files in a directory of a Git repository, without installing them.
+     */
+    public function fetchQuadlets(Environment $environment, string $repository, string $reference, string $path = ''): QuadletSourceData
+    {
+        return QuadletSourceData::fromLpod($this->json($environment, [
+            'quadlet', 'fetch', $repository, '--ref', $reference,
+            ...($path !== '' ? ['--path', $path] : []),
+            '--json',
+        ], timeout: 120));
+    }
+
+    /**
+     * @param  list<array{name: string, content: string}>  $files
+     */
+    protected function encodeFiles(array $files): string
+    {
+        return (string) json_encode(['files' => $files], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+    }
+
     public function up(Environment $environment, string $application): void
     {
         $this->lifecycle($environment, $application, 'up');
@@ -166,11 +393,11 @@ class LpodClient
      * @param  list<string>  $arguments
      * @return array<string, mixed>
      */
-    protected function json(Environment $environment, array $arguments, ?string $input = null): array
+    protected function json(Environment $environment, array $arguments, ?string $input = null, int $timeout = 30): array
     {
         $command = implode(' ', $arguments);
 
-        $result = $this->runner->run($environment, $arguments, $input);
+        $result = $this->runner->run($environment, $arguments, $input, $timeout);
 
         if ($result->exitCode === 255) {
             throw LpodException::unreachable($environment, $result);
