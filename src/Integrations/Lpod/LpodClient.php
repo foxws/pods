@@ -168,6 +168,10 @@ class LpodClient
             throw LpodException::unreachable($environment, $result);
         }
 
+        if ($result->exitCode === 127 && preg_match('/\bssh: (command )?not found/', $result->errorOutput) === 1) {
+            throw LpodException::sshClientMissing();
+        }
+
         if ($result->exitCode === 127) {
             throw LpodException::notInstalled($environment);
         }

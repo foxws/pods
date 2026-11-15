@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { index as applications } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import overview from '@/actions/Modules/Web/Environments/Controllers/EnvironmentOverviewController'
 import { index as environments } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentController'
 import type { EnvironmentData } from '@/types'
 import { usePage } from '@inertiajs/vue3'
@@ -23,7 +23,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
     label: environment.name,
     description: describe(environment),
     icon: environment.is_local ? 'i-lucide-house' : 'i-lucide-server',
-    to: applications.url(environment.id),
+    to: overview.url(environment.id),
     active: environment.id === props.current?.id,
   })),
   [{ label: 'Manage environments', icon: 'i-lucide-settings-2', to: environments.url() }],

@@ -44,3 +44,23 @@ export function formatRelative(date: string | null | undefined): string {
 export function formatPort(port: string): string {
   return port.replace(/^0\.0\.0\.0:/, '').replace(/->.*$/, '')
 }
+
+export function formatUptime(since: string | null | undefined): string {
+  if (!since) {
+    return '–'
+  }
+
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 60000))
+  const days = Math.floor(minutes / 1440)
+  const hours = Math.floor((minutes % 1440) / 60)
+
+  if (days > 0) {
+    return `${days} ${days === 1 ? 'day' : 'days'}`
+  }
+
+  if (hours > 0) {
+    return `${hours} h ${minutes % 60} min`
+  }
+
+  return `${minutes} min`
+}

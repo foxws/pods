@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
-use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
+use Modules\Web\Environments\Controllers\EnvironmentOverviewController;
 use Modules\Web\Home\Controllers\HomeController;
 
 it('sends guests to the login page', function () {
@@ -20,7 +20,7 @@ it('opens the local environment for the owner', function () {
 
     $this->actingAs($owner)
         ->get(action(HomeController::class))
-        ->assertRedirect(action([ApplicationController::class, 'index'], $local));
+        ->assertRedirect(action(EnvironmentOverviewController::class, $local));
 });
 
 it('sends the owner to the environment list when there are no environments', function () {

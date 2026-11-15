@@ -6,6 +6,7 @@ import HostError from '@/components/Environments/HostError.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
 import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData } from '@/types'
 import { describeApplication, describeUnits, quadletName } from '@/utils/application'
+import { missingSecretIn } from '@/utils/attention'
 import { formatBytes, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
 import { Head, Link } from '@inertiajs/vue3'
@@ -39,8 +40,6 @@ const visible = computed(() =>
 )
 
 const failures = computed(() => list.value.filter((application) => application.status === 'failed'))
-
-const missingSecret = (error: string | null): string | null => error?.match(/Secret (\S+) does not exist/)?.[1] ?? null
 
 const isBusy = computed(() => list.value.some((application) => isTransitioning(application.status)))
 
@@ -179,14 +178,14 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
         :title="`${failure.unit} failed to start`"
         :description="failure.error ?? `The unit exited with ${failure.result ?? 'an error'}.`"
         :actions="
-          missingSecret(failure.error)
+          missingSecretIn(failure.error)
             ? [
                 {
                   label: 'Create secret',
                   color: 'error',
                   variant: 'outline',
                   to: secretsIndex.url(environment.id, {
-                    query: { secret: missingSecret(failure.error), application: failure.name },
+                    query: { secret: missingSecretIn(failure.error), application: failure.name },
                   }),
                 },
               ]

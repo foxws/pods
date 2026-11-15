@@ -19,7 +19,6 @@ use Integrations\Lpod\Exceptions\LpodException;
 use Integrations\Ssh\Exceptions\SshException;
 use Integrations\Ssh\HostKeyScanner;
 use Integrations\Ssh\SshIdentity;
-use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Environments\Requests\StoreEnvironmentRequest;
 
 class EnvironmentController implements HasMiddleware
@@ -75,7 +74,7 @@ class EnvironmentController implements HasMiddleware
 
         toast(title: __('Environment added'), description: __(':name is connected.', ['name' => $environment->name]));
 
-        return to_action([ApplicationController::class, 'index'], $environment);
+        return to_action(EnvironmentOverviewController::class, $environment);
     }
 
     public function destroy(Environment $environment): RedirectResponse

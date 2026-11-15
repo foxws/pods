@@ -6,8 +6,8 @@ use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
 use Illuminate\Support\Facades\Process;
 use Integrations\Ssh\HostResult;
-use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
+use Modules\Web\Environments\Controllers\EnvironmentOverviewController;
 
 beforeEach(function () {
     $this->owner = User::factory()->create()->assignRole('super-admin');
@@ -39,7 +39,7 @@ it('pins the host key and connects to a new environment', function () {
 
     $environment = Environment::query()->sole();
 
-    $response->assertRedirect(action([ApplicationController::class, 'index'], $environment));
+    $response->assertRedirect(action(EnvironmentOverviewController::class, $environment));
 
     expect($environment)
         ->host_key->toBe($this->hostKey)

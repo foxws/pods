@@ -1,4 +1,5 @@
 import { index as applications } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import overview from '@/actions/Modules/Web/Environments/Controllers/EnvironmentOverviewController'
 import { index as secrets } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import { usePage } from '@inertiajs/vue3'
 import type { CommandPaletteGroup, NavigationMenuItem } from '@nuxt/ui'
@@ -37,10 +38,18 @@ export function useNavigation() {
       return []
     }
 
+    const overviewUrl = overview.url(environment.value.id)
     const applicationsUrl = applications.url(environment.value.id)
     const secretsUrl = secrets.url(environment.value.id)
 
     return [
+      {
+        label: 'Overview',
+        shortLabel: 'Overview',
+        icon: 'i-lucide-house',
+        to: overviewUrl,
+        active: page.url === overviewUrl || page.url.startsWith(`${overviewUrl}?`),
+      },
       {
         label: 'Applications',
         shortLabel: 'Apps',
@@ -63,7 +72,7 @@ export function useNavigation() {
       return []
     }
 
-    const [applicationsLink, secretsLink] = links.value.map<NavigationMenuItem>(({ label, icon, to, active }) => ({
+    const [overviewLink, applicationsLink, secretsLink] = links.value.map<NavigationMenuItem>(({ label, icon, to, active }) => ({
       label,
       icon,
       to,
@@ -76,7 +85,7 @@ export function useNavigation() {
       badge: { label: 'Soon', color: 'neutral', variant: 'outline', size: 'sm' },
     }))
 
-    return [[applicationsLink, ...soon.slice(0, 5), secretsLink, ...soon.slice(5)]]
+    return [[overviewLink, applicationsLink, ...soon.slice(0, 5), secretsLink, ...soon.slice(5)]]
   })
 
   const searchGroups = computed<CommandPaletteGroup[]>(() => [
@@ -91,7 +100,7 @@ export function useNavigation() {
       items: (page.props.environments ?? []).map((item) => ({
         label: item.name,
         icon: item.is_local ? 'i-lucide-house' : 'i-lucide-server',
-        to: applications.url(item.id),
+        to: overview.url(item.id),
       })),
     },
   ])

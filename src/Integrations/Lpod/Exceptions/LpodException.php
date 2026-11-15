@@ -26,6 +26,14 @@ class LpodException extends RuntimeException
         return new self("Could not connect to {$environment->target()}: {$error}{$hint}");
     }
 
+    /**
+     * The machine Pods runs on has no ssh client, so no host was contacted at all.
+     */
+    public static function sshClientMissing(): self
+    {
+        return new self('Pods could not run ssh: no SSH client is installed where Pods runs. Install openssh-client in the Pods container.');
+    }
+
     public static function notInstalled(Environment $environment): self
     {
         $binary = (string) config('services.pods.lpod_binary');

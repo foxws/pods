@@ -10,8 +10,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
-use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
+use Modules\Web\Environments\Controllers\EnvironmentOverviewController;
 
 class HomeController implements HasMiddleware
 {
@@ -38,6 +38,6 @@ class HomeController implements HasMiddleware
             return to_action([EnvironmentController::class, 'index']);
         }
 
-        return to_action([ApplicationController::class, 'index'], $environment);
+        return to_action(EnvironmentOverviewController::class, $environment);
     }
 }
