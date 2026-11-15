@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
-import ApplicationOperationController from '@/actions/Modules/Web/Applications/Controllers/ApplicationOperationController'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
-import type { ApplicationData, ApplicationOperation, EnvironmentData, HostProperty, HostStatsData } from '@/types'
+import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData } from '@/types'
+import { describeApplication, describeUnits, quadletName } from '@/utils/application'
 import { formatBytes, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
 import type { DropdownMenuItem, TableColumn, TabsItem } from '@nuxt/ui'
-import { useIntervalFn } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
@@ -44,66 +44,31 @@ const missingSecret = (error: string | null): string | null => error?.match(/Sec
 
 const isBusy = computed(() => list.value.some((application) => isTransitioning(application.status)))
 
-useIntervalFn(
-  () => router.reload({ only: ['applications', 'host'] }),
-  computed(() => (isBusy.value ? 5000 : 30000)),
-)
+useHostPolling(['applications', 'host'], isBusy)
 
-const pendingStatus: Record<ApplicationOperation, ApplicationData['status']> = {
-  up: 'activating',
-  down: 'deactivating',
-  restart: 'activating',
-}
-
-const run = (application: ApplicationData, operation: ApplicationOperation) => {
-  router
-    .optimistic<{ applications?: HostProperty<ApplicationData[]> }>(({ applications }) => {
-      return {
-        applications: {
-          error: applications?.error ?? null,
-          data: (applications?.data ?? []).map((item) =>
-            item.name === application.name ? { ...item, status: pendingStatus[operation] } : item,
-          ),
-        },
-      }
-    })
-    .post(
-      ApplicationOperationController.url([props.environment.id, application.name, operation]),
-      {},
-      { preserveScroll: true },
-    )
-}
+const { run } = useApplicationOperations(() => props.environment)
 
 const actions = (application: ApplicationData): DropdownMenuItem[] => [
   {
     label: 'Start',
     icon: 'i-lucide-play',
     disabled: application.status === 'running',
-    onSelect: () => run(application, 'up'),
+    onSelect: () => run(application.name, 'up'),
   },
   {
     label: 'Restart',
     icon: 'i-lucide-rotate-cw',
     disabled: application.status !== 'running',
-    onSelect: () => run(application, 'restart'),
+    onSelect: () => run(application.name, 'restart'),
   },
   {
     label: 'Stop',
     icon: 'i-lucide-square',
     color: 'error',
     disabled: application.status === 'inactive',
-    onSelect: () => run(application, 'down'),
+    onSelect: () => run(application.name, 'down'),
   },
 ]
-
-const units = (application: ApplicationData): string => {
-  const parts = [
-    application.pods ? `${application.pods} pod` : null,
-    `${application.containers} container${application.containers === 1 ? '' : 's'}`,
-  ]
-
-  return parts.filter(Boolean).join(' · ')
-}
 
 const columns: TableColumn<ApplicationData>[] = [
   { accessorKey: 'name', header: 'Application' },
@@ -250,12 +215,57 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
         </p>
       </div>
 
+      <ul
+        class="flex flex-col divide-y divide-default rounded-lg border border-default md:hidden"
+        aria-label="Applications"
+      >
+        <li
+          v-for="application in visible"
+          :key="application.name"
+        >
+          <Link
+            :href="show.url([environment.id, application.name])"
+            class="flex min-h-16 items-center gap-3 px-3 py-2.5"
+          >
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-primary">
+              <UIcon
+                :name="application.pods ? 'i-lucide-layers' : 'i-lucide-box'"
+                class="size-4"
+              />
+            </span>
+            <span class="flex min-w-0 flex-1 flex-col">
+              <span class="truncate font-medium text-highlighted">{{ application.name }}</span>
+              <span class="truncate text-xs text-muted">{{ describeApplication(application) }}</span>
+            </span>
+            <UnitStatusBadge :status="application.status" />
+          </Link>
+        </li>
+
+        <li
+          v-if="!applications"
+          class="flex flex-col gap-3 p-3"
+        >
+          <USkeleton
+            v-for="index in 4"
+            :key="index"
+            class="h-10"
+          />
+        </li>
+
+        <li
+          v-else-if="!visible.length"
+          class="p-4 text-center text-sm text-muted"
+        >
+          No applications match this filter.
+        </li>
+      </ul>
+
       <UTable
         :data="visible"
         :columns="columns"
         :loading="!applications"
         empty="No applications match this filter."
-        class="rounded-lg border border-default"
+        class="hidden rounded-lg border border-default md:block"
       >
         <template #name-cell="{ row }">
           <Link
@@ -263,9 +273,7 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
             class="flex flex-col"
           >
             <span class="font-medium text-highlighted">{{ row.original.name }}</span>
-            <span class="font-mono text-xs text-muted"
-              >{{ row.original.unit.replace(/(-pod)?\.service$/, '') }}.{{ row.original.kind }}</span
-            >
+            <span class="font-mono text-xs text-muted">{{ quadletName(row.original) }}</span>
           </Link>
         </template>
 
@@ -274,7 +282,7 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
         </template>
 
         <template #units-cell="{ row }">
-          <span class="text-muted">{{ units(row.original) }}</span>
+          <span class="text-muted">{{ describeUnits(row.original) }}</span>
         </template>
 
         <template #image-cell="{ row }">

@@ -1,59 +1,26 @@
 <script setup lang="ts">
-import { index as applications } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
-import { index as secrets } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import EnvironmentSwitcher from '@/components/Environments/EnvironmentSwitcher.vue'
 import AppLogo from '@/components/Ui/AppLogo.vue'
+import MobileTabBar from '@/components/Ui/MobileTabBar.vue'
 import UserMenu from '@/components/Ui/UserMenu.vue'
 import { useAppearance } from '@/composables/appearance'
 import { useFlash } from '@/composables/flash'
-import { usePage } from '@inertiajs/vue3'
-import type { NavigationMenuItem } from '@nuxt/ui'
-import { computed } from 'vue'
+import { useNavigation } from '@/composables/navigation'
+import { ref } from 'vue'
 
 const { nonce } = useAppearance()
 useFlash()
 
-const page = usePage()
+const { environment, links, sidebarItems, searchGroups } = useNavigation()
 
-const environment = computed(() => page.props.environment ?? null)
-
-const isCurrent = (url: string): boolean =>
-  page.url === url || page.url.startsWith(`${url}/`) || page.url.startsWith(`${url}?`)
-
-const later = (label: string, icon: string): NavigationMenuItem => ({
-  label,
-  icon,
-  disabled: true,
-  badge: { label: 'Soon', color: 'neutral', variant: 'outline', size: 'sm' },
-})
-
-const items = computed<NavigationMenuItem[][]>(() => {
-  if (!environment.value) {
-    return []
-  }
-
-  const applicationsUrl = applications.url(environment.value.id)
-  const secretsUrl = secrets.url(environment.value.id)
-
-  return [
-    [
-      { label: 'Applications', icon: 'i-lucide-layers', to: applicationsUrl, active: isCurrent(applicationsUrl) },
-      later('Containers', 'i-lucide-box'),
-      later('Pods', 'i-lucide-boxes'),
-      later('Images', 'i-lucide-disc-3'),
-      later('Volumes', 'i-lucide-hard-drive'),
-      later('Networks', 'i-lucide-network'),
-      { label: 'Secrets', icon: 'i-lucide-key-round', to: secretsUrl, active: isCurrent(secretsUrl) },
-      later('Journal', 'i-lucide-scroll-text'),
-    ],
-  ]
-})
+const isSidebarOpen = ref(false)
 </script>
 
 <template>
   <UApp :nonce="nonce">
     <UDashboardGroup unit="rem">
       <UDashboardSidebar
+        v-model:open="isSidebarOpen"
         collapsible
         resizable
         :ui="{ footer: 'border-t border-default' }"
@@ -68,9 +35,11 @@ const items = computed<NavigationMenuItem[][]>(() => {
             :collapsed="collapsed"
           />
 
+          <UDashboardSearchButton :collapsed="collapsed" />
+
           <UNavigationMenu
             :collapsed="collapsed"
-            :items="items"
+            :items="sidebarItems"
             orientation="vertical"
             tooltip
           />
@@ -81,7 +50,18 @@ const items = computed<NavigationMenuItem[][]>(() => {
         </template>
       </UDashboardSidebar>
 
-      <slot />
+      <UDashboardSearch :groups="searchGroups" />
+
+      <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+        <slot />
+
+        <MobileTabBar
+          v-if="links.length"
+          :links="links"
+          class="lg:hidden"
+          @more="isSidebarOpen = true"
+        />
+      </div>
     </UDashboardGroup>
   </UApp>
 </template>

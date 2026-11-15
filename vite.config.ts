@@ -49,6 +49,11 @@ export default defineConfig(({ mode }) => {
             secondary: 'neutral',
             neutral: 'neutral',
           },
+          dashboardPanel: {
+            slots: {
+              root: 'min-h-0',
+            },
+          },
           dashboardToolbar: {
             slots: {
               left: 'min-w-0 scrollbar-thin scrollbar-thumb-transparent scrollbar-track-transparent overflow-x-auto hover:scrollbar-thumb-(--ui-border-accented)',

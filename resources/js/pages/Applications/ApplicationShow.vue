@@ -1,23 +1,15 @@
 <script setup lang="ts">
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
-import ApplicationOperationController from '@/actions/Modules/Web/Applications/Controllers/ApplicationOperationController'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import JournalLog from '@/components/Applications/JournalLog.vue'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
-import type {
-  ApplicationDetailData,
-  ApplicationOperation,
-  EnvironmentData,
-  HostProperty,
-  JournalEntryData,
-  QuadletFileData,
-} from '@/types'
+import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import type { ApplicationDetailData, EnvironmentData, HostProperty, JournalEntryData, QuadletFileData } from '@/types'
 import { formatBytes, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TabsItem } from '@nuxt/ui'
-import { useIntervalFn } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
@@ -56,20 +48,11 @@ const subtitle = computed(() =>
     .join(' · '),
 )
 
-useIntervalFn(
-  () => router.reload({ only: ['application', 'logs'] }),
-  computed(() => (summary.value && isTransitioning(summary.value.status) ? 5000 : 30000)),
-)
+useHostPolling(['application', 'logs'], () => !!summary.value && isTransitioning(summary.value.status))
 
 const isRunning = computed(() => summary.value?.status === 'running')
 
-const run = (operation: ApplicationOperation) => {
-  router.post(
-    ApplicationOperationController.url([props.environment.id, props.name, operation]),
-    {},
-    { preserveScroll: true },
-  )
-}
+const { run } = useApplicationOperations(() => props.environment)
 </script>
 
 <template>
@@ -111,31 +94,34 @@ const run = (operation: ApplicationOperation) => {
           />
         </div>
 
-        <div class="flex flex-wrap gap-2">
+        <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <UButton
             v-if="isRunning"
             label="Stop"
+            class="justify-center"
             icon="i-lucide-square"
             color="neutral"
             variant="outline"
-            @click="run('down')"
+            @click="run(name, 'down')"
           />
           <UButton
             v-else
             label="Start"
+            class="justify-center"
             icon="i-lucide-play"
             color="neutral"
             variant="outline"
             :disabled="!summary"
-            @click="run('up')"
+            @click="run(name, 'up')"
           />
           <UButton
             label="Restart"
+            class="justify-center"
             icon="i-lucide-rotate-cw"
             color="neutral"
             variant="outline"
             :disabled="!isRunning"
-            @click="run('restart')"
+            @click="run(name, 'restart')"
           />
         </div>
       </div>
@@ -151,6 +137,7 @@ const run = (operation: ApplicationOperation) => {
         :content="false"
         variant="link"
         color="neutral"
+        :ui="{ list: 'overflow-x-auto', trigger: 'shrink-0' }"
       />
 
       <div
