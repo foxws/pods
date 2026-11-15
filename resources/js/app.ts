@@ -7,7 +7,6 @@ import '@/plugins/iconify'
 import '@/plugins/pusher'
 import '@/plugins/vueuse'
 
-import AppLayout from '@/layouts/AppLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 
@@ -28,11 +27,7 @@ void createInertiaApp({
       return AuthLayout
     }
 
-    if (['Applications/', 'Environments/', 'Secrets/'].some((prefix) => name.startsWith(prefix))) {
-      return DashboardLayout
-    }
-
-    return AppLayout
+    return DashboardLayout
   },
   progress: {
     color: '#d8b4fe',
