@@ -124,7 +124,10 @@ const searchText = (volume: HostVolumeData): string =>
         </template>
       </PageHeading>
 
-      <StatGrid :loading="!volumes">
+      <StatGrid
+        v-if="!volumes?.error"
+        :loading="!volumes"
+      >
         <StatCard
           label="Volumes"
           :value="list.length"
