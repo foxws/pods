@@ -8,6 +8,7 @@ const pendingStatus: Record<ApplicationOperation, ApplicationData['status']> = {
   up: 'activating',
   down: 'deactivating',
   restart: 'activating',
+  redeploy: 'activating',
 }
 
 /**

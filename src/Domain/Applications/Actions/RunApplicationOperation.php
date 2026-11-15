@@ -23,6 +23,7 @@ class RunApplicationOperation
             ApplicationOperation::Up => $this->lpod->up($environment, $application),
             ApplicationOperation::Down => $this->lpod->down($environment, $application),
             ApplicationOperation::Restart => $this->lpod->restart($environment, $application),
+            ApplicationOperation::Redeploy => $this->lpod->redeploy($environment, $application),
         };
     }
 }

@@ -22,7 +22,7 @@ export type ApplicationDetailData = {
   secrets: string[]
   items: ContainerData[]
 }
-export type ApplicationOperation = 'up' | 'down' | 'restart'
+export type ApplicationOperation = 'up' | 'down' | 'restart' | 'redeploy'
 export type ContainerData = {
   name: string
   image: string | null

@@ -119,6 +119,13 @@ const { run } = useApplicationOperations(() => props.environment)
             :disabled="!isRunning"
             @click="run(name, 'restart')"
           />
+          <UButton
+            label="Pull and redeploy"
+            icon="i-lucide-download"
+            class="col-span-2 justify-center sm:col-span-1"
+            :disabled="!summary || isTransitioning(summary.status)"
+            @click="run(name, 'redeploy')"
+          />
         </div>
       </div>
 

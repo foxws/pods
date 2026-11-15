@@ -11,7 +11,7 @@ it('sends guests to the login page without javascript errors', function () {
         ->assertNoJavaScriptErrors();
 });
 
-it('logs the owner in and opens the applications of the local environment', function () {
+it('logs the owner in and opens the overview of the local environment', function () {
     fakeLpod();
     $owner = User::factory()->create(['email' => 'jane@example.com'])->assignRole('super-admin');
     $environment = Environment::factory()->local()->create();
@@ -20,9 +20,10 @@ it('logs the owner in and opens the applications of the local environment', func
         ->fill('email', 'jane@example.com')
         ->fill('password', 'password')
         ->press('Continue')
-        ->assertPathIs("/environments/{$environment->ulid}/applications")
+        ->assertPathIs("/environments/{$environment->ulid}")
+        ->assertSee('Needs attention')
         ->assertSee('immich')
-        ->assertSee('home-assistant.service failed to start')
+        ->assertSee('home-assistant failed')
         ->assertNoJavaScriptErrors();
 
     $this->assertAuthenticatedAs($owner);

@@ -60,6 +60,7 @@ function fakeLpod(): FakeHostRunner
         '* up --no-block --json' => $fixture('ok'),
         '* down --no-block --json' => $fixture('ok'),
         '* restart --no-block --json' => $fixture('ok'),
+        '* redeploy --no-block --json' => $fixture('ok'),
         'secret create *' => $fixture('ok'),
         '* secret add *' => $fixture('ok'),
     ]);

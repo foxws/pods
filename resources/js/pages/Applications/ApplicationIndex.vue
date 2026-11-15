@@ -63,6 +63,12 @@ const actions = (application: ApplicationData): DropdownMenuItem[] => [
     onSelect: () => run(application.name, 'restart'),
   },
   {
+    label: 'Pull and redeploy',
+    icon: 'i-lucide-download',
+    disabled: isTransitioning(application.status),
+    onSelect: () => run(application.name, 'redeploy'),
+  },
+  {
     label: 'Stop',
     icon: 'i-lucide-square',
     color: 'error',

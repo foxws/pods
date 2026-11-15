@@ -124,6 +124,14 @@ class LpodClient
         $this->lifecycle($environment, $application, 'restart');
     }
 
+    /**
+     * Pulls the newest images of the application, then restarts it.
+     */
+    public function redeploy(Environment $environment, string $application): void
+    {
+        $this->lifecycle($environment, $application, 'redeploy');
+    }
+
     protected function lifecycle(Environment $environment, string $application, string $operation): void
     {
         $this->json($environment, [$application, $operation, '--no-block', '--json']);

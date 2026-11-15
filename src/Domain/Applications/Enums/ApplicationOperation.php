@@ -16,6 +16,7 @@ enum ApplicationOperation: string implements Enumerable
     case Up = 'up';
     case Down = 'down';
     case Restart = 'restart';
+    case Redeploy = 'redeploy';
 
     public function label(): string
     {
@@ -23,6 +24,7 @@ enum ApplicationOperation: string implements Enumerable
             self::Up => __('Start'),
             self::Down => __('Stop'),
             self::Restart => __('Restart'),
+            self::Redeploy => __('Redeploy'),
         };
     }
 }
