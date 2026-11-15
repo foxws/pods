@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Support\Inertia\Middleware;
 
+use Domain\Environments\DataObjects\EnvironmentData;
+use Domain\Environments\Models\Environment;
 use Domain\Shared\Enums\Language;
 use Domain\Shared\Enums\Locale;
 use Domain\Users\Models\User;
@@ -30,6 +32,9 @@ class HandleInertiaRequests extends Middleware
             'nonce' => fn (): string => app('csp-nonce'),
             'locale' => fn (): string => $request->getLocale(),
             'auth' => fn (): UserDataProperty => new UserDataProperty($user),
+            'environments' => fn (): array => $user?->can('viewAny', Environment::class)
+                ? EnvironmentData::collect(Environment::query()->orderByDesc('is_local')->orderBy('name')->get())->all()
+                : [],
         ]);
     }
 

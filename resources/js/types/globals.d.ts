@@ -1,4 +1,4 @@
-import type { Features, FlashData, OptionItem, User } from '@/types'
+import type { EnvironmentData, Features, FlashData, OptionItem, User } from '@/types'
 
 declare module '@inertiajs/core' {
   export interface InertiaConfig {
@@ -13,5 +13,7 @@ declare module '@inertiajs/core' {
     readonly languages: OptionItem[] | undefined
     readonly features: Features | undefined
     readonly auth: User | null | undefined
+    readonly environments: EnvironmentData[] | undefined
+    readonly environment?: EnvironmentData
   }
 }

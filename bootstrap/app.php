@@ -80,6 +80,9 @@ return Application::configure(basePath: $basePath)
         $middleware->redirectGuestsTo(fn () => route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Secret values are never stored, not even as old input after a failed validation
+        $exceptions->dontFlash(['value']);
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

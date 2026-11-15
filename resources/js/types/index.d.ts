@@ -24,6 +24,27 @@ export type OptionItem = SelectItem & {
 
 export type { StateData, UserData as User } from '@/types/generated'
 
+export type {
+  ApplicationData,
+  ApplicationDetailData,
+  ApplicationOperation,
+  ContainerData,
+  EnvironmentData,
+  HostStatsData,
+  JournalEntryData,
+  QuadletFileData,
+  SecretData,
+  UnitStatus,
+} from '@/types/generated'
+
+/**
+ * A value read from an environment's host, or why it could not be read.
+ */
+export type HostProperty<T> = {
+  readonly data: T | null
+  readonly error: string | null
+}
+
 export type ApplicationSettings = {
   site_name: string
   timezone: string

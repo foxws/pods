@@ -6,6 +6,7 @@ import '@/plugins/vueuse'
 
 import AppLayout from '@/layouts/AppLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
+import DashboardLayout from '@/layouts/DashboardLayout.vue'
 
 // CSP nonce for Inertia's injected elements; undefined during SSR (no `document`).
 const cspNonce =
@@ -22,6 +23,10 @@ void createInertiaApp({
   layout: (name) => {
     if (name.startsWith('Auth/')) {
       return AuthLayout
+    }
+
+    if (['Applications/', 'Environments/', 'Secrets/'].some((prefix) => name.startsWith(prefix))) {
+      return DashboardLayout
     }
 
     return AppLayout
