@@ -2,20 +2,31 @@
 
 declare(strict_types=1);
 
+use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
+use Modules\Web\Applications\Controllers\ApplicationController;
+use Modules\Web\Environments\Controllers\EnvironmentController;
 use Modules\Web\Home\Controllers\HomeController;
 
-it('renders the home page for guests', function () {
+it('sends guests to the login page', function () {
     $this->get(action(HomeController::class))
-        ->assertSuccessful()
-        ->assertInertia(fn ($page) => $page->component('HomePage')->where('auth', null));
+        ->assertRedirect(route('login'));
 });
 
-it('shares the authenticated user on the home page', function () {
-    $user = User::factory()->create();
+it('opens the local environment for the owner', function () {
+    $owner = User::factory()->create()->assignRole('super-admin');
+    Environment::factory()->create(['name' => 'alpha']);
+    $local = Environment::factory()->local()->create();
 
-    $this->actingAs($user)
+    $this->actingAs($owner)
         ->get(action(HomeController::class))
-        ->assertSuccessful()
-        ->assertInertia(fn ($page) => $page->where('auth.id', $user->getRouteKey()));
+        ->assertRedirect(action([ApplicationController::class, 'index'], $local));
+});
+
+it('sends the owner to the environment list when there are no environments', function () {
+    $owner = User::factory()->create()->assignRole('super-admin');
+
+    $this->actingAs($owner)
+        ->get(action(HomeController::class))
+        ->assertRedirect(action([EnvironmentController::class, 'index']));
 });
