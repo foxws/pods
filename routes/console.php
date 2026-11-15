@@ -5,13 +5,8 @@ declare(strict_types=1);
 use Illuminate\Auth\Console\ClearResetsCommand;
 use Illuminate\Cache\Console\PruneStaleTagsCommand;
 use Illuminate\Support\Facades\Schedule;
-use Laravel\Horizon\Console\SnapshotCommand;
 use Laravel\Sanctum\Console\Commands\PruneExpired;
 use Laravel\Telescope\Console\PruneCommand as PruneTelescopeCommand;
-
-Schedule::command(SnapshotCommand::class)
-    ->environments('production')
-    ->everyFiveMinutes();
 
 Schedule::command(PruneStaleTagsCommand::class)
     ->dailyAt('01:00');

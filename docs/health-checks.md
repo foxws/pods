@@ -28,12 +28,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 Use the port Octane listens on. If the image has no `curl`, use `wget -qO- http://localhost:8000/up` instead.
 
-For Horizon or scheduler containers, which don't serve HTTP, check the process instead:
-
-```yaml
-healthcheck:
-    test: ['CMD', 'php', 'artisan', 'horizon:status']
-```
+Queue and scheduler containers don't serve HTTP, so leave them without an HTTP health check (`HealthCmd=none` in a Quadlet) and let the restart policy bring them back when the process exits.
 
 To check the database or Redis on `/up`, listen for the `DiagnosingHealth` event and throw when a dependency is down:
 
@@ -144,7 +139,7 @@ Route::get('/health', HealthCheckJsonResultsController::class)
     ->name('health');
 ```
 
-Add a link for super-admins in `resources/js/components/Ui/UserMenu.vue`, next to the Horizon item:
+Add a link for super-admins in `resources/js/components/Ui/UserMenu.vue`, next to the Application item:
 
 ```ts
 import { health } from '@/routes'

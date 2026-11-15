@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import SettingsModal from '@/components/Settings/SettingsModal.vue'
 import { useAuth } from '@/composables/auth'
-import { index as horizon } from '@/routes/horizon'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { computed, ref } from 'vue'
 
@@ -34,13 +33,6 @@ const items = computed<DropdownMenuItem[][]>(() => [
             label: 'Application',
             icon: 'i-lucide-shield-half',
             onClick: () => openSettings('application'),
-          },
-          {
-            label: 'Queue',
-            icon: 'i-lucide-layers',
-            to: horizon.url(),
-            target: '_blank',
-            external: true,
           },
         ]
       : []),

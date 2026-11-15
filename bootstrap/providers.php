@@ -6,7 +6,6 @@ use Foundation\Providers\AppServiceProvider;
 use Foundation\Providers\AuthServiceProvider;
 use Foundation\Providers\BroadcastServiceProvider;
 use Foundation\Providers\FortifyServiceProvider;
-use Foundation\Providers\HorizonServiceProvider;
 use Foundation\Providers\InertiaServiceProvider;
 use Foundation\Providers\RouteServiceProvider;
 use Foundation\Providers\TypeScriptTransformerServiceProvider;
@@ -16,7 +15,6 @@ return [
     AuthServiceProvider::class,
     BroadcastServiceProvider::class,
     FortifyServiceProvider::class,
-    HorizonServiceProvider::class,
     InertiaServiceProvider::class,
     RouteServiceProvider::class,
     TypeScriptTransformerServiceProvider::class,

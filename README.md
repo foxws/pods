@@ -16,7 +16,7 @@ A Laravel starter kit, built from the setup we use in [foxws/app](https://github
 - **spatie/laravel-data** with **spatie/laravel-typescript-transformer**, so data objects and enums become TypeScript types in `resources/js/types/generated.ts`
 - **Wayfinder** for typed routes and actions in TypeScript
 - **Reverb** with **Echo**, set up for [Inertia live props](https://inertiajs.com/docs/v3/data-props/live-props) and `useEcho()`
-- **Horizon** for Redis queues; see [docs/health-checks.md](docs/health-checks.md) for container health checks or adding spatie/laravel-health
+- A `database` queue worker (`queue:work`); see [docs/health-checks.md](docs/health-checks.md) for container health checks or adding spatie/laravel-health
 - **foxws/laravel-ddd** and **foxws/laravel-essentials** for the domain layout and strict defaults
 - Spatie packages: **csp**, **medialibrary**, **model-states**, **options**, **permission**, **responsecache**, **settings**, **tags** and **translatable**
 - Tooling: **Pest** (with browser tests), **Larastan**, **Pint**, **Telescope**, **Pail**, **Pao**, **IDE Helper**, **Boost** and **spatie/guidelines-skills**
@@ -60,7 +60,6 @@ The seeder creates `administrator@example.com` with the password `password` and 
 | GET    | `/api/v1`       | API index (response cached)                                                                  |
 | GET    | `/api/v1/user`  | The authenticated user (Sanctum token or session)                                            |
 | GET    | `/api/v1/users` | Search users with `?query=`, sort with `?sort=-newest`, page with `?page[number]=2` (admins) |
-| GET    | `/horizon`      | Horizon dashboard (super-admins)                                                             |
 
 Private channels are authorized at `/broadcasting/auth` (session) and `/api/v1/broadcasting/auth` (Sanctum token), with the channels in `routes/channels.php`.
 
