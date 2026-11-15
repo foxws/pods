@@ -63,6 +63,10 @@ class InstallCommand extends Command implements Isolatable
 
         info("Registered the local environment ({$environment->target()}).");
 
+        if ($this->call('pods:verify', ['environment' => $environment->ulid]) !== self::SUCCESS) {
+            note('Run pods:verify once that is fixed.');
+        }
+
         return self::SUCCESS;
     }
 }

@@ -28,7 +28,7 @@ it('only trusts the pinned host key', function () {
         ->toContain('-o BatchMode=yes')
         ->toContain('-p 2222')
         ->toContain("-l {$environment->user}")
-        ->and(file_get_contents(storage_path("app/private/ssh/known_hosts/{$environment->ulid}")))
+        ->and(file_get_contents(config('services.pods.ssh_directory')."/known_hosts/{$environment->ulid}"))
         ->toBe($environment->host_key.PHP_EOL);
 });
 

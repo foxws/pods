@@ -47,7 +47,7 @@ class FakeHostRunner implements RunsHostCommands
             }
         }
 
-        return new HostResult(127, '', "No fake response for [lpod {$command}].");
+        return new HostResult(1, '', "No fake response for [lpod {$command}].");
     }
 
     /**

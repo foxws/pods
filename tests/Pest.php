@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Integrations\Ssh\Contracts\RunsHostCommands;
 use Integrations\Ssh\Testing\FakeHostRunner;
 use Tests\CreatesApplication;
@@ -29,8 +31,14 @@ uses(TestCase::class, CreatesApplication::class, RefreshDatabase::class)
         Queue::fake();
         Storage::fake();
 
+        // Keep SSH keys and known_hosts files out of the real storage directory
+        config(['services.pods.ssh_directory' => sys_get_temp_dir().'/pods-ssh-'.Str::random(16)]);
+
         // Setup database
         $this->seed();
+    })
+    ->afterEach(function () {
+        File::deleteDirectory((string) config('services.pods.ssh_directory'));
     })
     ->in(__DIR__);
 

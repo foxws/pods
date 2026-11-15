@@ -21,6 +21,7 @@ return [
     'pods' => [
         'lpod_binary' => env('PODS_LPOD_BINARY', 'lpod'),
         'cache_ttl' => (int) env('PODS_CACHE_TTL', 5),
+        'ssh_directory' => env('PODS_SSH_DIRECTORY', storage_path('app/private/ssh')),
         'local' => [
             'host' => env('PODS_LOCAL_SSH_HOST', 'host.containers.internal'),
             'port' => (int) env('PODS_LOCAL_SSH_PORT', 22),

@@ -164,6 +164,14 @@ class LpodClient
 
         $result = $this->runner->run($environment, $arguments, $input);
 
+        if ($result->exitCode === 255) {
+            throw LpodException::unreachable($environment, $result);
+        }
+
+        if ($result->exitCode === 127) {
+            throw LpodException::notInstalled($environment);
+        }
+
         if (! $result->successful()) {
             throw LpodException::commandFailed($command, $result);
         }

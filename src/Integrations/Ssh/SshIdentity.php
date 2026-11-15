@@ -57,6 +57,6 @@ class SshIdentity
 
     public function directory(): string
     {
-        return storage_path('app/private/ssh');
+        return (string) config('services.pods.ssh_directory');
     }
 }
