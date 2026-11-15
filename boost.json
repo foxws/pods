@@ -7,7 +7,6 @@
     "mcp": true,
     "nightwatch": false,
     "packages": [
-        "spatie/laravel-medialibrary",
         "spatie/laravel-permission",
         "spatie/laravel-responsecache",
         "spatie/guidelines-skills",
@@ -22,24 +21,24 @@
         "fortify-development",
         "laravel-best-practices",
         "testing-best-practices",
-        "configuring-horizon",
         "octane-development",
         "scout-development",
         "wayfinder-development",
         "telescope-debugging",
-        "health-checks-development",
         "inertia-vue-development",
+        "echo-vue-development",
+        "echo-development",
         "tailwindcss-development",
         "laravel-ddd-development",
         "laravel-essentials-development",
         "scout-builder-development",
-        "medialibrary-development",
         "laravel-permission-development",
         "responsecache-development",
         "translatable-development",
         "spatie-javascript",
         "spatie-laravel-php",
         "spatie-security",
-        "spatie-version-control"
+        "spatie-version-control",
+        "health-checks-development"
     ]
 }

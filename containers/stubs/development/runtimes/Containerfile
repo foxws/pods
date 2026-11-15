@@ -1,0 +1,46 @@
+# Built on ghcr.io/foxws/laravel-frankenphp's development image, which has
+# FrankenPHP, the PHP extensions with Xdebug, Composer, Node.js, pnpm, the
+# PostgreSQL client, Playwright's browser deps and the "docker" user. Pass
+# --build-arg RUNTIME_IMAGE=ghcr.io/foxws/laravel-frankenphp:php-8.4-dev (or
+# add it under [Build] as BuildArg=) for PHP 8.4. See docs/runtime.md.
+ARG RUNTIME_IMAGE=ghcr.io/foxws/laravel-frankenphp:php-8.5-dev
+
+FROM ${RUNTIME_IMAGE}
+
+ARG UID=1000
+ARG GID=1000
+ARG PHP_EXTENSIONS=""
+
+WORKDIR /app
+
+ENV PHP_CLI="php -d variables_order=EGPCS /app/artisan"
+ENV APP_COMMAND="${PHP_CLI} octane:frankenphp --host=0.0.0.0 --port=8000 --admin-port=2019 --watch"
+
+# The runtime image's "docker" user is 1000:1000. Renumber it to the host's
+# UID/GID, which the app quadlet passes as build args.
+RUN if [ "$(id -u docker)" != "${UID}" ] || [ "$(id -g docker)" != "${GID}" ]; then \
+        groupmod -o -g "${GID}" docker \
+        && usermod -o -u "${UID}" -g "${GID}" docker \
+        && chown -R docker:docker /home/docker /app /config /data; \
+    fi
+
+# Pods reaches every environment, the local host included, over ssh, and
+# pins host keys with ssh-keyscan
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install additional PHP extensions if specified
+RUN if [ -n "$PHP_EXTENSIONS" ]; then \
+    install-php-extensions $PHP_EXTENSIONS; \
+fi
+
+# Custom PHP configuration for development
+COPY podman/development/runtimes/php-development.ini ${PHP_INI_DIR}/conf.d/xx-php-user.ini
+
+# Entrypoint
+COPY --chmod=755 podman/development/runtimes/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+USER docker
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

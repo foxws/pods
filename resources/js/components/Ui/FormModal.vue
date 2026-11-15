@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import type { ModalProps, TabsItem } from '@nuxt/ui'
+import UDrawer from '@nuxt/ui/components/Drawer.vue'
+import UModal from '@nuxt/ui/components/Modal.vue'
+import { useMediaQuery } from '@vueuse/core'
+import { computed } from 'vue'
 
 const open = defineModel<boolean>('open')
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     title: string
     description?: string
@@ -21,7 +25,21 @@ const emit = defineEmits<{
   submit: [close: () => void]
 }>()
 
-const onEnter = (event: KeyboardEvent, close: () => void): void => {
+const isSheet = useMediaQuery('(max-width: 639px)')
+
+const close = (): void => {
+  open.value = false
+}
+
+const overlay = computed(() => (isSheet.value ? UDrawer : UModal))
+
+const overlayUi = computed(() =>
+  isSheet.value
+    ? { footer: 'grid grid-cols-2 gap-2 pb-[env(safe-area-inset-bottom)]' }
+    : { footer: 'justify-end', ...props.ui },
+)
+
+const onEnter = (event: KeyboardEvent): void => {
   if (event.defaultPrevented || !(event.target instanceof HTMLInputElement)) {
     return
   }
@@ -32,11 +50,12 @@ const onEnter = (event: KeyboardEvent, close: () => void): void => {
 </script>
 
 <template>
-  <UModal
+  <component
+    :is="overlay"
     v-model:open="open"
     :title="title"
     :description="description"
-    :ui="{ footer: 'justify-end', ...ui }"
+    :ui="overlayUi"
   >
     <template
       v-if="$slots.default"
@@ -45,10 +64,10 @@ const onEnter = (event: KeyboardEvent, close: () => void): void => {
       <slot />
     </template>
 
-    <template #body="{ close }">
+    <template #body>
       <div
         @submit.prevent="emit('submit', close)"
-        @keydown.enter="onEnter($event, close)"
+        @keydown.enter="onEnter($event)"
       >
         <UTabs
           v-if="tabs?.length"
@@ -79,12 +98,14 @@ const onEnter = (event: KeyboardEvent, close: () => void): void => {
       </div>
     </template>
 
-    <template #footer="{ close }">
+    <template #footer>
       <UButton
         label="Cancel"
         color="neutral"
         variant="soft"
         class="bg-(--glass) hover:bg-(--glass-strong)"
+        size="lg"
+        :block="isSheet"
         @click.prevent="close"
       />
 
@@ -92,9 +113,11 @@ const onEnter = (event: KeyboardEvent, close: () => void): void => {
         :label="submitLabel"
         color="primary"
         variant="solid"
+        size="lg"
+        :block="isSheet"
         :loading="processing"
         @click.prevent="emit('submit', close)"
       />
     </template>
-  </UModal>
+  </component>
 </template>

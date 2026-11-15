@@ -49,6 +49,11 @@ export default defineConfig(({ mode }) => {
             secondary: 'neutral',
             neutral: 'neutral',
           },
+          dashboardPanel: {
+            slots: {
+              root: 'min-h-0',
+            },
+          },
           dashboardToolbar: {
             slots: {
               left: 'min-w-0 scrollbar-thin scrollbar-thumb-transparent scrollbar-track-transparent overflow-x-auto hover:scrollbar-thumb-(--ui-border-accented)',
@@ -184,6 +189,7 @@ export default defineConfig(({ mode }) => {
             return (
               chunk('icons', ['@iconify']) ??
               chunk('ui', ['@nuxt/ui', '@nuxt/icon', 'reka-ui', '@internationalized']) ??
+              chunk('broadcasting', ['pusher-js', 'laravel-echo', '@laravel/echo-vue']) ??
               chunk('core', ['vue', '@inertiajs', '@vueuse'])
             )
           },

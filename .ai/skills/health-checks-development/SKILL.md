@@ -15,7 +15,7 @@ The starter kit ships no health check package on purpose. Many apps only need La
 
 ## Pick the approach
 
-1. **Container health check only** (Docker, Podman, Kubernetes): use `/up`, already registered in `bootstrap/app.php`. Don't install a package. Add a `healthcheck` / `HEALTHCHECK` that requests `/up` on the Octane port. Use `php artisan horizon:status` for Horizon containers.
+1. **Container health check only** (Docker, Podman, Kubernetes): use `/up`, already registered in `bootstrap/app.php`. Don't install a package. Add a `healthcheck` / `HEALTHCHECK` that requests `/up` on the Octane port. Queue and scheduler containers serve no HTTP; give them no HTTP check (`HealthCmd=none`).
 2. **Dependency checks on `/up`**: listen for `Illuminate\Foundation\Events\DiagnosingHealth` and throw when the database, cache or Redis is unreachable.
 3. **Stored results, notifications, a results page or Oh Dear**: install `spatie/laravel-health`. Ask the user first, since it adds a dependency.
 

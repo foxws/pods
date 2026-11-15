@@ -1,11 +1,15 @@
 import { createInertiaApp } from '@inertiajs/vue3'
+import { echo } from '@inertiajs/vue3/echo'
 import ui from '@nuxt/ui/vue-plugin'
 
+import { bootEcho } from '@/plugins/echo'
 import '@/plugins/iconify'
+import '@/plugins/pusher'
 import '@/plugins/vueuse'
 
 import AppLayout from '@/layouts/AppLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
+import DashboardLayout from '@/layouts/DashboardLayout.vue'
 
 // CSP nonce for Inertia's injected elements; undefined during SSR (no `document`).
 const cspNonce =
@@ -24,13 +28,19 @@ void createInertiaApp({
       return AuthLayout
     }
 
+    if (['Applications/', 'Environments/', 'Secrets/'].some((prefix) => name.startsWith(prefix))) {
+      return DashboardLayout
+    }
+
     return AppLayout
   },
   progress: {
     color: '#d8b4fe',
   },
   nonce: cspNonce,
-  withApp(app) {
+  live: echo(),
+  withApp(app, { page }) {
     app.use(ui)
+    bootEcho(page.props.echo)
   },
 })

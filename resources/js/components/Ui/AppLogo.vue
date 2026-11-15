@@ -3,6 +3,7 @@ import { useAppearance } from '@/composables/appearance'
 
 defineProps<{
   location?: string
+  compact?: boolean
 }>()
 
 const { app } = useAppearance()
@@ -12,6 +13,7 @@ const { app } = useAppearance()
   <ULink
     class="flex items-center gap-2.5 text-lg font-bold tracking-tight text-highlighted"
     :to="location || '/'"
+    :aria-label="compact ? `${app} home` : undefined"
   >
     <span
       class="grid size-7 shrink-0 place-items-center rounded-[9px] bg-(image:--logo-gradient) shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]"
@@ -22,6 +24,10 @@ const { app } = useAppearance()
         class="size-4 text-white"
       />
     </span>
-    <span class="inline">{{ app }}</span>
+    <span
+      v-if="!compact"
+      class="inline"
+      >{{ app }}</span
+    >
   </ULink>
 </template>

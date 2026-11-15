@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Foundation\Http\Middleware\SetCacheHeaders;
-use Foxws\Essentials\Csp\Middleware\AddHorizonCspNonce;
 use Foxws\Essentials\Csp\Middleware\AddTelescopeCspNonce;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -29,6 +28,7 @@ return Application::configure(basePath: $basePath)
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         then: function () {
             // Inertia action routes (web middleware for session, CSRF, and Inertia handling)
@@ -55,7 +55,6 @@ return Application::configure(basePath: $basePath)
             'ability' => CheckForAnyAbility::class,
             'cache' => SetCacheHeaders::class,
             'cache.bypass' => DoNotCacheResponse::class,
-            'csp.horizon' => AddHorizonCspNonce::class,
             'csp.telescope' => AddTelescopeCspNonce::class,
             'precognitive' => HandlePrecognitiveRequests::class,
             'permission' => PermissionMiddleware::class,
@@ -80,6 +79,9 @@ return Application::configure(basePath: $basePath)
         $middleware->redirectGuestsTo(fn () => route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Secret values are never stored, not even as old input after a failed validation
+        $exceptions->dontFlash(['value']);
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

@@ -5,17 +5,27 @@ declare(strict_types=1);
 namespace Foundation\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Integrations\Lpod\LpodClient;
+use Integrations\Ssh\Contracts\RunsHostCommands;
+use Integrations\Ssh\SshHostRunner;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->registerTelescope();
+        $this->registerHostGateway();
     }
 
     public function boot(): void
     {
         //
+    }
+
+    protected function registerHostGateway(): void
+    {
+        $this->app->scoped(RunsHostCommands::class, SshHostRunner::class);
+        $this->app->scoped(LpodClient::class);
     }
 
     protected function registerTelescope(): void

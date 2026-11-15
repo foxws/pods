@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Support\Inertia\Middleware;
 
+use Domain\Environments\DataObjects\EnvironmentData;
+use Domain\Environments\Models\Environment;
 use Domain\Shared\Enums\Language;
 use Domain\Shared\Enums\Locale;
 use Domain\Users\Models\User;
 use Foundation\Settings\GeneralSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Inertia\Middleware;
 use Laravel\Fortify\Features;
 use Modules\Web\Users\Responses\UserDataProperty;
@@ -30,6 +33,9 @@ class HandleInertiaRequests extends Middleware
             'nonce' => fn (): string => app('csp-nonce'),
             'locale' => fn (): string => $request->getLocale(),
             'auth' => fn (): UserDataProperty => new UserDataProperty($user),
+            'environments' => fn (): array => $user?->can('viewAny', Environment::class)
+                ? EnvironmentData::collect(Environment::query()->orderByDesc('is_local')->orderBy('name')->get())->all()
+                : [],
         ]);
     }
 
@@ -49,6 +55,12 @@ class HandleInertiaRequests extends Middleware
                 'resetPasswords' => Features::enabled(Features::resetPasswords()),
                 'twoFactor' => Features::enabled(Features::twoFactorAuthentication()),
                 'passkeys' => Features::enabled(Features::passkeys()),
+            ],
+            'echo' => fn (): array => [
+                'key' => Config::string('reverb.apps.apps.0.options.wsKey', ''),
+                'host' => Config::string('reverb.apps.apps.0.options.wsHost', 'localhost'),
+                'port' => Config::integer('reverb.apps.apps.0.options.wsPort', 8080),
+                'scheme' => Config::string('reverb.apps.apps.0.options.wsScheme', 'http'),
             ],
         ]);
     }
