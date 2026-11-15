@@ -3,10 +3,22 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Applications\Controllers\ApplicationOperationController;
+use Modules\Web\Containers\Controllers\ContainerOperationController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
+use Modules\Web\Images\Controllers\ImageController;
+use Modules\Web\Images\Controllers\ImagePruneController;
+use Modules\Web\Images\Controllers\ImageUpdateController;
+use Modules\Web\Networks\Controllers\NetworkController;
+use Modules\Web\Networks\Controllers\NetworkPruneController;
+use Modules\Web\Quadlets\Controllers\QuadletCheckController;
+use Modules\Web\Quadlets\Controllers\QuadletController;
+use Modules\Web\Quadlets\Controllers\QuadletFetchController;
 use Modules\Web\Secrets\Controllers\SecretController;
 use Modules\Web\Settings\Controllers\ApplicationSettingsController;
+use Modules\Web\Volumes\Controllers\VolumeController;
+use Modules\Web\Volumes\Controllers\VolumePruneController;
 
 // Settings
 Route::prefix('/settings')->name('settings.')->group(function () {
@@ -17,6 +29,35 @@ Route::prefix('/settings')->name('settings.')->group(function () {
 Route::resource('environments', EnvironmentController::class)->only(['store', 'destroy']);
 
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
+    // Applications
+    Route::resource('applications', ApplicationController::class)->only(['destroy']);
     Route::post('/applications/{application}/{operation}', ApplicationOperationController::class)->name('applications.operation');
-    Route::post('/secrets', [SecretController::class, 'store'])->name('secrets.store');
+
+    // Containers
+    Route::post('/containers/{container}/{operation}', ContainerOperationController::class)->name('containers.operation');
+
+    // Images
+    Route::prefix('/images')->name('images.')->group(function () {
+        Route::post('/prune', ImagePruneController::class)->name('prune');
+        Route::post('/updates', ImageUpdateController::class)->name('updates');
+    });
+    Route::resource('images', ImageController::class)->only(['store', 'destroy']);
+
+    // Volumes
+    Route::post('/volumes/prune', VolumePruneController::class)->name('volumes.prune');
+    Route::resource('volumes', VolumeController::class)->only(['destroy']);
+
+    // Networks
+    Route::post('/networks/prune', NetworkPruneController::class)->name('networks.prune');
+    Route::resource('networks', NetworkController::class)->only(['destroy']);
+
+    // Quadlets
+    Route::prefix('/quadlets')->name('quadlets.')->group(function () {
+        Route::post('/check', QuadletCheckController::class)->name('check');
+        Route::post('/fetch', QuadletFetchController::class)->name('fetch');
+    });
+    Route::resource('quadlets', QuadletController::class)->only(['store']);
+
+    // Secrets
+    Route::resource('secrets', SecretController::class)->only(['store', 'update', 'destroy']);
 });

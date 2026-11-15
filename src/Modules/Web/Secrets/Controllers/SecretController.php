@@ -7,6 +7,7 @@ namespace Modules\Web\Secrets\Controllers;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
 use Domain\Secrets\Actions\CreateSecret;
+use Domain\Secrets\Actions\ReplaceSecret;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -17,11 +18,14 @@ use Inertia\Response;
 use Integrations\Lpod\Exceptions\LpodException;
 use Integrations\Lpod\LpodClient;
 use Modules\Web\Environments\Concerns\ReadsFromHost;
+use Modules\Web\Environments\Concerns\WritesToHost;
 use Modules\Web\Secrets\Requests\StoreSecretRequest;
+use Modules\Web\Secrets\Requests\UpdateSecretRequest;
 
 class SecretController implements HasMiddleware
 {
     use ReadsFromHost;
+    use WritesToHost;
 
     public static function middleware(): array
     {
@@ -70,6 +74,43 @@ class SecretController implements HasMiddleware
         toast(title: __('Secret created'), description: __(':name is stored in Podman.', ['name' => $name]));
 
         return to_action([self::class, 'index'], $environment);
+    }
+
+    public function update(UpdateSecretRequest $request, Environment $environment, string $secret, ReplaceSecret $replaceSecret): RedirectResponse
+    {
+        Gate::authorize('operate', $environment);
+
+        /** @var list<string> $restart */
+        $restart = array_values($request->validated('restart', []));
+
+        $this->toHost(
+            fn () => $replaceSecret(
+                environment: $environment,
+                name: $secret,
+                driver: $request->string('driver')->toString(),
+                value: $request->string('value')->toString(),
+                restart: $restart,
+            ),
+            success: __('Secret replaced'),
+            description: __(':name has a new value.', ['name' => $secret]),
+            failure: __('Secret not replaced'),
+        );
+
+        return back();
+    }
+
+    public function destroy(Environment $environment, string $secret, LpodClient $lpod): RedirectResponse
+    {
+        Gate::authorize('operate', $environment);
+
+        $this->toHost(
+            fn () => $lpod->deleteSecret($environment, $secret),
+            success: __('Secret deleted'),
+            description: __(':name was removed from Podman.', ['name' => $secret]),
+            failure: __('Secret not deleted'),
+        );
+
+        return back();
     }
 
     protected function queryName(Request $request, string $key): ?string

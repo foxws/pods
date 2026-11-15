@@ -19,11 +19,16 @@ class RouteServiceProvider extends ServiceProvider
     }
 
     /**
-     * Application names are passed to lpod on the host, so only plain unit names match.
+     * Names are passed to lpod on the host, so only plain names match: never an option or a path.
      */
     protected function configurePatterns(): void
     {
         Route::pattern('application', '[A-Za-z0-9][A-Za-z0-9_.@-]{0,127}');
+        Route::pattern('container', '[A-Za-z0-9][A-Za-z0-9_.-]{0,127}');
+        Route::pattern('image', '[a-f0-9]{12,64}');
+        Route::pattern('volume', '[A-Za-z0-9][A-Za-z0-9_.-]{0,127}');
+        Route::pattern('network', '[A-Za-z0-9][A-Za-z0-9_.-]{0,127}');
+        Route::pattern('secret', '[A-Za-z0-9][A-Za-z0-9_.-]{0,252}');
     }
 
     protected function configureRateLimits(): void
