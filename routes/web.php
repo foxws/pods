@@ -8,11 +8,13 @@ use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Containers\Controllers\ContainerController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
 use Modules\Web\Environments\Controllers\EnvironmentOverviewController;
+use Modules\Web\Environments\Controllers\EnvironmentSettingsController;
 use Modules\Web\Home\Controllers\HomeController;
 use Modules\Web\Images\Controllers\ImageController;
 use Modules\Web\Journal\Controllers\JournalController;
 use Modules\Web\Networks\Controllers\NetworkController;
 use Modules\Web\Secrets\Controllers\SecretController;
+use Modules\Web\Settings\Controllers\SettingsController;
 use Modules\Web\Volumes\Controllers\VolumeController;
 
 // Home
@@ -21,12 +23,19 @@ Route::get('/', HomeController::class)->name('home');
 // Account
 Route::resource('passkeys', PasskeyController::class)->only(['index']);
 
+// Settings
+Route::prefix('/settings')->name('settings.')->group(function () {
+    Route::get('/', [SettingsController::class, 'index'])->name('index');
+    Route::get('/{section}', [SettingsController::class, 'show'])->name('show')->whereIn('section', ['account', 'security', 'general']);
+});
+
 // Environments
 Route::resource('environments', EnvironmentController::class)->only(['index']);
 
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
     Route::get('/', EnvironmentOverviewController::class)->name('overview');
     Route::get('/journal', JournalController::class)->name('journal');
+    Route::get('/settings', [EnvironmentSettingsController::class, 'show'])->name('settings');
 
     Route::resource('applications', ApplicationController::class)->only(['index', 'create', 'show']);
     Route::resource('containers', ContainerController::class)->only(['index', 'create', 'show']);

@@ -12,6 +12,7 @@ use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Containers\DataObjects\ContainerDetailData;
 use Domain\Containers\DataObjects\HostContainerData;
 use Domain\Containers\Enums\ContainerOperation;
+use Domain\Environments\DataObjects\HostSettingsData;
 use Domain\Environments\Models\Environment;
 use Domain\Images\DataObjects\ImageData;
 use Domain\Networks\DataObjects\NetworkData;
@@ -22,6 +23,7 @@ use Domain\Shared\DataObjects\PruneResultData;
 use Domain\Volumes\DataObjects\HostVolumeData;
 use Illuminate\Support\Facades\Cache;
 use Integrations\Lpod\Exceptions\LpodException;
+use Integrations\Lpod\Exceptions\UnsupportedCommandException;
 use Integrations\Lpod\Exceptions\UnsupportedContractException;
 use Integrations\Ssh\Contracts\RunsHostCommands;
 
@@ -287,6 +289,37 @@ class LpodClient
         ]);
 
         return array_map(JournalEntryData::fromLpod(...), array_values($payload['entries'] ?? []));
+    }
+
+    /**
+     * Falls back to what lpod host reports when the host's lpod has no settings command yet. Those settings can't be changed.
+     */
+    public function hostSettings(Environment $environment): HostSettingsData
+    {
+        try {
+            $payload = $this->cached($environment, 'settings', ['settings', '--json']);
+        } catch (UnsupportedCommandException) {
+            return HostSettingsData::fromHostStats($this->host($environment));
+        }
+
+        return HostSettingsData::fromLpod($payload['settings']);
+    }
+
+    /**
+     * Configures the podman-auto-update timer and lingering of the user lpod runs as.
+     */
+    public function updateHostSettings(Environment $environment, bool $autoUpdate, string $schedule, bool $rollback, bool $linger): void
+    {
+        $this->json($environment, [
+            'settings', 'set',
+            '--auto-update', $autoUpdate ? 'on' : 'off',
+            '--schedule', $schedule,
+            '--rollback', $rollback ? 'on' : 'off',
+            '--linger', $linger ? 'on' : 'off',
+            '--json',
+        ]);
+
+        $this->forget($environment, 'settings', 'host');
     }
 
     /**
