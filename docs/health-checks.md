@@ -1,6 +1,6 @@
 # Health checks
 
-The starter kit doesn't ship a health check package. Pick what fits how you run the app.
+Pods doesn't ship a health check package. Pick what fits how you run it.
 
 ## Container health checks
 

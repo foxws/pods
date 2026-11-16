@@ -11,7 +11,7 @@ metadata:
 
 # Health checks
 
-The starter kit ships no health check package on purpose. Many apps only need Laravel's `/up` route for container health checks. Read `docs/health-checks.md` before you change anything; it has the exact code to use.
+Pods ships no health check package on purpose. Many apps only need Laravel's `/up` route for container health checks. Read `docs/health-checks.md` before you change anything; it has the exact code to use.
 
 ## Pick the approach
 

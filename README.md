@@ -1,44 +1,55 @@
-# Vue Starter Kit
+# Pods
 
-[![Tests](https://github.com/foxws/vue-starter-kit/actions/workflows/tests.yml/badge.svg)](https://github.com/foxws/vue-starter-kit/actions/workflows/tests.yml)
-[![Code Quality](https://github.com/foxws/vue-starter-kit/actions/workflows/code-quality.yml/badge.svg)](https://github.com/foxws/vue-starter-kit/actions/workflows/code-quality.yml)
-[![License](https://img.shields.io/github/license/foxws/vue-starter-kit)](LICENSE)
+[![Tests](https://github.com/foxws/pods/actions/workflows/tests.yml/badge.svg)](https://github.com/foxws/pods/actions/workflows/tests.yml)
+[![Code Quality](https://github.com/foxws/pods/actions/workflows/code-quality.yml/badge.svg)](https://github.com/foxws/pods/actions/workflows/code-quality.yml)
+[![License](https://img.shields.io/github/license/foxws/pods)](LICENSE)
 
-A Laravel starter kit, built from the setup we use in [foxws/app](https://github.com/foxws/app) and [stry](https://github.com/francoism90/stry): Inertia with Vue and Nuxt UI, Fortify authentication, Octane on FrankenPHP and a domain-driven `src/` layout.
+A self-hosted web UI for [Podman Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html), made for homelabs. Pods manages the applications, containers, pods, images, volumes, networks, secrets and journal of one or more Podman hosts, over SSH.
 
-## What's included
+> [!WARNING]
+> **Pods is still in development.** Expect breaking changes, incomplete features and rough edges. The lpod JSON contract, the database schema and the routes can change between commits, and some lpod commands have not been tested on a real Podman host yet. Don't point Pods at a host you can't afford to lose, and **back up your volumes yourself** (see [Backups](#backups)). Pods doesn't do that yet.
 
-- **Laravel 13** on PHP 8.4+, served by **Octane** with **FrankenPHP**
-- **Inertia v3**, **Vue 3**, **Nuxt UI 4** and **Tailwind CSS 4**, built with **Vite+**
-- **Fortify**: login, registration (toggled at runtime), password reset, email verification, password confirmation, two-factor authentication and passkeys
-- **Sanctum** for the API, with a versioned `/api/v1`
-- **Scout** with [foxws/laravel-scout-builder](https://github.com/foxws/laravel-scout-builder) for searchable, filterable and sortable endpoints (the `database` driver out of the box)
-- **spatie/laravel-data** with **spatie/laravel-typescript-transformer**, so data objects and enums become TypeScript types in `resources/js/types/generated.ts`
-- **Wayfinder** for typed routes and actions in TypeScript
-- **Reverb** with **Echo**, set up for [Inertia live props](https://inertiajs.com/docs/v3/data-props/live-props) and `useEcho()`
-- A `database` queue worker (`queue:work`); see [docs/health-checks.md](docs/health-checks.md) for container health checks or adding spatie/laravel-health
-- **foxws/laravel-ddd** and **foxws/laravel-essentials** for the domain layout and strict defaults
-- Spatie packages: **csp**, **medialibrary**, **model-states**, **options**, **permission**, **responsecache**, **settings**, **tags** and **translatable**
-- Tooling: **Pest** (with browser tests), **Larastan**, **Pint**, **Telescope**, **Pail**, **Pao**, **IDE Helper**, **Boost** and **spatie/guidelines-skills**
+## How it works
 
-## Structure
-
-```
-src/
-├── Domain/        # Models, actions, states, policies (e.g. Domain/Users)
-├── Foundation/    # Providers, middleware, settings and helpers
-├── Integrations/  # Clients for third-party services
-├── Modules/
-│   ├── Api/       # Versioned API controllers and resources
-│   └── Web/       # Inertia controllers and responses
-└── Support/       # Framework glue: CSP presets, Inertia middleware
+```text
+Browser ──HTTP──▶ Pods (Laravel) ──SSH──▶ host ──▶ lpod … --json ──▶ podman, systemctl, journalctl
 ```
 
-Routes live in `routes/web.php` (pages), `routes/actions.php` (Inertia actions under `/actions`) and `routes/api.php` (`/api/v1`).
+- **Every host is an SSH target, the local one too.** Pods runs in a container and reaches the machine it runs on through `host.containers.internal`, so local and remote hosts use the same code path.
+- **[lpod](https://github.com/foxws/lpod) is the host agent.** Pods never runs `podman` or `systemctl` itself. It only runs `lpod … --json` and reads the JSON it returns. The CLI and the UI do the same thing, and you can always fall back to `lpod` in a terminal.
+- **The JSON contract is versioned.** Every payload carries `"contract": 1`. Pods refuses a host that speaks a contract it doesn't know. The fixtures in `tests/Fixtures/lpod/contract-1/` are the spec lpod implements.
+- **Quadlets are the source of truth.** An application is a group of Quadlet units (`.container`, `.pod`, `.kube`, `.volume`, `.network`) as reported by `podman quadlet list`. Pods stores no copy of your containers. It only stores the environments (hosts) and its own users.
+- **One SSH key per Pods instance.** `pods:install` generates an ed25519 key pair. You add the public key to `~/.ssh/authorized_keys` of the user that owns the Quadlets. When you add a host, Pods pins its host key and refuses to connect when it changes.
+- **Secrets only travel on stdin.** Secret values are piped to lpod and never end up in command arguments, logs or the database.
+- **Reads are cached for a few seconds** per host (`PODS_CACHE_TTL`). Actions such as start, stop or prune clear the cache, and the pages poll for the new state.
+
+See [docs/architecture.md](docs/architecture.md) for the details.
+
+## Features
+
+- **Environments**: add local and remote hosts, with host key pinning and a contract check
+- **Overview**: host stats (CPU, memory, disk, containers), failed units and recent activity
+- **Applications**: list, start, stop, restart, redeploy and remove; containers, Quadlet files, logs and secrets per application; install from Quadlet files or a Git repository, with a check before installing
+- **Containers** and **pods**: list, inspect, logs, stats, start/stop/restart and pruning stopped containers
+- **Images**: pull, remove, prune and check for updates
+- **Volumes** and **networks**: list, remove and prune
+- **Secrets**: create, update and delete, and add them to the applications that need them
+- **Journal**: the host's journal, filtered by priority and time
+- **Settings per host**: `podman auto-update` (schedule and rollback) and lingering
+
+Pods targets **Podman 6+** with a current systemd. Docker and Podman Compose aren't supported.
+
+## Requirements
+
+On each host:
+
+- Podman 6 or newer and systemd
+- [lpod](https://github.com/foxws/lpod) 4 in the user's `PATH` (Pods also looks in `~/.local/bin`), with `jq` installed
+- An SSH server, and lingering for rootless users (`loginctl enable-linger`) so their systemd user manager runs without a login
+
+For Pods itself: PHP 8.4+, Node with pnpm, and `ssh` and `ssh-keygen` on the machine or in the container that runs it.
 
 ## Getting started
-
-Click **Use this template** on GitHub, clone your new repository and run:
 
 ```bash
 composer setup     # install, .env, key, migrate, pnpm install and build
@@ -46,35 +57,70 @@ php artisan db:seed
 composer dev
 ```
 
-The defaults use SQLite, the database queue and the database cache, so nothing else has to run locally. For production, switch the cache, sessions and the response cache to Redis (the response cache needs a store that supports tags).
+The seeder creates `administrator@example.com` with the password `password`. Pods has a single owner for now; use `php artisan users:create` instead of the seeder outside of development.
 
-Reverb runs on `localhost:8080` as part of `composer dev`. The browser gets its connection details from the `echo` prop, so they can be changed without a rebuild; set `VITE_REVERB_HOST`, `VITE_REVERB_PORT` and `VITE_REVERB_SCHEME` when browsers reach Reverb through a reverse proxy. Without a `REVERB_APP_KEY`, Echo falls back to the null broadcaster.
+Connect the local host:
 
-The seeder creates `administrator@example.com` with the password `password` and the `super-admin` role. Registration is off by default; turn it on in **Settings → Application** after you log in as the admin.
+1. Set `PODS_LOCAL_SSH_USER` in `.env` to the host user that owns the Quadlets. `PODS_LOCAL_SSH_HOST` defaults to `host.containers.internal`.
+2. Run `php artisan pods:install`. It generates the SSH key (in `storage/app/private/ssh`), prints the `authorized_keys` line, registers the local environment and checks it.
+3. Add that line to `~/.ssh/authorized_keys` on the host, then run `php artisan pods:verify` if the first check failed.
 
-## Endpoints
+Add remote hosts from **Environments** in the UI, with the same public key.
 
-| Method | URI             | Description                                                                                  |
-| ------ | --------------- | -------------------------------------------------------------------------------------------- |
-| GET    | `/`             | Home page                                                                                    |
-| GET    | `/api/v1`       | API index (response cached)                                                                  |
-| GET    | `/api/v1/user`  | The authenticated user (Sanctum token or session)                                            |
-| GET    | `/api/v1/users` | Search users with `?query=`, sort with `?sort=-newest`, page with `?page[number]=2` (admins) |
+The development Quadlets in `podman/development/` run Pods itself (Octane, queue, scheduler, Reverb, Vite, Valkey and Mailpit) under Podman.
 
-Private channels are authorized at `/broadcasting/auth` (session) and `/api/v1/broadcasting/auth` (Sanctum token), with the channels in `routes/channels.php`.
+## Backups
+
+Pods doesn't back up anything yet. Until it does, back up your volumes on the host, for example:
+
+```bash
+systemctl --user stop immich.service        # stop the application for a consistent copy
+podman volume export immich-library --output immich-library.tar
+systemctl --user start immich.service
+```
+
+`podman volume export` only covers named volumes. Copy bind mounts (such as `/var/mnt/photos`) with your usual tools. Databases are safer to back up with their own dump tool.
+
+Volume backups in Pods are planned: export a volume through a queued job and get a notification when the archive is ready to download. See [docs/roadmap.md](docs/roadmap.md#volume-backups).
+
+## Structure
+
+```text
+src/
+├── Domain/        # Environments, Applications, Containers, Pods, Images, Volumes, Networks, Quadlets, Secrets, Users
+├── Foundation/    # Providers, middleware, settings and helpers
+├── Integrations/
+│   ├── Lpod/      # LpodClient: typed methods over the lpod JSON contract
+│   └── Ssh/       # SshHostRunner, SshIdentity, host key scanning, FakeHostRunner for tests
+├── Modules/
+│   ├── Api/       # Versioned API controllers and resources
+│   └── Web/       # Inertia controllers, one module per page
+└── Support/       # Framework glue: CSP presets, Inertia middleware
+```
+
+Pages live in `routes/web.php` and actions in `routes/actions.php`. Everything about a host sits under `/environments/{environment}/…`, so different tabs can stay on different hosts.
+
+## Built with
+
+Laravel 13 on Octane with FrankenPHP, Inertia v3, Vue 3, Nuxt UI 4 and Tailwind CSS 4 (built with Vite+), Fortify (two-factor authentication and passkeys), Reverb with Echo, spatie/laravel-data with TypeScript types, Wayfinder, and [foxws/laravel-ddd](https://github.com/foxws/laravel-ddd). Pods started from [foxws/vue-starter-kit](https://github.com/foxws/vue-starter-kit).
 
 ## Commands
 
 ```bash
-composer dev            # Octane, queue, Reverb, logs and Vite
-composer test           # Pint check and Pest
-composer types:check    # Larastan
-composer types:generate # Write TypeScript types for #[TypeScript] classes and enums
-pnpm run check:fix      # Format and lint JS, TS and Vue
-pnpm run types:check    # vue-tsc
+composer dev               # Octane, queue, Reverb, logs and Vite
+php artisan pods:install   # Generate the SSH key and register the local host
+php artisan pods:verify    # Check that every host answers with a supported lpod contract
+php artisan users:create   # Create a user (--password-stdin keeps the password out of argv)
+composer test              # Pint check and Pest
+composer types:check       # Larastan
+composer types:generate    # Write TypeScript types for #[TypeScript] classes and enums
+pnpm run check:fix         # Format and lint JS, TS and Vue
+pnpm run types:check       # vue-tsc
 ```
 
 ## Testing
+
+Tests never connect to a host. `fakeLpod()` in `tests/Pest.php` swaps the SSH runner for a `FakeHostRunner` that answers with the contract fixtures and records which lpod commands ran.
 
 `php artisan test` runs the unit, feature and browser suites. Browser tests use [Pest's browser plugin](https://pestphp.com/docs/browser-testing) and need Chromium:
 
@@ -83,11 +129,9 @@ npx playwright install --with-deps chromium
 php artisan test --testsuite=Browser
 ```
 
-## Optional packages
+## Roadmap
 
-These depend on the project, so they aren't installed:
-
-- [spatie/laravel-db-snapshots](https://github.com/spatie/laravel-db-snapshots) for database dumps
+Volume backups, invited users with roles per environment, streaming logs, an application catalog, and shipping Pods as socket-activated Quadlets. See [docs/roadmap.md](docs/roadmap.md).
 
 ## License
 
