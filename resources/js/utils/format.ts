@@ -16,6 +16,17 @@ export function formatBytes(bytes: number | null | undefined): string {
   return `${value >= 10 || unit === 0 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`
 }
 
+/**
+ * A CPU share as podman reports it, e.g. 3.3117374108025945 → "3.3%".
+ */
+export function formatPercent(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '–'
+  }
+
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)}%`
+}
+
 export function formatRelative(date: string | null | undefined): string {
   if (!date) {
     return '–'

@@ -44,7 +44,7 @@ const status = (image: ImageData): { label: string; color: BadgeProps['color'] }
   }
 
   if (image.update) {
-    return { label: `Update ${image.update}`, color: 'info' }
+    return { label: 'Update available', color: 'info' }
   }
 
   return image.containers ? { label: 'In use', color: 'success' } : { label: 'Unused', color: 'neutral' }
@@ -161,9 +161,7 @@ const searchText = (image: ImageData): string => [image.repository, image.tag, i
         <StatCard
           label="Updates"
           :value="updates.length"
-          :hint="
-            updates.map((image) => `${imageName(image)} ${image.tag} → ${image.update}`).join(', ') || 'all current'
-          "
+          :hint="updates.map(imageName).join(', ') || 'all current'"
           :color="updates.length ? 'primary' : undefined"
         />
       </StatGrid>
@@ -206,11 +204,12 @@ const searchText = (image: ImageData): string => [image.repository, image.tag, i
         <template #tag-cell="{ row }">
           <span class="font-mono text-xs">
             {{ row.original.tag ?? '<none>' }}
-            <span
+            <UIcon
               v-if="row.original.update"
-              class="text-primary"
-              >→ {{ row.original.update }}</span
-            >
+              name="i-lucide-circle-arrow-up"
+              class="size-3.5 align-text-bottom text-primary"
+              aria-label="Update available"
+            />
           </span>
         </template>
 

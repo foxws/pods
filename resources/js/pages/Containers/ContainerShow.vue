@@ -22,7 +22,7 @@ import type {
   QuadletFileData,
 } from '@/types'
 import { containerState } from '@/utils/containers'
-import { formatBytes, formatPort, formatRelative, formatUptime } from '@/utils/format'
+import { formatBytes, formatPercent, formatPort, formatRelative, formatUptime } from '@/utils/format'
 import { Head, Link, router } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
 import { useIntervalFn } from '@vueuse/core'
@@ -240,7 +240,7 @@ const memoryHint = computed(() =>
           <template v-if="summary && detail">
             <StatCard
               label="CPU"
-              :value="summary.cpu === null ? '–' : `${summary.cpu}%`"
+              :value="formatPercent(summary.cpu)"
             />
             <StatCard
               label="Memory"

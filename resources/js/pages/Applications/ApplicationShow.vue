@@ -21,7 +21,7 @@ import type {
   SecretData,
 } from '@/types'
 import { containerState, shortImage } from '@/utils/containers'
-import { formatBytes, formatPort, formatRelative } from '@/utils/format'
+import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
@@ -266,9 +266,7 @@ const isRemoving = ref(false)
                   >
                   <span class="truncate font-mono text-xs text-muted">{{ container.image }}</span>
                 </div>
-                <span class="w-14 text-right text-sm text-muted">{{
-                  container.cpu === null ? '–' : `${container.cpu}%`
-                }}</span>
+                <span class="w-14 text-right text-sm text-muted">{{ formatPercent(container.cpu) }}</span>
                 <span class="w-20 text-right text-sm text-muted">{{ formatBytes(container.memory) }}</span>
               </li>
             </ul>
@@ -423,7 +421,7 @@ const isRemoving = ref(false)
             >
           </template>
           <template #cpu-cell="{ row }">
-            {{ row.original.cpu === null ? '–' : `${row.original.cpu}%` }}
+            {{ formatPercent(row.original.cpu) }}
           </template>
           <template #memory-cell="{ row }">
             {{ formatBytes(row.original.memory) }}

@@ -14,7 +14,7 @@ import { useHostPolling } from '@/composables/applications'
 import { useHostAction } from '@/composables/hostActions'
 import type { ContainerOperation, EnvironmentData, HostContainerData, HostProperty, HostStatsData } from '@/types'
 import { containerState, shortImage } from '@/utils/containers'
-import { formatBytes, formatPort, formatUptime } from '@/utils/format'
+import { formatBytes, formatPercent, formatPort, formatUptime } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed } from 'vue'
@@ -214,7 +214,7 @@ const searchText = (container: HostContainerData): string =>
         </template>
 
         <template #cpu-cell="{ row }">
-          <span class="text-muted">{{ row.original.cpu === null ? '–' : `${row.original.cpu}%` }}</span>
+          <span class="text-muted">{{ formatPercent(row.original.cpu) }}</span>
         </template>
 
         <template #memory-cell="{ row }">
