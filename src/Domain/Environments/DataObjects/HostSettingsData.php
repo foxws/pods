@@ -20,7 +20,7 @@ class HostSettingsData extends Data
         public ?bool $rollback,
         public ?string $next_run,
         public ?string $last_run,
-        public bool $linger,
+        public ?bool $linger,
         public ?string $quadlet_dir,
         public bool $editable,
     ) {}
@@ -45,7 +45,7 @@ class HostSettingsData extends Data
     }
 
     /**
-     * What an lpod without the settings command reports. It doesn't know the schedule or rollback.
+     * What an lpod without the settings command reports. It doesn't know the schedule or rollback, and older releases don't report lingering either.
      */
     public static function fromHostStats(HostStatsData $stats): self
     {
@@ -55,7 +55,7 @@ class HostSettingsData extends Data
             rollback: null,
             next_run: $stats->auto_update_next_run,
             last_run: null,
-            linger: $stats->linger ?? false,
+            linger: $stats->linger,
             quadlet_dir: $stats->quadlet_dir,
             editable: false,
         );

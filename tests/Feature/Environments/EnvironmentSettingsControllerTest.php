@@ -46,6 +46,21 @@ it('falls back to the host stats, read-only, when lpod has no settings command y
     $lpod->assertRan(['host', '--json']);
 });
 
+it('leaves lingering unknown when lpod host does not report it', function () {
+    $host = json_decode(lpodFixture('host'), true);
+    unset($host['system']);
+
+    fakeLpod()
+        ->respond('settings --json', new HostResult(125, '', 'Error: unknown command "settings" for "lpod"'))
+        ->respond('host --json', json_encode($host));
+
+    $this->actingAs($this->owner)
+        ->get(action([EnvironmentSettingsController::class, 'show'], $this->environment))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps(fn ($reload) => $reload
+            ->where('settings.data.linger', null)
+            ->where('settings.data.quadlet_dir', null)));
+});
+
 it('shows the error when lpod fails to read the settings', function () {
     fakeLpod()->respond('settings --json', new HostResult(1, '', 'Failed to connect to bus'));
 
