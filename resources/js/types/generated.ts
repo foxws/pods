@@ -119,7 +119,7 @@ export type HostSettingsData = {
   rollback: boolean | null
   next_run: string | null
   last_run: string | null
-  linger: boolean
+  linger: boolean | null
   quadlet_dir: string | null
   editable: boolean
 }

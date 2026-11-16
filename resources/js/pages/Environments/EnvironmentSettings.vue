@@ -30,7 +30,7 @@ watch(
       auto_update: settings.auto_update,
       schedule: settings.schedule ?? 'daily',
       rollback: settings.rollback ?? true,
-      linger: settings.linger,
+      linger: settings.linger ?? false,
     })
     form.reset()
   },
@@ -180,9 +180,15 @@ const submit = (): void => {
             :class="fieldClass"
           >
             <USwitch
+              v-if="settings.data.linger !== null"
               v-model="form.linger"
               :disabled="isReadOnly"
             />
+            <span
+              v-else
+              class="text-sm text-muted"
+              >Unknown</span
+            >
           </UFormField>
         </div>
       </UCard>
