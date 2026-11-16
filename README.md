@@ -49,7 +49,25 @@ On each host:
 
 For Pods itself: PHP 8.4+, Node with pnpm, and `ssh` and `ssh-keygen` on the machine or in the container that runs it.
 
-## Getting started
+## Install
+
+Pods runs on a host as rootless Podman Quadlets, for the user whose applications it manages. One command installs it, and running it again updates it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash
+```
+
+It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and asks for the owner's name, email address and password. Pods then listens on `127.0.0.1:9090`: open it on the host, or through an SSH tunnel (`ssh -L 9090:127.0.0.1:9090 HOST`).
+
+To reach it by a hostname, add the [proxy](#proxy):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -s -- --proxy --host pods.example.com
+```
+
+On a host shared with other users, give the proxy other ports with `--proxy-ports 28080,28443`, and add `--behind-proxy` when another proxy in front handles HTTPS. `--uninstall` removes Pods and keeps its data; add `--purge` to remove that too. `--help` lists every option.
+
+## Getting started (development)
 
 ```bash
 composer setup     # install, .env, key, migrate, pnpm install and build
@@ -104,6 +122,9 @@ Every key is optional. Secret values stay in the browser until you install, and 
 
 ```bash
 podman quadlet install --application=pods-proxy containers/proxy
+mkdir -p ~/.config/containers/systemd/pods-proxy.container.d
+printf '[Container]\nPublishPort=80:80\nPublishPort=443:443\nPublishPort=443:443/udp\n' > ~/.config/containers/systemd/pods-proxy.container.d/ports.conf
+systemctl --user daemon-reload
 systemctl --user start pods-proxy
 ```
 
@@ -120,7 +141,7 @@ The first start writes `~/.config/pods-proxy/Caddyfile`, which loads every file 
 
 3. Run `systemctl --user daemon-reload` and `systemctl --user restart pods-proxy`. Only route changes? `podman exec systemd-pods-proxy caddy reload --config /etc/caddy/Caddyfile` applies them without a restart.
 
-It publishes ports 80 and 443 and gets certificates from Let's Encrypt. On a host shared with other users, each user runs their own proxy on other ports, with a drop-in such as `pods-proxy.container.d/ports.conf` (`PublishPort=` to clear the defaults, then `PublishPort=28080:80` and `PublishPort=28443:443`), and the host's main proxy forwards those users' hostnames to them. For local names, add `cert_issuer internal` (or `local_certs`) to the global options in the Caddyfile; Caddy's root certificate is then in the `pods-proxy-data` volume.
+The unit publishes no host ports itself, so pick them with a drop-in, `~/.config/containers/systemd/pods-proxy.container.d/ports.conf`: `PublishPort=80:80`, `PublishPort=443:443` and `PublishPort=443:443/udp` (`install.sh --proxy` writes this for you). It gets certificates from Let's Encrypt. On a host shared with other users, each user runs their own proxy on other ports, such as `PublishPort=28080:80` and `PublishPort=28443:443`, and the host's main proxy forwards those users' hostnames to them. For local names, add `cert_issuer internal` (or `local_certs`) to the global options in the Caddyfile; Caddy's root certificate is then in the `pods-proxy-data` volume.
 
 Pods doesn't manage the proxy yet: installing it from the settings of a host, and adding routes from an application's `pods.yml`, are on the [roadmap](docs/roadmap.md#proxy).
 

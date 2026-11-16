@@ -17,16 +17,18 @@ AutoUpdate=registry
 Volume=%h/.config/pods-proxy:/etc/caddy:rw,z
 Volume=pods-proxy-data.volume:/data:rw,Z
 Volume=pods-proxy-config.volume:/config:rw,Z
-# Ports 80 and 443 on the host. On a host shared with other users, publish
-# other ports with a drop-in instead, such as
-# pods-proxy.container.d/ports.conf:
+# The proxy listens on 80 and 443 inside the container, but publishes no
+# host ports itself: a drop-in picks them, because they differ per host.
+# install.sh --proxy writes pods-proxy.container.d/install.conf; by hand,
+# add one such as pods-proxy.container.d/ports.conf:
 #   [Container]
-#   PublishPort=
-#   PublishPort=28080:80
-#   PublishPort=28443:443
-PublishPort=80:80
-PublishPort=443:443
-PublishPort=443:443/udp
+#   PublishPort=80:80
+#   PublishPort=443:443
+#   PublishPort=443:443/udp
+# On a host shared with other users, use other ports, such as 28080:80 and
+# 28443:443, and let the host's main proxy forward to them.
+ExposeHostPort=80
+ExposeHostPort=443
 HealthCmd=wget -q -O /dev/null http://127.0.0.1:2019/config/
 HealthInterval=1m
 HealthTimeout=5s

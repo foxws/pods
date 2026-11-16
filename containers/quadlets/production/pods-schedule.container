@@ -1,0 +1,26 @@
+[Unit]
+Description=Pods scheduler
+# Runs Pods' daily housekeeping (pruning tags, password resets and
+# expired tokens).
+After=pods.container
+PartOf=pods.container
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Container]
+Image=ghcr.io/foxws/pods:main
+AutoUpdate=registry
+HealthCmd=none
+Environment=PUID=%U
+Environment=PGID=%G
+Environment=APP_COMMAND="php -d variables_order=EGPCS /app/artisan schedule:work"
+UserNS=keep-id
+Secret=pods-env,target=/app/.env,mode=0400,uid=%U,gid=%G
+Volume=pods-data.volume:/app/storage:rw
+Network=pods.network
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+TimeoutStopSec=60
