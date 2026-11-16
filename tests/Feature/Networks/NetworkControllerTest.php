@@ -21,9 +21,10 @@ it('lists the networks', function () {
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('Networks/NetworkIndex')
-            ->loadDeferredProps(fn ($reload) => $reload
+            ->loadDeferredProps(['default', 'containers'], fn ($reload) => $reload
                 ->has('networks.data', 5)
-                ->where('networks.data.0.default', true)->where('networks.data.2.applications', ['vaultwarden', 'jellyfin'])));
+                ->where('networks.data.0.default', true)->where('networks.data.2.applications', ['vaultwarden', 'jellyfin'])
+                ->has('containers.data', 6)));
 });
 
 it('removes a network', function () {

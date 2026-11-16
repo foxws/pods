@@ -13,7 +13,7 @@ import StatCard from '@/components/Ui/StatCard.vue'
 import StatGrid from '@/components/Ui/StatGrid.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import { useHostAction } from '@/composables/hostActions'
-import type { EnvironmentData, HostProperty, NetworkData } from '@/types'
+import type { EnvironmentData, HostContainerData, HostProperty, NetworkData } from '@/types'
 import { pluralize } from '@/utils/application'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
@@ -22,7 +22,13 @@ import { computed, ref } from 'vue'
 const props = defineProps<{
   environment: EnvironmentData
   networks?: HostProperty<NetworkData[]>
+  containers?: HostProperty<HostContainerData[]>
 }>()
+
+const publishing = computed(() => (props.containers?.data ?? []).filter((container) => container.ports.length))
+const publishedPortCount = computed(() =>
+  publishing.value.reduce((total, container) => total + container.ports.length, 0),
+)
 
 const list = computed(() => props.networks?.data ?? [])
 
@@ -150,9 +156,15 @@ const searchText = (network: NetworkData): string =>
           :color="idle.length ? 'warning' : undefined"
         />
         <StatCard
-          label="DNS"
-          :value="list.filter((network) => network.dns).length"
-          hint="with aardvark-dns"
+          label="Published ports"
+          :value="containers?.data ? publishedPortCount : '–'"
+          :hint="
+            containers?.data
+              ? `on ${pluralize(publishing.length, 'container')}`
+              : containers?.error
+                ? 'not available'
+                : undefined
+          "
         />
       </StatGrid>
 
