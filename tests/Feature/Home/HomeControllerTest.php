@@ -9,6 +9,8 @@ use Modules\Web\Environments\Controllers\EnvironmentOverviewController;
 use Modules\Web\Home\Controllers\HomeController;
 
 it('sends guests to the login page', function () {
+    User::factory()->create()->assignRole('super-admin'); // an instance with its owner, so guests see the login page
+
     $this->get(action(HomeController::class))
         ->assertRedirect(route('login'));
 });

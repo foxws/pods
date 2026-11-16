@@ -16,7 +16,12 @@ use Modules\Web\Networks\Controllers\NetworkController;
 use Modules\Web\Pods\Controllers\PodController;
 use Modules\Web\Secrets\Controllers\SecretController;
 use Modules\Web\Settings\Controllers\SettingsController;
+use Modules\Web\Setup\Controllers\SetupController;
 use Modules\Web\Volumes\Controllers\VolumeController;
+
+// Setup, while Pods has no owner
+Route::get('/setup', [SetupController::class, 'show'])->name('setup.show');
+Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
 
 // Home
 Route::get('/', HomeController::class)->name('home');

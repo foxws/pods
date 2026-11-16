@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+use Domain\Users\Models\User;
+
+// An instance with its owner, so guests see the login page.
+beforeEach(fn () => User::factory()->create()->assignRole('super-admin'));
+
 it('allows websocket connections to reverb', function (string $scheme, int $port, string $origin) {
     config([
         'reverb.apps.apps.0.options.wsHost' => 'ws.example.test',

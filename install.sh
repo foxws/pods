@@ -33,6 +33,7 @@ UNINSTALL=false
 PURGE=false
 OWNER_NAME="${PODS_OWNER_NAME:-}"
 OWNER_EMAIL="${PODS_OWNER_EMAIL:-}"
+SETUP_CODE=""
 
 WORK=""
 
@@ -47,15 +48,15 @@ Usage: install.sh [options]
   --proxy-ports H,S     The proxy's host ports for HTTP and HTTPS (default 80,443),
                         e.g. 28080,28443 on a host shared with other users
   --behind-proxy        Another proxy in front handles HTTPS: the Pods proxy serves plain HTTP
-  --name NAME           The owner's name, instead of asking for it
-  --email EMAIL         The owner's email address, instead of asking for it
+  --name NAME           With --email and PODS_OWNER_PASSWORD, create the owner here
+  --email EMAIL         instead of on Pods' setup page
   --uninstall           Remove Pods (and with --proxy, the proxy). Keeps its data
   --purge               With --uninstall, also remove Pods' data and its pods-env secret
   -h, --help            Show this help
 
 Environment: PODS_REF (default main) and LPOD_REF (default main) pick the
-versions to install. PODS_OWNER_PASSWORD sets the owner's password without
-asking, for unattended installs.
+versions to install. PODS_OWNER_PASSWORD is the owner's password, with --name
+and --email, for unattended installs.
 
 Without --proxy, Pods listens on 127.0.0.1:9090 only. Reach it on this
 machine, or through an SSH tunnel: ssh -L 9090:127.0.0.1:9090 HOST
@@ -257,23 +258,8 @@ connect_local_host() {
     artisan pods:install --no-interaction || warn "The local environment isn't connected yet. Fix the problem above, then run: podman exec --user docker systemd-pods php artisan pods:verify"
 }
 
-ask() {
-    local prompt="$1" secret="${2:-false}" answer=""
-
-    if [ ! -r /dev/tty ]; then
-        return 1
-    fi
-
-    if [ "$secret" = true ]; then
-        read -r -s -p "$prompt" answer < /dev/tty
-        echo > /dev/tty
-    else
-        read -r -p "$prompt" answer < /dev/tty
-    fi
-
-    printf '%s' "$answer"
-}
-
+# Without --name, --email and PODS_OWNER_PASSWORD, the owner is created on
+# Pods' setup page, with the one-time code it asks for.
 create_owner() {
     if artisan users:exists --super-admin > /dev/null 2>&1; then
         info "Pods has an owner."
@@ -281,20 +267,14 @@ create_owner() {
         return
     fi
 
-    local password="${PODS_OWNER_PASSWORD:-}"
-
-    if [ -z "$OWNER_NAME" ]; then OWNER_NAME="$(ask 'Owner name: ' || true)"; fi
-    if [ -z "$OWNER_EMAIL" ]; then OWNER_EMAIL="$(ask 'Owner email: ' || true)"; fi
-    if [ -z "$password" ]; then password="$(ask 'Owner password (12 characters or more): ' true || true)"; fi
-
-    if [ -z "$OWNER_NAME" ] || [ -z "$OWNER_EMAIL" ] || [ -z "$password" ]; then
-        warn "No owner created. Create one with: podman exec -it --user docker systemd-pods php artisan users:create --super-admin"
+    if [ -z "$OWNER_NAME" ] || [ -z "$OWNER_EMAIL" ] || [ -z "${PODS_OWNER_PASSWORD:-}" ]; then
+        SETUP_CODE="$(artisan pods:setup --code --no-interaction | tr -d '[:space:]')"
 
         return
     fi
 
     info "Creating the owner..."
-    printf '%s' "$password" | artisan users:create --super-admin --no-interaction --name="$OWNER_NAME" --email="$OWNER_EMAIL" --password-stdin
+    printf '%s' "$PODS_OWNER_PASSWORD" | artisan users:create --super-admin --no-interaction --name="$OWNER_NAME" --email="$OWNER_EMAIL" --password-stdin
 }
 
 install_proxy() {
@@ -382,13 +362,27 @@ main() {
         install_proxy
     fi
 
-    echo
-    info "Pods is running."
+    local url="http://127.0.0.1:${LOCAL_PORT}"
 
     if [ "$PROXY" = true ]; then
-        info "Open https://${HOST} (point ${HOST} at this host first)."
+        url="https://${HOST}"
+    fi
+
+    echo
+    info "Pods is running at ${url}"
+
+    if [ "$PROXY" = true ]; then
+        info "Point ${HOST} at this host first."
     else
-        info "Open http://127.0.0.1:${LOCAL_PORT} on this host, or tunnel to it: ssh -L ${LOCAL_PORT}:127.0.0.1:${LOCAL_PORT} $(hostname)"
+        info "It only listens on this host. From elsewhere, tunnel to it: ssh -L ${LOCAL_PORT}:127.0.0.1:${LOCAL_PORT} $(hostname)"
+    fi
+
+    if [ -n "$SETUP_CODE" ]; then
+        echo
+        info "Create the owner at ${url}/setup with this setup code:"
+        echo
+        echo "    ${SETUP_CODE}"
+        echo
     fi
 }
 

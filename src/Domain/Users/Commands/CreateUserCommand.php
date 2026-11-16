@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Users\Commands;
 
-use Domain\Users\Actions\CreateNewUser;
+use Domain\Users\Actions\CreateUser;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
 use Illuminate\Validation\ValidationException;
@@ -44,24 +44,20 @@ class CreateUserCommand extends Command implements Isolatable
             return self::FAILURE;
         }
 
-        try {
-            $user = app(CreateNewUser::class)->create(compact('name', 'email', 'password'));
-        } catch (ValidationException $exception) {
-            foreach ($exception->validator->errors()->all() as $message) {
-                error($message);
-            }
-
-            return self::FAILURE;
-        }
-
         $role = match (true) {
             $this->option('super-admin') => 'super-admin',
             $this->option('admin') => 'admin',
             default => null,
         };
 
-        if ($role !== null) {
-            $user->assignRole($role);
+        try {
+            $user = app(CreateUser::class)(compact('name', 'email', 'password'), $role);
+        } catch (ValidationException $exception) {
+            foreach ($exception->validator->errors()->all() as $message) {
+                error($message);
+            }
+
+            return self::FAILURE;
         }
 
         info("User has been created successfully ({$user->email}).");
