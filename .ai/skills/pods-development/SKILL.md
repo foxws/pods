@@ -43,6 +43,10 @@ Page → Inertia controller in `src/Modules/Web` → `Integrations\Lpod\LpodClie
 4. Add the controller, the route and the Vue page, following the sibling module.
 5. Write feature tests with `fakeLpod()`: assert the props, the exact arguments with `$lpod->assertRan([...])`, stdin for secrets, and the error flash when lpod fails (`$lpod->respond('pattern', new HostResult(1, '', 'message'))`).
 
-## Volume backups (planned)
+## Volume backups and restores (planned)
 
-Not built yet. The plan in `docs/roadmap.md`: an lpod `volume export` command that streams `podman volume export`, a queued job that streams the archive over SSH to a Pods disk, a notification with a temporary signed download link when it's ready (or the error when it fails), and scheduled pruning of old archives. Ask the user before adding a dependency or a new disk.
+Not built yet. The plan in `docs/roadmap.md`: lpod `volume export` and `volume import --stdin` commands around `podman volume export|import`, queued jobs that stream the archive over SSH between the host and a Pods disk, a notification with a temporary signed download link (or the error), a confirmed restore that stops the application's units first, and scheduled pruning of old archives. Bind-backed volumes (`Type=none`, `Options=bind`, such as a media library) must be left out of exports and never imported into. Ask the user before adding a dependency or a new disk.
+
+## On-demand applications (planned)
+
+Also in `docs/roadmap.md`: lpod has to install `.socket`/`.timer`/`.service` files and Quadlet drop-ins through `quadlet install --stdin`, and gets `APP ondemand enable|disable --json`. A sleeping application's Start must wake it through its socket, because starting a `StopWhenUnneeded=yes` unit directly stops it again.
