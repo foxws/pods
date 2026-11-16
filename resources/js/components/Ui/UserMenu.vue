@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { useAuth } from '@/composables/auth'
-import { useSettings } from '@/composables/settings'
+import { show as settingsShow } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { computed } from 'vue'
 
 const { user, hasRole, logOut } = useAuth()
-
-const { open: openSettings } = useSettings()
 
 const items = computed<DropdownMenuItem[][]>(() => [
   [
@@ -19,14 +17,14 @@ const items = computed<DropdownMenuItem[][]>(() => [
     {
       label: 'Settings',
       icon: 'i-lucide-settings',
-      onClick: () => openSettings('account'),
+      to: settingsShow.url('account'),
     },
     ...(hasRole('super-admin')
       ? [
           {
-            label: 'Application',
-            icon: 'i-lucide-shield-half',
-            onClick: () => openSettings('application'),
+            label: 'General',
+            icon: 'i-lucide-sliders-horizontal',
+            to: settingsShow.url('general'),
           },
         ]
       : []),

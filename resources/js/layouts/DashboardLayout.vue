@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import EnvironmentSwitcher from '@/components/Environments/EnvironmentSwitcher.vue'
-import SettingsModal from '@/components/Settings/SettingsModal.vue'
 import AppLogo from '@/components/Ui/AppLogo.vue'
 import MobileTabBar from '@/components/Ui/MobileTabBar.vue'
 import { useAppearance } from '@/composables/appearance'
 import { useAuth } from '@/composables/auth'
 import { useFlash } from '@/composables/flash'
 import { useNavigation } from '@/composables/navigation'
-import { provideSettings } from '@/composables/settings'
+import { index as settingsIndex } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import type { NavigationMenuItem } from '@nuxt/ui'
+import { usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 
 const { nonce } = useAppearance()
@@ -20,11 +20,18 @@ const isSidebarOpen = ref(false)
 
 const { logOut } = useAuth()
 
-const { isOpen: isSettingsOpen, section: settingsSection, open: openSettings } = provideSettings()
+const page = usePage()
+
+/**
+ * Settings covers the account pages, the hosts list and the settings of each host.
+ */
+const isSettingsPage = computed(() =>
+  /^\/(settings(\/|$|\?)|environments\/?($|\?)|environments\/[^/]+\/settings)/.test(page.url),
+)
 
 const footerItems = computed<NavigationMenuItem[]>(() => [
   journalLink.value,
-  { label: 'Settings', icon: 'i-lucide-settings', onSelect: () => openSettings('account') },
+  { label: 'Settings', icon: 'i-lucide-settings', to: settingsIndex.url(), active: isSettingsPage.value },
   { label: 'Log out', icon: 'i-lucide-log-out', class: 'lg:hidden', onSelect: logOut },
 ])
 </script>
@@ -84,10 +91,5 @@ const footerItems = computed<NavigationMenuItem[]>(() => [
         />
       </div>
     </UDashboardGroup>
-
-    <SettingsModal
-      v-model:open="isSettingsOpen"
-      v-model:section="settingsSection"
-    />
   </UApp>
 </template>

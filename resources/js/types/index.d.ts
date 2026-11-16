@@ -41,6 +41,7 @@ export type {
   ContainerOperation,
   EnvironmentData,
   HostContainerData,
+  HostSettingsData,
   HostStatsData,
   HostVolumeData,
   ImageData,

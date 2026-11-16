@@ -113,6 +113,16 @@ export type HostContainerData = {
   memory: number | null
   started_at: string | null
 }
+export type HostSettingsData = {
+  auto_update: boolean
+  schedule: string | null
+  rollback: boolean | null
+  next_run: string | null
+  last_run: string | null
+  linger: boolean
+  quadlet_dir: string | null
+  editable: boolean
+}
 export type HostStatsData = {
   cpu_cores: number
   cpu_usage: number

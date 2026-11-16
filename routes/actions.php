@@ -7,6 +7,7 @@ use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Applications\Controllers\ApplicationOperationController;
 use Modules\Web\Containers\Controllers\ContainerOperationController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
+use Modules\Web\Environments\Controllers\EnvironmentSettingsController;
 use Modules\Web\Images\Controllers\ImageController;
 use Modules\Web\Images\Controllers\ImagePruneController;
 use Modules\Web\Images\Controllers\ImageUpdateController;
@@ -29,6 +30,9 @@ Route::prefix('/settings')->name('settings.')->group(function () {
 Route::resource('environments', EnvironmentController::class)->only(['store', 'destroy']);
 
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
+    // Settings
+    Route::put('/settings', [EnvironmentSettingsController::class, 'update'])->name('settings.update');
+
     // Applications
     Route::resource('applications', ApplicationController::class)->only(['destroy']);
     Route::post('/applications/{application}/{operation}', ApplicationOperationController::class)->name('applications.operation');

@@ -44,9 +44,9 @@ class LpodException extends RuntimeException
     /**
      * Older lpod releases hand commands they don't know to podman, which rejects them.
      */
-    public static function unsupportedCommand(string $command): self
+    public static function unsupportedCommand(string $command): UnsupportedCommandException
     {
-        return new self("The lpod on this host doesn't support \"lpod {$command}\" yet. Update lpod to a release that implements the whole of contract 1.");
+        return new UnsupportedCommandException("The lpod on this host doesn't support \"lpod {$command}\" yet. Update lpod to a release that implements the whole of contract 1.");
     }
 
     public static function commandFailed(string $command, HostResult $result): self
