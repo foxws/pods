@@ -16,7 +16,9 @@ if [ "$(id -u)" = '0' ]; then
         usermod -o -u "${PUID}" docker
     fi
 
-    for dir in /app/storage /app/bootstrap/cache; do
+    # /config and /data are where FrankenPHP's Caddy saves its runtime config
+    # and state (XDG_CONFIG_HOME and XDG_DATA_HOME in the base image).
+    for dir in /app/storage /app/bootstrap/cache /config /data; do
         if [ -d "${dir}" ] && [ "$(stat -c '%u:%g' "${dir}")" != "${PUID}:${PGID}" ]; then
             chown -R docker:docker "${dir}"
         fi
