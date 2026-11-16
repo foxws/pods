@@ -1,0 +1,54 @@
+# The production image of Pods, published by CI to ghcr.io/foxws/pods.
+# Built on ghcr.io/foxws/laravel-frankenphp:php-8.5, which has FrankenPHP,
+# the PHP extensions, Composer, Node.js, pnpm and the "docker" user. Build
+# it from the repository root:
+#
+#   podman build -f containers/runtimes/production/Containerfile -t pods .
+ARG RUNTIME_IMAGE=ghcr.io/foxws/laravel-frankenphp:php-8.5
+
+FROM ${RUNTIME_IMAGE} AS production
+
+WORKDIR /app
+
+ENV PHP_CLI="php -d variables_order=EGPCS /app/artisan"
+ENV APP_COMMAND="${PHP_CLI} octane:frankenphp --host=0.0.0.0 --port=8000"
+
+# Pods reaches every host, the local one included, over SSH.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssh-client \
+    && apt-get -y autoremove \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY containers/runtimes/production/php-production.ini ${PHP_INI_DIR}/conf.d/xx-php-user.ini
+COPY --chmod=755 containers/runtimes/production/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+COPY --chown=docker:docker . /app
+
+USER docker
+
+# A throwaway .env and key for the build: the frontend build boots Laravel
+# (Wayfinder runs "php artisan wayfinder:generate"). The real ones come from
+# the pods-env secret at runtime.
+RUN cp .env.example .env
+
+RUN --mount=type=cache,target=/home/docker/.cache/composer,uid=1000,gid=1000 \
+    composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction --no-scripts \
+    && composer dump-autoload --optimize
+
+RUN ${PHP_CLI} key:generate && ${PHP_CLI} storage:link
+
+# Build the frontend and prune the devDependencies in one layer, so they
+# don't stay in the image.
+RUN --mount=type=cache,target=/home/docker/.local/share/pnpm/store,uid=1000,gid=1000 \
+    --mount=type=cache,target=/home/docker/.cache/pnpm,uid=1000,gid=1000 \
+    pnpm install --frozen-lockfile \
+    && pnpm build \
+    && pnpm prune --prod
+
+RUN rm -f .env
+
+# Root, so the entrypoint can renumber the "docker" user to PUID/PGID first.
+USER root
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

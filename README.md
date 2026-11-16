@@ -49,7 +49,25 @@ On each host:
 
 For Pods itself: PHP 8.4+, Node with pnpm, and `ssh` and `ssh-keygen` on the machine or in the container that runs it.
 
-## Getting started
+## Install
+
+Pods runs on a host as rootless Podman Quadlets, for the user whose applications it manages. One command installs it, and running it again updates it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash
+```
+
+It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and asks for the owner's name, email address and password. Pods then listens on `127.0.0.1:9090`: open it on the host, or through an SSH tunnel (`ssh -L 9090:127.0.0.1:9090 HOST`).
+
+To reach it by a hostname, add the [proxy](#proxy):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -s -- --proxy --host pods.example.com
+```
+
+On a host shared with other users, give the proxy other ports with `--proxy-ports 28080,28443`, and add `--behind-proxy` when another proxy in front handles HTTPS. `--uninstall` removes Pods and keeps its data; add `--purge` to remove that too. `--help` lists every option.
+
+## Getting started (development)
 
 ```bash
 composer setup     # install, .env, key, migrate, pnpm install and build
