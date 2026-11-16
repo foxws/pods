@@ -436,6 +436,17 @@ class LpodClient
         $this->lifecycle($environment, $application, 'redeploy');
     }
 
+    /**
+     * Stops every unit of the application right away: lpod queues the stop, kills the processes
+     * and clears their failed state. It waits up to 10 seconds for them, so no --no-block.
+     */
+    public function forceStop(Environment $environment, string $application): void
+    {
+        $this->json($environment, [$application, 'down', '--force', '--json']);
+
+        $this->forget($environment, 'apps', "apps.{$application}", 'pods', 'host');
+    }
+
     protected function lifecycle(Environment $environment, string $application, string $operation): void
     {
         $this->json($environment, [$application, $operation, '--no-block', '--json']);

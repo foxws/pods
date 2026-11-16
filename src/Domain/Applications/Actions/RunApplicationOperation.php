@@ -22,6 +22,7 @@ class RunApplicationOperation
         match ($operation) {
             ApplicationOperation::Up => $this->lpod->up($environment, $application),
             ApplicationOperation::Down => $this->lpod->down($environment, $application),
+            ApplicationOperation::ForceStop => $this->lpod->forceStop($environment, $application),
             ApplicationOperation::Restart => $this->lpod->restart($environment, $application),
             ApplicationOperation::Redeploy => $this->lpod->redeploy($environment, $application),
         };

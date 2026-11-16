@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { show as containerShow } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
+import ApplicationForceStopModal from '@/components/Applications/ApplicationForceStopModal.vue'
 import ApplicationRemoveModal from '@/components/Applications/ApplicationRemoveModal.vue'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import JournalLog from '@/components/Applications/JournalLog.vue'
@@ -127,6 +128,15 @@ useHostPolling(['application', 'logs'], () => !!summary.value && isTransitioning
 
 const isRunning = computed(() => summary.value?.status === 'running')
 
+/**
+ * An application in a restart loop shows as activating, so it can be stopped too.
+ */
+const canStop = computed(() => ['running', 'activating', 'reloading'].includes(summary.value?.status ?? ''))
+
+const canForceStop = computed(() => !!summary.value && !['inactive', 'unknown'].includes(summary.value.status))
+
+const isForceStopping = ref(false)
+
 const { run } = useApplicationOperations(() => props.environment)
 
 const isRemoving = ref(false)
@@ -168,7 +178,7 @@ const isRemoving = ref(false)
 
         <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <UButton
-            v-if="isRunning"
+            v-if="canStop"
             label="Stop"
             class="justify-center"
             icon="i-lucide-square"
@@ -185,6 +195,15 @@ const isRemoving = ref(false)
             variant="outline"
             :disabled="!summary"
             @click="run(name, 'up')"
+          />
+          <UButton
+            v-if="canForceStop"
+            label="Force stop"
+            class="justify-center"
+            icon="i-lucide-octagon-x"
+            color="error"
+            variant="outline"
+            @click="isForceStopping = true"
           />
           <UButton
             label="Restart"
@@ -577,6 +596,12 @@ const isRemoving = ref(false)
         :environment="environment"
         :applications="[summary]"
         :prefill="{ name: creatingSecret, application: name }"
+      />
+
+      <ApplicationForceStopModal
+        v-model:open="isForceStopping"
+        :environment="environment"
+        :application="name"
       />
 
       <ApplicationRemoveModal

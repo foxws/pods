@@ -7,6 +7,7 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 const pendingStatus: Record<ApplicationOperation, ApplicationData['status']> = {
   up: 'activating',
   down: 'deactivating',
+  'force-stop': 'deactivating',
   restart: 'activating',
   redeploy: 'activating',
 }

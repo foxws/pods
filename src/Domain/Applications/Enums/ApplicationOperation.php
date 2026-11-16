@@ -15,6 +15,7 @@ enum ApplicationOperation: string implements Enumerable
 
     case Up = 'up';
     case Down = 'down';
+    case ForceStop = 'force-stop';
     case Restart = 'restart';
     case Redeploy = 'redeploy';
 
@@ -23,6 +24,7 @@ enum ApplicationOperation: string implements Enumerable
         return match ($this) {
             self::Up => __('Start'),
             self::Down => __('Stop'),
+            self::ForceStop => __('Force stop'),
             self::Restart => __('Restart'),
             self::Redeploy => __('Redeploy'),
         };
