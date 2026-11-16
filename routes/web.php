@@ -13,6 +13,7 @@ use Modules\Web\Home\Controllers\HomeController;
 use Modules\Web\Images\Controllers\ImageController;
 use Modules\Web\Journal\Controllers\JournalController;
 use Modules\Web\Networks\Controllers\NetworkController;
+use Modules\Web\Pods\Controllers\PodController;
 use Modules\Web\Secrets\Controllers\SecretController;
 use Modules\Web\Settings\Controllers\SettingsController;
 use Modules\Web\Volumes\Controllers\VolumeController;
@@ -39,6 +40,7 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
 
     Route::resource('applications', ApplicationController::class)->only(['index', 'create', 'show']);
     Route::resource('containers', ContainerController::class)->only(['index', 'create', 'show']);
+    Route::resource('pods', PodController::class)->only(['index']);
     Route::resource('images', ImageController::class)->only(['index']);
     Route::resource('volumes', VolumeController::class)->only(['index']);
     Route::resource('networks', NetworkController::class)->only(['index']);

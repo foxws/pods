@@ -49,6 +49,7 @@ export type {
   ImageData,
   JournalEntryData,
   NetworkData,
+  PodData,
   QuadletCheckData,
   QuadletFileData,
   QuadletSourceData,
