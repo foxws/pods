@@ -139,7 +139,10 @@ const searchText = (image: ImageData): string => [image.repository, image.tag, i
         </template>
       </PageHeading>
 
-      <StatGrid :loading="!images">
+      <StatGrid
+        v-if="!images?.error"
+        :loading="!images"
+      >
         <StatCard
           label="Images"
           :value="list.length"

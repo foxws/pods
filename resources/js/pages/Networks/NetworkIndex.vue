@@ -129,7 +129,10 @@ const searchText = (network: NetworkData): string =>
         </template>
       </PageHeading>
 
-      <StatGrid :loading="!networks">
+      <StatGrid
+        v-if="!networks?.error"
+        :loading="!networks"
+      >
         <StatCard
           label="Networks"
           :value="list.length"

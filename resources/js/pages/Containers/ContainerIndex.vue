@@ -116,7 +116,10 @@ const searchText = (container: HostContainerData): string =>
         </template>
       </PageHeading>
 
-      <StatGrid :loading="!containers">
+      <StatGrid
+        v-if="!containers?.error"
+        :loading="!containers"
+      >
         <StatCard
           label="Running"
           :value="running.length"

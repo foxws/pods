@@ -5,17 +5,27 @@ import ContainerOperationController from '@/actions/Modules/Web/Containers/Contr
 import journal from '@/actions/Modules/Web/Journal/Controllers/JournalController'
 import JournalLog from '@/components/Applications/JournalLog.vue'
 import HostError from '@/components/Environments/HostError.vue'
+import QuadletEditModal from '@/components/Quadlets/QuadletEditModal.vue'
+import CodeBlock from '@/components/Ui/CodeBlock.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import StatCard from '@/components/Ui/StatCard.vue'
 import StatGrid from '@/components/Ui/StatGrid.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import { useHostPolling } from '@/composables/applications'
 import { useHostAction } from '@/composables/hostActions'
-import type { ContainerDetailData, ContainerOperation, EnvironmentData, HostProperty, JournalEntryData } from '@/types'
+import type {
+  ContainerDetailData,
+  ContainerOperation,
+  EnvironmentData,
+  HostProperty,
+  JournalEntryData,
+  QuadletFileData,
+} from '@/types'
 import { containerState } from '@/utils/containers'
 import { formatBytes, formatPercent, formatPort, formatRelative, formatUptime } from '@/utils/format'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
+import { useIntervalFn } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
@@ -23,6 +33,7 @@ const props = defineProps<{
   name: string
   container?: HostProperty<ContainerDetailData>
   logs?: HostProperty<JournalEntryData[]>
+  quadlet?: HostProperty<QuadletFileData | null>
 }>()
 
 const detail = computed(() => props.container?.data ?? null)
@@ -34,10 +45,38 @@ useHostPolling(['container', 'logs'], () => !!state.value?.busy)
 
 const tab = ref('overview')
 
-const tabs: TabsItem[] = [
+const tabs = computed<TabsItem[]>(() => [
   { label: 'Overview', value: 'overview', icon: 'i-lucide-layout-dashboard' },
   { label: 'Logs', value: 'logs', icon: 'i-lucide-scroll-text' },
-]
+  ...(summary.value?.quadlet ? [{ label: 'Quadlet', value: 'quadlet', icon: 'i-lucide-file-code' }] : []),
+])
+
+const showsErrorsOnly = ref(false)
+const isFollowing = ref(false)
+
+const errorCount = computed(() => (props.logs?.data ?? []).filter((entry) => entry.priority <= 3).length)
+
+const visibleLogs = computed(() =>
+  (props.logs?.data ?? []).filter((entry) => !showsErrorsOnly.value || entry.priority <= 3),
+)
+
+const { pause: stopFollowing, resume: startFollowing } = useIntervalFn(() => router.reload({ only: ['logs'] }), 5000, {
+  immediate: false,
+})
+
+const toggleFollowing = (): void => {
+  isFollowing.value = !isFollowing.value
+
+  if (isFollowing.value) {
+    startFollowing()
+
+    return
+  }
+
+  stopFollowing()
+}
+
+const isEditingQuadlet = ref(false)
 
 const breadcrumb = computed<BreadcrumbItem[]>(() => [
   { label: 'Containers', to: containersIndex.url(props.environment.id) },
@@ -380,23 +419,112 @@ const memoryHint = computed(() =>
       </template>
 
       <UCard
-        v-else
+        v-else-if="tab === 'logs'"
         :ui="{ body: 'p-0 sm:p-0' }"
       >
+        <template #header>
+          <div class="flex flex-wrap items-center gap-2">
+            <UButton
+              :label="isFollowing ? 'Following' : 'Follow'"
+              :icon="isFollowing ? 'i-lucide-pause' : 'i-lucide-play'"
+              color="neutral"
+              :variant="isFollowing ? 'soft' : 'outline'"
+              size="sm"
+              :aria-pressed="isFollowing"
+              @click="toggleFollowing"
+            />
+            <UButton
+              :label="errorCount ? `Errors · ${errorCount}` : 'Errors'"
+              icon="i-lucide-circle-alert"
+              :color="showsErrorsOnly ? 'error' : 'neutral'"
+              :variant="showsErrorsOnly ? 'soft' : 'outline'"
+              size="sm"
+              :aria-pressed="showsErrorsOnly"
+              @click="showsErrorsOnly = !showsErrorsOnly"
+            />
+            <UButton
+              label="Open journal"
+              color="neutral"
+              variant="link"
+              size="sm"
+              class="ms-auto"
+              :to="journal.url(environment.id)"
+            />
+          </div>
+        </template>
+
         <HostError
           v-if="logs?.error"
           :error="logs.error"
           class="m-4"
         />
-        <JournalLog
-          v-else-if="logs?.data"
-          :entries="logs.data"
-        />
+        <template v-else-if="logs?.data">
+          <JournalLog
+            v-if="visibleLogs.length"
+            :entries="visibleLogs"
+          />
+          <p
+            v-else
+            class="p-4 text-sm text-muted"
+          >
+            {{ showsErrorsOnly ? 'No errors in the recent logs.' : 'This container has not logged anything yet.' }}
+          </p>
+        </template>
         <USkeleton
           v-else
           class="m-4 h-64"
         />
       </UCard>
+
+      <div
+        v-else
+        class="flex flex-col gap-4"
+      >
+        <HostError
+          v-if="quadlet?.error"
+          :error="quadlet.error"
+        />
+
+        <CodeBlock
+          v-if="quadlet?.data"
+          :title="quadlet.data.name"
+          :subtitle="quadlet.data.path"
+          :content="quadlet.data.content"
+          numbered
+        >
+          <template
+            v-if="summary?.application"
+            #actions
+          >
+            <UButton
+              label="Edit"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="isEditingQuadlet = true"
+            />
+          </template>
+        </CodeBlock>
+        <p
+          v-else-if="quadlet && !quadlet.error"
+          class="text-sm text-muted"
+        >
+          Pods couldn't find {{ summary?.quadlet }} among the files of {{ summary?.application }}.
+        </p>
+        <USkeleton
+          v-else-if="!quadlet"
+          class="h-64"
+        />
+
+        <QuadletEditModal
+          v-if="summary?.application"
+          v-model:open="isEditingQuadlet"
+          :environment="environment"
+          :application="summary.application"
+          :file="quadlet?.data ?? null"
+        />
+      </div>
     </template>
   </UDashboardPanel>
 </template>

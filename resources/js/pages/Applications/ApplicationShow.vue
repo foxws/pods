@@ -6,13 +6,25 @@ import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers
 import JournalLog from '@/components/Applications/JournalLog.vue'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
+import QuadletEditModal from '@/components/Quadlets/QuadletEditModal.vue'
+import SecretCreateModal from '@/components/Secrets/SecretCreateModal.vue'
+import StateBadge from '@/components/Ui/StateBadge.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
-import type { ApplicationDetailData, EnvironmentData, HostProperty, JournalEntryData, QuadletFileData } from '@/types'
+import type {
+  ApplicationDetailData,
+  ContainerData,
+  EnvironmentData,
+  HostProperty,
+  JournalEntryData,
+  QuadletFileData,
+  SecretData,
+} from '@/types'
+import { containerState, shortImage } from '@/utils/containers'
 import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
 import { Head, Link } from '@inertiajs/vue3'
-import type { BreadcrumbItem, TabsItem } from '@nuxt/ui'
+import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
@@ -21,6 +33,7 @@ const props = defineProps<{
   application?: HostProperty<ApplicationDetailData>
   files?: HostProperty<QuadletFileData[]>
   logs?: HostProperty<JournalEntryData[]>
+  secrets?: HostProperty<SecretData[]>
 }>()
 
 const detail = computed(() => props.application?.data ?? null)
@@ -30,9 +43,68 @@ const tab = ref('overview')
 
 const tabs: TabsItem[] = [
   { label: 'Overview', value: 'overview', icon: 'i-lucide-layout-dashboard' },
+  { label: 'Containers', value: 'containers', icon: 'i-lucide-box' },
   { label: 'Quadlet files', value: 'files', icon: 'i-lucide-file-code' },
   { label: 'Logs', value: 'logs', icon: 'i-lucide-scroll-text' },
+  { label: 'Secrets', value: 'secrets', icon: 'i-lucide-key-round' },
 ]
+
+const containerColumns: TableColumn<ContainerData>[] = [
+  { accessorKey: 'name', header: 'Container' },
+  { accessorKey: 'state', header: 'Status' },
+  { accessorKey: 'image', header: 'Image' },
+  { accessorKey: 'cpu', header: 'CPU', meta: { class: { th: 'text-right', td: 'text-right' } } },
+  { accessorKey: 'memory', header: 'Memory', meta: { class: { th: 'text-right', td: 'text-right' } } },
+]
+
+type ApplicationSecret = { name: string; driver: string | null; updated_at: string | null; missing: boolean }
+
+/**
+ * The secrets the application references, with what the host knows about each one.
+ */
+const applicationSecrets = computed<ApplicationSecret[]>(() =>
+  (detail.value?.secrets ?? []).map((secretName) => {
+    const hostSecret = props.secrets?.data?.find((secret) => secret.name === secretName)
+
+    return {
+      name: secretName,
+      driver: hostSecret?.driver ?? null,
+      updated_at: hostSecret?.updated_at ?? null,
+      missing: props.secrets?.data ? !hostSecret || hostSecret.missing : false,
+    }
+  }),
+)
+
+const secretColumns: TableColumn<ApplicationSecret>[] = [
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'driver', header: 'Driver' },
+  { accessorKey: 'updated_at', header: 'Updated' },
+  { id: 'actions', meta: { class: { td: 'text-right' } } },
+]
+
+const missingSecretCount = computed(() => applicationSecrets.value.filter((secret) => secret.missing).length)
+
+const creatingSecret = ref<string | null>(null)
+
+const isCreatingSecret = computed({
+  get: () => creatingSecret.value !== null,
+  set: (isOpen: boolean) => {
+    if (!isOpen) {
+      creatingSecret.value = null
+    }
+  },
+})
+
+const editingFile = ref<QuadletFileData | null>(null)
+
+const isEditingFile = computed({
+  get: () => editingFile.value !== null,
+  set: (isOpen: boolean) => {
+    if (!isOpen) {
+      editingFile.value = null
+    }
+  },
+})
 
 const breadcrumb = computed<BreadcrumbItem[]>(() => [
   { label: 'Applications', to: applicationsIndex.url(props.environment.id) },
@@ -321,6 +393,114 @@ const isRemoving = ref(false)
         </div>
       </div>
 
+      <UCard
+        v-else-if="tab === 'containers'"
+        :ui="{ body: 'p-0 sm:p-0' }"
+      >
+        <UTable
+          :data="detail?.items ?? []"
+          :columns="containerColumns"
+          :loading="!application"
+          empty="This application has no containers."
+        >
+          <template #name-cell="{ row }">
+            <Link
+              :href="containerShow.url([environment.id, row.original.name])"
+              class="font-medium text-highlighted hover:text-primary"
+              >{{ row.original.name }}</Link
+            >
+          </template>
+          <template #state-cell="{ row }">
+            <StateBadge v-bind="containerState({ state: row.original.state, exit_code: null })" />
+          </template>
+          <template #image-cell="{ row }">
+            <span
+              class="font-mono text-xs text-muted"
+              :title="row.original.image ?? undefined"
+              >{{ shortImage(row.original.image) }}</span
+            >
+          </template>
+          <template #cpu-cell="{ row }">
+            {{ formatPercent(row.original.cpu) }}
+          </template>
+          <template #memory-cell="{ row }">
+            {{ formatBytes(row.original.memory) }}
+          </template>
+        </UTable>
+      </UCard>
+
+      <div
+        v-else-if="tab === 'secrets'"
+        class="flex flex-col gap-4"
+      >
+        <HostError
+          v-if="secrets?.error"
+          :error="secrets.error"
+        />
+
+        <UAlert
+          v-if="missingSecretCount"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-key-round"
+          :title="missingSecretCount === 1 ? '1 secret is missing' : `${missingSecretCount} secrets are missing`"
+          description="The application references them with Secret=, but they don't exist on the host, so its units can't start."
+        />
+
+        <UCard :ui="{ body: 'p-0 sm:p-0' }">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h2 class="font-semibold text-highlighted">Secrets</h2>
+              <UButton
+                label="Manage"
+                color="neutral"
+                variant="link"
+                size="sm"
+                :to="secretsIndex.url(environment.id)"
+              />
+            </div>
+          </template>
+
+          <UTable
+            :data="applicationSecrets"
+            :columns="secretColumns"
+            :loading="!application || !secrets"
+            empty="This application uses no secrets."
+          >
+            <template #name-cell="{ row }">
+              <span class="font-mono text-sm text-highlighted">{{ row.original.name }}</span>
+            </template>
+            <template #driver-cell="{ row }">
+              <StateBadge
+                v-if="row.original.missing"
+                label="Missing"
+                color="error"
+              />
+              <span
+                v-else
+                class="text-muted"
+                >{{ row.original.driver ?? '–' }}</span
+              >
+            </template>
+            <template #updated_at-cell="{ row }">
+              <span class="text-muted">{{
+                row.original.updated_at ? formatRelative(row.original.updated_at) : '–'
+              }}</span>
+            </template>
+            <template #actions-cell="{ row }">
+              <UButton
+                v-if="row.original.missing"
+                label="Create secret"
+                size="sm"
+                @click="creatingSecret = row.original.name"
+              />
+            </template>
+          </UTable>
+        </UCard>
+
+        <p class="text-sm text-muted">Secret values stay on the host. Pods only shows where they are used.</p>
+      </div>
+
       <div
         v-else-if="tab === 'files'"
         class="flex flex-col gap-4"
@@ -336,9 +516,19 @@ const isRemoving = ref(false)
           :ui="{ body: 'p-0 sm:p-0' }"
         >
           <template #header>
-            <div class="flex flex-col">
-              <span class="font-mono text-sm font-medium text-highlighted">{{ file.name }}</span>
-              <span class="font-mono text-xs text-muted">{{ file.path }}</span>
+            <div class="flex items-center gap-3">
+              <div class="flex min-w-0 flex-1 flex-col">
+                <span class="font-mono text-sm font-medium text-highlighted">{{ file.name }}</span>
+                <span class="truncate font-mono text-xs text-muted">{{ file.path }}</span>
+              </div>
+              <UButton
+                label="Edit"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="editingFile = file"
+              />
             </div>
           </template>
 
@@ -373,6 +563,21 @@ const isRemoving = ref(false)
       <p class="text-sm text-muted">
         <Link :href="applicationsIndex.url(environment.id)">Back to applications</Link>
       </p>
+
+      <QuadletEditModal
+        v-model:open="isEditingFile"
+        :environment="environment"
+        :application="name"
+        :file="editingFile"
+      />
+
+      <SecretCreateModal
+        v-if="summary"
+        v-model:open="isCreatingSecret"
+        :environment="environment"
+        :applications="[summary]"
+        :prefill="{ name: creatingSecret, application: name }"
+      />
 
       <ApplicationRemoveModal
         v-model:open="isRemoving"

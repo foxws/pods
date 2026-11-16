@@ -31,6 +31,16 @@ it('lists every container, including ones no quadlet manages', function () {
                 ->where('host.data.containers_running', 12)));
 });
 
+it('asks to update lpod when it does not know the command yet', function () {
+    fakeLpod()->respond('containers --json', new HostResult(125, '', "Error: unknown flag: --json\nSee 'podman --help'"));
+
+    $this->actingAs($this->owner)
+        ->get(action([ContainerController::class, 'index'], $this->environment))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps(fn ($reload) => $reload
+            ->where('containers.data', null)
+            ->where('containers.error', 'The lpod on this host doesn\'t support "lpod containers --json" yet. Update lpod to a release that implements the whole of contract 1.')));
+});
+
 it('shows a container with its mounts, secrets and logs', function () {
     $lpod = fakeLpod();
 
@@ -45,9 +55,27 @@ it('shows a container with its mounts, secrets and logs', function () {
                 ->where('container.data.memory_limit', 4294967296)
                 ->has('container.data.mounts', 2)
                 ->where('container.data.secrets.0', ['name' => 'immich-db-password', 'type' => 'env', 'target' => 'DB_PASSWORD'])
-                ->has('logs.data', 5)));
+                ->has('logs.data', 5)
+                ->where('quadlet.data.name', 'immich-server.container')));
 
     $lpod->assertRan(['container', 'immich-server', 'inspect', '--json']);
+    $lpod->assertRan(['immich', 'files', '--json']);
+});
+
+it('shows no quadlet for a container started outside Quadlet', function () {
+    $payload = json_decode(lpodFixture('container-inspect'), true);
+    $payload['container'] = [...$payload['container'], 'name' => 'reverent_hopper', 'application' => null, 'quadlet' => null];
+
+    $lpod = fakeLpod()->respond('container * inspect --json', json_encode($payload));
+
+    $this->actingAs($this->owner)
+        ->get(action([ContainerController::class, 'show'], [$this->environment, 'reverent_hopper']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps(['default', 'details'], fn ($reload) => $reload
+            ->where('quadlet.data', null)
+            ->where('quadlet.error', null)));
+
+    expect(collect($lpod->recorded())->pluck('arguments')->filter(fn (array $arguments): bool => in_array('files', $arguments, true)))
+        ->toBeEmpty();
 });
 
 it('shows the add container form with the networks and secrets to pick from', function () {

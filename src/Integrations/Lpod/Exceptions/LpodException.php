@@ -41,6 +41,14 @@ class LpodException extends RuntimeException
         return new self("{$binary} was not found for {$environment->target()}. Install lpod 4 or newer for that user, or set PODS_LPOD_BINARY.");
     }
 
+    /**
+     * Older lpod releases hand commands they don't know to podman, which rejects them.
+     */
+    public static function unsupportedCommand(string $command): self
+    {
+        return new self("The lpod on this host doesn't support \"lpod {$command}\" yet. Update lpod to a release that implements the whole of contract 1.");
+    }
+
     public static function commandFailed(string $command, HostResult $result): self
     {
         $error = trim($result->errorOutput) ?: trim($result->output) ?: "exit code {$result->exitCode}";
