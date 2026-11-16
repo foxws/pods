@@ -9,10 +9,11 @@ import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
 import { useHostAction } from '@/composables/hostActions'
-import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData } from '@/types'
+import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, ImageData } from '@/types'
 import { describeApplication, describeUnits, quadletName } from '@/utils/application'
 import { missingSecretIn } from '@/utils/attention'
 import { formatBytes, formatPort, formatRelative } from '@/utils/format'
+import { applicationsWithUpdates } from '@/utils/images'
 import { isTransitioning } from '@/utils/status'
 import { Head, Link } from '@inertiajs/vue3'
 import type { DropdownMenuItem, TableColumn, TabsItem } from '@nuxt/ui'
@@ -22,7 +23,10 @@ const props = defineProps<{
   environment: EnvironmentData
   applications?: HostProperty<ApplicationData[]>
   host?: HostProperty<HostStatsData>
+  images?: HostProperty<ImageData[]>
 }>()
+
+const withUpdates = computed(() => new Set(applicationsWithUpdates(props.images?.data ?? [])))
 
 type Filter = 'all' | 'running' | 'inactive' | 'failed'
 
@@ -333,7 +337,15 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
         </template>
 
         <template #image-cell="{ row }">
-          <span class="font-mono text-xs">{{ row.original.image?.split('/').pop() ?? '–' }}</span>
+          <span class="font-mono text-xs">
+            {{ row.original.image?.split('/').pop() ?? '–' }}
+            <UIcon
+              v-if="withUpdates.has(row.original.name)"
+              name="i-lucide-circle-arrow-up"
+              class="size-3.5 align-text-bottom text-primary"
+              aria-label="Image update available"
+            />
+          </span>
         </template>
 
         <template #ports-cell="{ row }">

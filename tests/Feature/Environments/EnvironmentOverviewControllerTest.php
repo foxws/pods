@@ -45,7 +45,8 @@ it('shows the host, its applications and its secrets', function () {
                 ->where('host.data.units_failed', 1)
                 ->has('applications.data', 6)
                 ->where('secrets.data.5.name', 'ha-mqtt-password')
-                ->where('secrets.data.5.missing', true)));
+                ->where('secrets.data.5.missing', true)
+                ->has('images.data', 6)));
 });
 
 it('leaves the system details empty for an lpod that does not report them', function () {

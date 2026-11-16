@@ -5,16 +5,19 @@ import {
   show,
 } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { index as environmentsIndex } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentController'
+import { index as imagesIndex } from '@/actions/Modules/Web/Images/Controllers/ImageController'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useHostPolling } from '@/composables/applications'
-import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, SecretData } from '@/types'
+import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, ImageData, SecretData } from '@/types'
 import { describeApplication } from '@/utils/application'
 import { attentionItems, type AttentionItem } from '@/utils/attention'
 import { formatBytes, formatRelative, formatUptime } from '@/utils/format'
+import { totalSize, unusedImages } from '@/utils/images'
+import { pluralize } from '@/utils/application'
 import { isTransitioning } from '@/utils/status'
 import { Head, Link } from '@inertiajs/vue3'
 import type { ButtonProps } from '@nuxt/ui'
@@ -25,7 +28,10 @@ const props = defineProps<{
   host?: HostProperty<HostStatsData>
   applications?: HostProperty<ApplicationData[]>
   secrets?: HostProperty<SecretData[]>
+  images?: HostProperty<ImageData[]>
 }>()
+
+const reclaimable = computed(() => totalSize(unusedImages(props.images?.data ?? [])))
 
 const stats = computed(() => props.host?.data ?? null)
 
@@ -57,13 +63,15 @@ const containerLine = computed(() => {
 })
 
 const attention = computed(() =>
-  props.applications?.data && props.secrets?.data ? attentionItems(props.applications.data, props.secrets.data) : [],
+  props.applications?.data && props.secrets?.data
+    ? attentionItems(props.applications.data, props.secrets.data, props.images?.data ?? [])
+    : [],
 )
 
 type AttentionView = {
   key: string
   icon: string
-  color: 'text-error' | 'text-warning'
+  color: 'text-error' | 'text-warning' | 'text-info'
   title: string
   description: string
   action: ButtonProps
@@ -96,6 +104,17 @@ const describe = (item: AttentionItem): AttentionView => {
     }
   }
 
+  if (item.kind === 'image-updates') {
+    return {
+      key: 'image-updates',
+      icon: 'i-lucide-circle-arrow-up',
+      color: 'text-info',
+      title: `${pluralize(item.applications.length, 'application')} with image updates`,
+      description: item.applications.join(', '),
+      action: { label: 'Review', to: imagesIndex.url(props.environment.id) },
+    }
+  }
+
   return {
     key: `unused-${item.secret}`,
     icon: 'i-lucide-key-round',
@@ -108,7 +127,7 @@ const describe = (item: AttentionItem): AttentionView => {
 
 const attentionViews = computed(() => attention.value.map(describe))
 
-const isAttentionLoading = computed(() => !props.applications || !props.secrets)
+const isAttentionLoading = computed(() => !props.applications || !props.secrets || !props.images)
 
 const podmanLine = computed(() =>
   [
@@ -198,7 +217,17 @@ const podmanLine = computed(() =>
               size="xs"
               class="mt-2"
             />
-            <p class="mt-1 text-xs text-muted">of {{ formatBytes(stats.disk_total) }}</p>
+            <p class="mt-1 text-xs text-muted">
+              of {{ formatBytes(stats.disk_total) }}
+              <template v-if="reclaimable">
+                ·
+                <Link
+                  :href="imagesIndex.url(environment.id)"
+                  class="text-primary hover:underline"
+                  >prune {{ formatBytes(reclaimable) }} unused</Link
+                >
+              </template>
+            </p>
           </UCard>
 
           <UCard variant="subtle">
