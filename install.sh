@@ -152,10 +152,6 @@ install_lpod() {
     rm -f "${BIN_DIR}/lpod"
     curl -fsSL "${LPOD_RAW}/${LPOD_REF}/bin/lpod" -o "${BIN_DIR}/lpod"
     chmod +x "${BIN_DIR}/lpod"
-
-    if [ "$LPOD_REF" = "main" ]; then
-        warn "Don't run 'lpod self-update' until lpod 4 is released: it would install a version Pods can't use. Run this installer again instead."
-    fi
 }
 
 fetch_units() {
