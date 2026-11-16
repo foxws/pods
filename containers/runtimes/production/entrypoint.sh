@@ -56,17 +56,19 @@ if [ -n "${DATABASE}" ] && [ ! -f "${DATABASE}" ]; then
     touch "${DATABASE}"
 fi
 
+
+# Only the web server migrates, before it starts. The scheduler shares this
+# image and entrypoint, and starts after it (After=pods.container). This runs
+# before "optimize", which uses the database cache, so a new database has its
+# tables first.
+if [[ "${APP_COMMAND}" == *octane:frankenphp* ]]; then
+    log "INFO" "Migrating the database..."
+    ${PHP_CLI} migrate --seed --force --no-interaction
+fi
+
 if [ "${APP_OPTIMIZE:-true}" = "true" ]; then
     log "INFO" "Optimizing..."
     ${PHP_CLI} optimize
-fi
-
-# Only the web server migrates, before it starts. The scheduler shares this
-# image and entrypoint.
-if [[ "${APP_COMMAND}" == *octane:frankenphp* ]]; then
-    log "INFO" "Migrating the database..."
-    ${PHP_CLI} migrate --force --no-interaction
-    ${PHP_CLI} db:seed --force --no-interaction --class='Database\Seeders\PermissionSeeder'
 fi
 
 log "INFO" "Starting..."

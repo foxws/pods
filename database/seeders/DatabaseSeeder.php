@@ -8,11 +8,12 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * Only the roles and permissions: production runs this on every start
+     * (migrate --seed). Create the owner with "php artisan users:create --super-admin".
+     */
     public function run(): void
     {
-        $this->call([
-            PermissionSeeder::class,
-            AdminSeeder::class,
-        ]);
+        $this->call(PermissionSeeder::class);
     }
 }
