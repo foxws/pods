@@ -5,8 +5,15 @@ import HostError from '@/components/Environments/HostError.vue'
 import QuadletCheckStatus from '@/components/Quadlets/QuadletCheckStatus.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
-import { useQuadletCheck, useQuadletInstall, type SecretInput } from '@/composables/quadlets'
-import type { EnvironmentData, HostProperty, QuadletSourceData, SecretData } from '@/types'
+import { useQuadletCheck, useQuadletInstall, type DerivedSecretInput, type SecretInput } from '@/composables/quadlets'
+import type {
+  EnvironmentData,
+  HostProperty,
+  ManifestData,
+  ManifestSourceData,
+  QuadletSourceData,
+  SecretData,
+} from '@/types'
 import { pluralize } from '@/utils/application'
 import { describeQuadlet, isQuadletFile, secretsIn, type QuadletFile } from '@/utils/quadlet'
 import { Head, useHttp } from '@inertiajs/vue3'
@@ -30,6 +37,8 @@ const sources: TabsItem[] = [
 const available = ref<QuadletFile[]>([])
 const selected = ref<string[]>([])
 const commit = ref<string | null>(null)
+const manifest = ref<ManifestData | null>(null)
+const manifestError = ref<string | null>(null)
 
 const fetcher = useHttp<{ repository: string; reference: string; path: string }, HostProperty<QuadletSourceData>>({
   repository: '',
@@ -58,7 +67,20 @@ const fetchRepository = async (): Promise<void> => {
     }
 
     commit.value = response.data.commit
+    manifest.value = response.data.manifest
+    manifestError.value = response.data.manifest_error
+    chosenSource.value = activeSource.value?.name
     showFiles(response.data.files)
+
+    for (const secret of manifest.value?.secrets ?? []) {
+      if (secret.generate && !values[secret.name]) {
+        generate(secret.name)
+      }
+    }
+
+    if (!application.name && manifest.value?.name) {
+      application.name = manifest.value.name
+    }
 
     if (!application.name && git.path) {
       application.name = git.path.replace(/\/+$/, '').split('/').pop() ?? ''
@@ -66,6 +88,31 @@ const fetchRepository = async (): Promise<void> => {
   } catch {
     fetchError.value = fetcher.hasErrors ? null : 'The repository could not be fetched.'
   }
+}
+
+const activeSource = computed<ManifestSourceData | null>(
+  () => manifest.value?.sources.find((choice) => choice.path === git.path.replace(/^\/+|\/+$/g, '')) ?? null,
+)
+
+const chosenSource = ref<string | undefined>(undefined)
+
+const sourceChoices = computed(() =>
+  (manifest.value?.sources ?? []).map((choice) => ({
+    label: choice.name,
+    description: choice.description ?? choice.path,
+    value: choice.name,
+  })),
+)
+
+const chooseSource = (name: string | undefined): void => {
+  const choice = manifest.value?.sources.find((item) => item.name === name)
+
+  if (!choice || choice.path === activeSource.value?.path) {
+    return
+  }
+
+  git.path = choice.path
+  fetchRepository()
 }
 
 const showFiles = (files: QuadletFile[]): void => {
@@ -86,6 +133,8 @@ watch(source, () => {
   available.value = []
   selected.value = []
   commit.value = null
+  manifest.value = null
+  manifestError.value = null
 })
 
 const files = computed<QuadletFile[]>(() => {
@@ -116,7 +165,12 @@ const referenced = computed(() => {
     }
   }
 
-  return [...usage.entries()].map(([name, usedIn]) => ({ name, usedIn, existing: existing.value.get(name) ?? null }))
+  return [...usage.entries()].map(([name, usedIn]) => ({
+    name,
+    usedIn,
+    existing: existing.value.get(name) ?? null,
+    hint: manifest.value?.secrets.find((secret) => secret.name === name) ?? null,
+  }))
 })
 
 const missing = computed(() => referenced.value.filter((secret) => !secret.existing))
@@ -129,9 +183,20 @@ const generate = (name: string): void => {
   values[name] = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '')
 }
 
+/**
+ * Secrets the manifest fills in from a key of a .env secret that's entered here, such as DB_PASSWORD
+ * from the app's .env. Pods reads the key on the server when installing, the way Laravel reads .env.
+ * Entering a value yourself replaces it.
+ */
+const isFilledIn = (secret: (typeof missing.value)[number]): boolean =>
+  !!secret.hint?.from &&
+  !!secret.hint.key &&
+  !values[secret.name] &&
+  missing.value.some((other) => other.name === secret.hint?.from)
+
 const application = reactive({ name: '', start: true, replace: false })
 
-const unfilled = computed(() => missing.value.filter((secret) => !values[secret.name]))
+const unfilled = computed(() => missing.value.filter((secret) => !values[secret.name] && !isFilledIn(secret)))
 
 const { result, checking } = useQuadletCheck(() => props.environment, files)
 const { form, install } = useQuadletInstall(() => props.environment)
@@ -141,10 +206,13 @@ const submit = (): void => {
   form.files = files.value
   form.start = application.start
   form.replace = application.replace
-  form.secrets = missing.value.map<SecretInput>((secret) => ({
+  form.secrets = missing.value
+    .filter((secret) => !isFilledIn(secret))
+    .map<SecretInput>((secret) => ({ name: secret.name, driver: 'file', value: values[secret.name] ?? '' }))
+  form.derived_secrets = missing.value.filter(isFilledIn).map<DerivedSecretInput>((secret) => ({
     name: secret.name,
-    driver: 'file',
-    value: values[secret.name] ?? '',
+    from: secret.hint?.from ?? '',
+    key: secret.hint?.key ?? '',
   }))
   install(() => {
     for (const key of Object.keys(values)) {
@@ -348,6 +416,48 @@ const serverErrors = computed(() =>
                 Fetched commit <span class="font-mono text-highlighted">{{ commit }}</span> ·
                 {{ pluralize(available.length, 'file') }} found
               </p>
+
+              <UAlert
+                v-if="manifestError"
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-file-warning"
+                :title="manifestError"
+              />
+
+              <div
+                v-if="manifest"
+                class="flex flex-col gap-3"
+              >
+                <p class="flex items-center gap-2 text-sm">
+                  <UIcon
+                    name="i-lucide-file-cog"
+                    class="size-4 text-muted"
+                  />
+                  <span class="font-mono text-highlighted">pods.yml</span>
+                  <span
+                    v-if="manifest.description"
+                    class="text-muted"
+                    >· {{ manifest.description }}</span
+                  >
+                </p>
+                <UFormField
+                  v-if="sourceChoices.length"
+                  label="Source"
+                  :description="
+                    activeSource ? undefined : 'Choose which of the repository\'s Quadlet directories to install.'
+                  "
+                >
+                  <URadioGroup
+                    v-model="chosenSource"
+                    :items="sourceChoices"
+                    orientation="horizontal"
+                    variant="table"
+                    :disabled="isFetching"
+                    @update:model-value="chooseSource"
+                  />
+                </UFormField>
+              </div>
             </div>
           </UCard>
 
@@ -460,6 +570,11 @@ const serverErrors = computed(() =>
                     />
                     {{ secret.name }}
                   </span>
+                  <span
+                    v-if="secret.hint?.description"
+                    class="text-sm text-toned"
+                    >{{ secret.hint.description }}</span
+                  >
                   <span class="truncate font-mono text-xs text-muted">
                     {{
                       secret.existing
@@ -467,16 +582,39 @@ const serverErrors = computed(() =>
                         : secret.usedIn.join(', ')
                     }}
                   </span>
+                  <span
+                    v-if="!secret.existing && secret.hint?.from"
+                    class="text-xs text-muted"
+                  >
+                    {{
+                      missing.some((other) => other.name === secret.hint?.from)
+                        ? `Filled in from ${secret.hint.key} in ${secret.hint.from} unless you enter a value`
+                        : `${secret.hint.from} already exists, so enter it yourself`
+                    }}
+                  </span>
                 </span>
+                <UTextarea
+                  v-if="!secret.existing && secret.hint?.format === 'dotenv'"
+                  v-model="values[secret.name]"
+                  :rows="4"
+                  autoresize
+                  :maxrows="12"
+                  spellcheck="false"
+                  autocomplete="off"
+                  placeholder="Paste the .env file"
+                  :aria-label="`Value of ${secret.name}`"
+                  class="font-mono sm:w-80"
+                  :ui="{ base: 'text-xs leading-5' }"
+                />
                 <div
-                  v-if="!secret.existing"
+                  v-else-if="!secret.existing"
                   class="flex gap-2 sm:w-80"
                 >
                   <UInput
                     v-model="values[secret.name]"
                     type="password"
                     autocomplete="off"
-                    placeholder="Enter a value"
+                    :placeholder="isFilledIn(secret) ? `From ${secret.hint?.key}` : 'Enter a value'"
                     :aria-label="`Value of ${secret.name}`"
                     class="flex-1 font-mono"
                   />

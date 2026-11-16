@@ -54,6 +54,75 @@ it('creates the secrets the files need before installing, with the values on std
     }
 });
 
+it('fills secrets in from a key of an entered .env file', function () {
+    $lpod = fakeLpod();
+    $env = "APP_NAME=stry\nDB_PASSWORD=\"correct horse # battery\"\nDB_USERNAME=\${APP_NAME}\n";
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'stry',
+        'files' => $this->files,
+        'secrets' => [['name' => 'stry-env', 'driver' => 'file', 'value' => $env]],
+        'derived_secrets' => [
+            ['name' => 'stry-pgsql-password', 'from' => 'stry-env', 'key' => 'DB_PASSWORD'],
+            ['name' => 'stry-pgsql-user', 'from' => 'stry-env', 'key' => 'DB_USERNAME'],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    $created = collect($lpod->recorded())
+        ->filter(fn (array $call) => $call['arguments'][0] === 'secret')
+        ->mapWithKeys(fn (array $call) => [$call['arguments'][2] => $call['input']]);
+
+    expect($created->all())->toBe([
+        'stry-env' => $env,
+        'stry-pgsql-password' => 'correct horse # battery',
+        'stry-pgsql-user' => 'stry',
+    ]);
+
+    foreach ($lpod->recorded() as $call) {
+        expect(implode(' ', $call['arguments']))->not->toContain('correct horse');
+    }
+});
+
+it('refuses to fill a secret in when the .env file lacks its key', function (array $derived, string $field) {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->post(action([QuadletController::class, 'store'], $this->environment), [
+            'application' => 'stry',
+            'files' => $this->files,
+            'secrets' => [
+                ['name' => 'stry-env', 'driver' => 'file', 'value' => "DB_PASSWORD=secret-value\nDB_HOST=\n"],
+                ['name' => 'stry-typesense-api-key', 'driver' => 'file', 'value' => 'typed-by-hand'],
+            ],
+            'derived_secrets' => [$derived],
+        ])
+        ->assertSessionHasErrors($field);
+
+    expect(session('errors')->first($field))->not->toContain('secret-value');
+    $lpod->assertNothingRan();
+})->with([
+    'missing key' => [['name' => 'stry-pgsql-user', 'from' => 'stry-env', 'key' => 'DB_USERNAME'], 'derived_secrets.0.key'],
+    'empty key' => [['name' => 'stry-pgsql-host', 'from' => 'stry-env', 'key' => 'DB_HOST'], 'derived_secrets.0.key'],
+    'source not entered' => [['name' => 'stry-pgsql-user', 'from' => 'other-env', 'key' => 'DB_USERNAME'], 'derived_secrets.0.from'],
+    'value entered too' => [['name' => 'stry-typesense-api-key', 'from' => 'stry-env', 'key' => 'DB_PASSWORD'], 'derived_secrets.0.name'],
+]);
+
+it('refuses a source that is not a valid .env file without echoing it', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->post(action([QuadletController::class, 'store'], $this->environment), [
+            'application' => 'stry',
+            'files' => $this->files,
+            'secrets' => [['name' => 'stry-env', 'driver' => 'file', 'value' => "DB_PASSWORD=has secret-value spaces\n"]],
+            'derived_secrets' => [['name' => 'stry-pgsql-password', 'from' => 'stry-env', 'key' => 'DB_PASSWORD']],
+        ])
+        ->assertSessionHasErrors('derived_secrets.0.from');
+
+    expect(session('errors')->first('derived_secrets.0.from'))->not->toContain('secret-value');
+    $lpod->assertNothingRan();
+});
+
 it('does not keep secret values as old input after a failed validation', function () {
     fakeLpod();
 
@@ -136,6 +205,79 @@ it('fetches the files of a git repository', function () {
 
     $lpod->assertRan(['quadlet', 'fetch', 'https://codeberg.org/foxws/quadlets.git', '--ref', 'main', '--path', 'nextcloud', '--json']);
 });
+
+it('returns no manifest for a repository without pods.yml', function () {
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.manifest', null)
+        ->assertJsonPath('data.manifest_error', null);
+});
+
+it('reads the sources and secrets of the repository pods.yml', function () {
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, lpodFixture('quadlet-fetch-manifest'), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.manifest.name', 'nextcloud')
+        ->assertJsonPath('data.manifest.sources.0', ['name' => 'stable', 'path' => 'nextcloud', 'description' => 'Nextcloud with PostgreSQL'])
+        ->assertJsonPath('data.manifest.secrets.1', [
+            'name' => 'nextcloud-db-password',
+            'description' => 'Password of the database user',
+            'format' => 'text',
+            'generate' => true,
+            'from' => null,
+            'key' => null,
+        ])
+        ->assertJsonPath('data.manifest_error', null);
+});
+
+it('fills secrets in from a dotenv secret of the manifest', function () {
+    $manifest = "secrets:\n  app-env:\n    format: dotenv\n  app-db-password:\n    from: app-env\n    key: DB_PASSWORD\n";
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, json_encode(['contract' => 1, 'commit' => 'a41f9c2', 'manifest' => $manifest, 'files' => []]), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.manifest.secrets.0.format', 'dotenv')
+        ->assertJsonPath('data.manifest.secrets.1.from', 'app-env')
+        ->assertJsonPath('data.manifest.secrets.1.key', 'DB_PASSWORD');
+});
+
+it('still returns the files when pods.yml is invalid', function (string $manifest, string $error) {
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, json_encode([
+        ...json_decode(lpodFixture('quadlet-fetch'), true),
+        'manifest' => $manifest,
+    ]), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonCount(5, 'data.files')
+        ->assertJsonPath('data.manifest', null)
+        ->assertJsonPath('data.manifest_error', fn (string $message) => str_contains($message, $error));
+})->with([
+    'not yaml' => ["name: [unclosed\n", 'pods.yml is ignored'],
+    'newer version' => ["version: 2\n", "it's version 2, but Pods reads version 1"],
+    'path traversal' => ["sources:\n  evil:\n    path: ../../etc\n", 'sources.evil.path'],
+    'invalid secret name' => ["secrets:\n  '--rm':\n    description: x\n", 'isn\'t a valid secret name'],
+    'from a plain secret' => ["secrets:\n  app-env: {}\n  db:\n    from: app-env\n    key: DB_PASSWORD\n", "which isn't a secret with format: dotenv"],
+]);
 
 it('rejects repositories and references that are not plain', function (array $input, string $field) {
     $lpod = fakeLpod();

@@ -28,12 +28,21 @@ An application that starts on its first request and sleeps when nobody uses it, 
 
 1. **lpod.** `lpod quadlet install --stdin` accepts `.socket`, `.timer` and `.service` files (installed into the systemd user directory) and drop-ins (`NAME.container.d/*.conf`) next to the Quadlets, and `lpod quadlet fetch` returns the drop-in folders of a directory too. `lpod APP ondemand enable|disable --json` then enables the socket, stops the app and starts listening, or the other way round, and `lpod apps --json` reports whether an application is on demand and asleep.
 2. **Pods.** The application page gets an on-demand switch, and shows a sleeping application as asleep, not stopped. Start becomes "wake" for those: it starts the socket's service, because starting a `StopWhenUnneeded=yes` unit directly stops it again.
-3. **Idle check.** Whether an application has work left (queued jobs, running queries) is something only the app knows. The application declares a command for it, for example `Label=io.foxws.pods.idle-command=php artisan app:idle` on the worker's container, and the idle timer stops the workers once it succeeds.
+3. **Idle check.** Whether an application has work left (queued jobs, running queries) is something only the app knows. The application declares a command for it in its [`pods.yml`](../README.md#application-manifest-podsyml) (`ondemand.idle_check`, for example `php artisan app:idle` in the Horizon container), and the idle timer stops the workers once it succeeds.
 
 Open questions:
 
 - Generating the socket, proxy and idle units from labels on the app's container, so an application only declares its port and idle timeout.
 - Native socket activation (FrankenPHP or Caddy binding the socket's file descriptor) instead of `systemd-socket-proxyd`.
+
+## More of pods.yml
+
+Pods reads the sources, the application name and the secrets of a repository's `pods.yml` today. Next:
+
+1. **Setup steps.** `after_install` lists the commands to run once the units are up, such as `php artisan app:install` and creating the first admin, with inputs the UI asks for (a password goes on stdin, never in the arguments). lpod needs `lpod container NAME exec --stdin --json -- COMMAND`, and Pods needs to remember the manifest of an installed application (a table keyed by environment and application, with the repository, tag and commit it came from), so the application page can show a "Finish setup" panel. This replaces what laravel-installer did.
+2. **On-demand.** `ondemand` (port, idle timeout, idle check and the workers to stop) lets lpod write the socket, proxy and idle units, so an application doesn't ship them itself. See [On-demand applications](#on-demand-applications).
+3. **Backups.** `backups` lists the volumes to leave out (such as bind-backed ones) and a database dump command. See [Volume backups and restores](#volume-backups-and-restores).
+4. **Updates.** With the stored source, the application page can offer "Update to tag X" and reinstall from it with `--replace`.
 
 ## Installing applications from a checkout
 
@@ -43,7 +52,7 @@ Pods installs Quadlets from Git. Development setups, such as stry's `containers/
 
 - **Invited users.** The owner invites users and gives each a role per environment (viewer, operator or admin), using spatie/laravel-permission. Host routes are already scoped per environment and go through policies, so this doesn't need a rewrite.
 - **Streaming logs** for applications, containers and the journal, instead of polling.
-- **An application catalog** of Git sources (repository, tag and directory) that can be installed in a few clicks.
-- **Quadlet metadata.** Applications declare `Label=` lines in their own units (description, URL, icon), which the UI shows next to each application.
+- **An application catalog** of repositories with a `pods.yml`, installable in a few clicks.
+- **Application metadata.** The name and description from `pods.yml` (and a URL and icon) shown next to each installed application.
 - **Packaging.** Pods ships as its own plain, socket-activated Quadlets (like `cockpit.socket`), with SQLite on a volume and the database queue, so it can sleep when nobody uses it. An install script sets up the units, the SSH key and the owner.
 - **Compose to Quadlet.** A converter, possibly AI-assisted. Pods itself stays Quadlet-only: no Docker and no Podman Compose.

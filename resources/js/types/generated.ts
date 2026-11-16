@@ -219,6 +219,25 @@ export type LengthAwarePaginator<TKey, TValue> = {
 }
 export type LengthAwarePaginatorInterface<TKey, TValue> = LengthAwarePaginator<TKey, TValue>
 export type Locale = 'en-US' | 'nl-NL'
+export type ManifestData = {
+  name: string | null
+  description: string | null
+  sources: ManifestSourceData[]
+  secrets: ManifestSecretData[]
+}
+export type ManifestSecretData = {
+  name: string
+  description: string | null
+  format: string
+  generate: boolean
+  from: string | null
+  key: string | null
+}
+export type ManifestSourceData = {
+  name: string
+  path: string
+  description: string | null
+}
 export type NetworkData = {
   name: string
   quadlet: string | null
@@ -266,6 +285,8 @@ export type QuadletSourceData = {
     name: string
     content: string
   }[]
+  manifest: ManifestData | null
+  manifest_error: string | null
 }
 export type SecretData = {
   name: string

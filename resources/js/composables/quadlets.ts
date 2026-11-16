@@ -9,6 +9,11 @@ import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue'
 export type SecretInput = { name: string; driver: 'file' | 'pass' | 'shell'; value: string }
 
 /**
+ * A secret Pods fills in on the server from a key of an entered .env secret. It carries no value.
+ */
+export type DerivedSecretInput = { name: string; from: string; key: string }
+
+/**
  * Installs Quadlet files on the host as one application, creating the secrets they need first.
  */
 export function useQuadletInstall(environment: MaybeRefOrGetter<EnvironmentData>) {
@@ -16,12 +21,14 @@ export function useQuadletInstall(environment: MaybeRefOrGetter<EnvironmentData>
     application: string
     files: QuadletFile[]
     secrets: SecretInput[]
+    derived_secrets: DerivedSecretInput[]
     start: boolean
     replace: boolean
   }>({
     application: '',
     files: [],
     secrets: [],
+    derived_secrets: [],
     start: true,
     replace: false,
   })

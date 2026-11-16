@@ -29,7 +29,7 @@ See [docs/architecture.md](docs/architecture.md) for the details.
 
 - **Environments**: add local and remote hosts, with host key pinning and a contract check
 - **Overview**: host stats (CPU, memory, disk, containers), failed units and recent activity
-- **Applications**: list, start, stop, restart, redeploy and remove; containers, Quadlet files, logs and secrets per application; install from Quadlet files or a Git repository, with a check before installing
+- **Applications**: list, start, stop, restart, redeploy and remove; containers, Quadlet files, logs and secrets per application; install from Quadlet files or a Git repository, with a check before installing, reading the repository's [`pods.yml`](#application-manifest-podsyml) when it has one
 - **Containers** and **pods**: list, inspect, logs, stats, start/stop/restart and pruning stopped containers
 - **Images**: pull, remove, prune and check for updates
 - **Volumes** and **networks**: list, remove and prune
@@ -68,6 +68,35 @@ Connect the local host:
 Add remote hosts from **Environments** in the UI, with the same public key.
 
 The development Quadlets in `podman/development/` run Pods itself (Octane, queue, scheduler, Reverb, Vite, Valkey and Mailpit) under Podman.
+
+## Application manifest (pods.yml)
+
+A repository can tell Pods how to install it with a `pods.yml` in its root. When you add an application from Git, Pods reads it to offer the repository's Quadlet directories, fill in the application name, and explain and fill in the secrets the units need. It never changes the Quadlet files: they stay installable with plain `podman quadlet install`, and a repository without `pods.yml` installs as before.
+
+```yaml
+version: 1 # Pods ignores manifests of a version it doesn't know
+name: stry # the default application name
+description: Self-hosted video library
+
+sources: # Quadlet directories to choose from, relative to the root
+    production:
+        path: containers/quadlets/production
+        description: The published image
+
+secrets: # how to ask for the secrets the units use
+    stry-env:
+        description: Your .env file
+        format: dotenv # a text area; other secrets can read keys from it
+    stry-pgsql-password:
+        from: stry-env # filled in from DB_PASSWORD in the .env above
+        key: DB_PASSWORD
+    stry-app-key:
+        generate: true # filled in with a random value
+```
+
+Every key is optional. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
+
+[stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. Setup commands after installing (such as `php artisan app:install`), on-demand services and backup hints are planned; see the [roadmap](docs/roadmap.md).
 
 ## Backups
 
