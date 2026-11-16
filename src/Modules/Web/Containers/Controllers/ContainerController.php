@@ -59,6 +59,7 @@ class ContainerController implements HasMiddleware
             'name' => $container,
             'container' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->container($environment, $container))),
             'logs' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->containerLogs($environment, $container)), 'details'),
+            'stats' => Inertia::optional(fn (): array => $this->fromHost(fn () => $lpod->containerStats($environment, $container))),
             'quadlet' => Inertia::defer(fn (): array => $this->fromHost(fn (): ?QuadletFileData => $this->quadletOf($lpod, $environment, $container)), 'details'),
         ]);
     }
