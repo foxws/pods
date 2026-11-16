@@ -1,0 +1,4 @@
+[Volume]
+# Caddy's certificates and keys, including its local certificate authority.
+VolumeName=pods-proxy-data
+Label=pods-proxy-data

@@ -1,0 +1,44 @@
+[Unit]
+Description=Pods proxy (Caddy)
+# Routes hostnames to the containers of the applications on this host. It
+# reaches them by container name, so it joins each application's network
+# through a drop-in, for example pods-proxy.container.d/stry.conf with
+# Network=stry.network, and loads the application's routes from
+# ~/.config/pods-proxy/sites/*.Caddyfile. Applications themselves only use
+# ExposeHostPort= and keep working without the proxy.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Container]
+Image=docker.io/library/caddy:2
+AutoUpdate=registry
+# The configuration lives on the host, so routes can be added without
+# reinstalling the proxy. The first start writes a default Caddyfile.
+Volume=%h/.config/pods-proxy:/etc/caddy:rw,z
+Volume=pods-proxy-data.volume:/data:rw,Z
+Volume=pods-proxy-config.volume:/config:rw,Z
+# Ports 80 and 443 on the host. On a host shared with other users, publish
+# other ports with a drop-in instead, such as
+# pods-proxy.container.d/ports.conf:
+#   [Container]
+#   PublishPort=
+#   PublishPort=28080:80
+#   PublishPort=28443:443
+PublishPort=80:80
+PublishPort=443:443
+PublishPort=443:443/udp
+HealthCmd=wget -q -O /dev/null http://127.0.0.1:2019/config/
+HealthInterval=1m
+HealthTimeout=5s
+HealthRetries=3
+
+[Service]
+ExecStartPre=/usr/bin/mkdir -p %h/.config/pods-proxy/sites
+ExecStartPre=/bin/sh -c 'test -f %h/.config/pods-proxy/Caddyfile || printf "%%s\\n" "# Pods proxy. Each application adds its routes in sites/." "{" "    servers {" "        trusted_proxies static private_ranges" "    }" "}" "" "import sites/*.Caddyfile" > %h/.config/pods-proxy/Caddyfile'
+Restart=always
+RestartSec=5
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target
