@@ -22,8 +22,8 @@ class QuadletSourceData extends Data
     public function __construct(
         public ?string $commit,
         public array $files,
-        public ?ManifestData $manifest = null,
-        public ?string $manifest_error = null,
+        public ?ManifestData $manifest,
+        public ?string $manifest_error,
     ) {}
 
     /**

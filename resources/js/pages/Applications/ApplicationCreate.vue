@@ -5,7 +5,7 @@ import HostError from '@/components/Environments/HostError.vue'
 import QuadletCheckStatus from '@/components/Quadlets/QuadletCheckStatus.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
-import { useQuadletCheck, useQuadletInstall, type SecretInput } from '@/composables/quadlets'
+import { useQuadletCheck, useQuadletInstall, type DerivedSecretInput, type SecretInput } from '@/composables/quadlets'
 import type {
   EnvironmentData,
   HostProperty,
@@ -15,7 +15,6 @@ import type {
   SecretData,
 } from '@/types'
 import { pluralize } from '@/utils/application'
-import { parseDotenv } from '@/utils/dotenv'
 import { describeQuadlet, isQuadletFile, secretsIn, type QuadletFile } from '@/utils/quadlet'
 import { Head, useHttp } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TabsItem } from '@nuxt/ui'
@@ -185,38 +184,19 @@ const generate = (name: string): void => {
 }
 
 /**
- * Values the manifest takes from a key of a dotenv secret, such as DB_PASSWORD from the app's .env.
- * A value is only filled in while it's empty or still the one filled in before, so an edit sticks.
+ * Secrets the manifest fills in from a key of a .env secret that's entered here, such as DB_PASSWORD
+ * from the app's .env. Pods reads the key on the server when installing, the way Laravel reads .env.
+ * Entering a value yourself replaces it.
  */
-const derived = computed<Record<string, string>>(() => {
-  const result: Record<string, string> = {}
-
-  for (const secret of manifest.value?.secrets ?? []) {
-    if (!secret.from || !secret.key) {
-      continue
-    }
-
-    const value = parseDotenv(values[secret.from] ?? '')[secret.key]
-
-    if (value !== undefined) {
-      result[secret.name] = value
-    }
-  }
-
-  return result
-})
-
-watch(derived, (next, previous) => {
-  for (const [name, value] of Object.entries(next)) {
-    if (!values[name] || values[name] === previous?.[name]) {
-      values[name] = value
-    }
-  }
-})
+const isFilledIn = (secret: (typeof missing.value)[number]): boolean =>
+  !!secret.hint?.from &&
+  !!secret.hint.key &&
+  !values[secret.name] &&
+  missing.value.some((other) => other.name === secret.hint?.from)
 
 const application = reactive({ name: '', start: true, replace: false })
 
-const unfilled = computed(() => missing.value.filter((secret) => !values[secret.name]))
+const unfilled = computed(() => missing.value.filter((secret) => !values[secret.name] && !isFilledIn(secret)))
 
 const { result, checking } = useQuadletCheck(() => props.environment, files)
 const { form, install } = useQuadletInstall(() => props.environment)
@@ -226,10 +206,13 @@ const submit = (): void => {
   form.files = files.value
   form.start = application.start
   form.replace = application.replace
-  form.secrets = missing.value.map<SecretInput>((secret) => ({
+  form.secrets = missing.value
+    .filter((secret) => !isFilledIn(secret))
+    .map<SecretInput>((secret) => ({ name: secret.name, driver: 'file', value: values[secret.name] ?? '' }))
+  form.derived_secrets = missing.value.filter(isFilledIn).map<DerivedSecretInput>((secret) => ({
     name: secret.name,
-    driver: 'file',
-    value: values[secret.name] ?? '',
+    from: secret.hint?.from ?? '',
+    key: secret.hint?.key ?? '',
   }))
   install(() => {
     for (const key of Object.keys(values)) {
@@ -604,9 +587,9 @@ const serverErrors = computed(() =>
                     class="text-xs text-muted"
                   >
                     {{
-                      derived[secret.name] !== undefined
-                        ? `Filled in from ${secret.hint.key} in ${secret.hint.from}`
-                        : `Filled in from ${secret.hint.key} once you enter ${secret.hint.from}`
+                      missing.some((other) => other.name === secret.hint?.from)
+                        ? `Filled in from ${secret.hint.key} in ${secret.hint.from} unless you enter a value`
+                        : `${secret.hint.from} already exists, so enter it yourself`
                     }}
                   </span>
                 </span>
@@ -631,7 +614,7 @@ const serverErrors = computed(() =>
                     v-model="values[secret.name]"
                     type="password"
                     autocomplete="off"
-                    placeholder="Enter a value"
+                    :placeholder="isFilledIn(secret) ? `From ${secret.hint?.key}` : 'Enter a value'"
                     :aria-label="`Value of ${secret.name}`"
                     class="flex-1 font-mono"
                   />

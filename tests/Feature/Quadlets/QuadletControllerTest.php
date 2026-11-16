@@ -54,6 +54,75 @@ it('creates the secrets the files need before installing, with the values on std
     }
 });
 
+it('fills secrets in from a key of an entered .env file', function () {
+    $lpod = fakeLpod();
+    $env = "APP_NAME=stry\nDB_PASSWORD=\"correct horse # battery\"\nDB_USERNAME=\${APP_NAME}\n";
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'stry',
+        'files' => $this->files,
+        'secrets' => [['name' => 'stry-env', 'driver' => 'file', 'value' => $env]],
+        'derived_secrets' => [
+            ['name' => 'stry-pgsql-password', 'from' => 'stry-env', 'key' => 'DB_PASSWORD'],
+            ['name' => 'stry-pgsql-user', 'from' => 'stry-env', 'key' => 'DB_USERNAME'],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    $created = collect($lpod->recorded())
+        ->filter(fn (array $call) => $call['arguments'][0] === 'secret')
+        ->mapWithKeys(fn (array $call) => [$call['arguments'][2] => $call['input']]);
+
+    expect($created->all())->toBe([
+        'stry-env' => $env,
+        'stry-pgsql-password' => 'correct horse # battery',
+        'stry-pgsql-user' => 'stry',
+    ]);
+
+    foreach ($lpod->recorded() as $call) {
+        expect(implode(' ', $call['arguments']))->not->toContain('correct horse');
+    }
+});
+
+it('refuses to fill a secret in when the .env file lacks its key', function (array $derived, string $field) {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->post(action([QuadletController::class, 'store'], $this->environment), [
+            'application' => 'stry',
+            'files' => $this->files,
+            'secrets' => [
+                ['name' => 'stry-env', 'driver' => 'file', 'value' => "DB_PASSWORD=secret-value\nDB_HOST=\n"],
+                ['name' => 'stry-typesense-api-key', 'driver' => 'file', 'value' => 'typed-by-hand'],
+            ],
+            'derived_secrets' => [$derived],
+        ])
+        ->assertSessionHasErrors($field);
+
+    expect(session('errors')->first($field))->not->toContain('secret-value');
+    $lpod->assertNothingRan();
+})->with([
+    'missing key' => [['name' => 'stry-pgsql-user', 'from' => 'stry-env', 'key' => 'DB_USERNAME'], 'derived_secrets.0.key'],
+    'empty key' => [['name' => 'stry-pgsql-host', 'from' => 'stry-env', 'key' => 'DB_HOST'], 'derived_secrets.0.key'],
+    'source not entered' => [['name' => 'stry-pgsql-user', 'from' => 'other-env', 'key' => 'DB_USERNAME'], 'derived_secrets.0.from'],
+    'value entered too' => [['name' => 'stry-typesense-api-key', 'from' => 'stry-env', 'key' => 'DB_PASSWORD'], 'derived_secrets.0.name'],
+]);
+
+it('refuses a source that is not a valid .env file without echoing it', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->post(action([QuadletController::class, 'store'], $this->environment), [
+            'application' => 'stry',
+            'files' => $this->files,
+            'secrets' => [['name' => 'stry-env', 'driver' => 'file', 'value' => "DB_PASSWORD=has secret-value spaces\n"]],
+            'derived_secrets' => [['name' => 'stry-pgsql-password', 'from' => 'stry-env', 'key' => 'DB_PASSWORD']],
+        ])
+        ->assertSessionHasErrors('derived_secrets.0.from');
+
+    expect(session('errors')->first('derived_secrets.0.from'))->not->toContain('secret-value');
+    $lpod->assertNothingRan();
+});
+
 it('does not keep secret values as old input after a failed validation', function () {
     fakeLpod();
 
