@@ -2,10 +2,14 @@
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import type { HostProperty, QuadletCheckData } from '@/types'
 
-defineProps<{
-  result: HostProperty<QuadletCheckData> | null
-  checking: boolean
-}>()
+withDefaults(
+  defineProps<{
+    result: HostProperty<QuadletCheckData> | null
+    checking: boolean
+    showErrors?: boolean
+  }>(),
+  { showErrors: true },
+)
 </script>
 
 <template>
@@ -33,8 +37,8 @@ defineProps<{
     />
 
     <ul
-      v-if="result?.data?.errors.length"
-      class="flex flex-col gap-1 font-mono text-xs text-error"
+      v-if="showErrors && result?.data?.errors.length"
+      class="flex max-h-64 flex-col gap-1 overflow-y-auto font-mono text-xs break-all text-error"
     >
       <li
         v-for="error in result.data.errors"

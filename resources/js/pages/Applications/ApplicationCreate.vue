@@ -329,12 +329,13 @@ const serverErrors = computed(() =>
 
               <div
                 v-if="source === 'git'"
-                class="grid gap-4 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end"
+                class="grid gap-4 sm:grid-cols-2"
                 @keydown.enter.prevent="fetchRepository"
               >
                 <UFormField
                   label="Repository URL"
                   :error="gitErrors.repository"
+                  class="sm:col-span-2"
                 >
                   <UInput
                     v-model="git.repository"
@@ -353,6 +354,7 @@ const serverErrors = computed(() =>
                 </UFormField>
                 <UFormField
                   label="Directory"
+                  hint="Optional"
                   :error="gitErrors.path"
                 >
                   <UInput
@@ -362,11 +364,12 @@ const serverErrors = computed(() =>
                   />
                 </UFormField>
                 <UButton
-                  label="Fetch"
+                  label="Fetch repository"
                   icon="i-lucide-git-pull-request-arrow"
-                  color="neutral"
-                  variant="outline"
+                  size="lg"
+                  block
                   :loading="isFetching"
+                  class="sm:col-span-2"
                   @click="fetchRepository"
                 />
               </div>
@@ -693,6 +696,7 @@ const serverErrors = computed(() =>
                 <QuadletCheckStatus
                   :result="result"
                   :checking="checking"
+                  :show-errors="false"
                 />
               </div>
             </template>
@@ -707,6 +711,18 @@ const serverErrors = computed(() =>
               <dt class="text-muted">Runs on</dt>
               <dd>{{ environment.hostname ?? environment.host }}</dd>
             </dl>
+
+            <ul
+              v-if="result?.data?.errors.length"
+              class="mt-4 flex max-h-64 flex-col gap-1 overflow-y-auto border-t border-default pt-4 font-mono text-xs break-all text-error"
+            >
+              <li
+                v-for="error in result.data.errors"
+                :key="error"
+              >
+                {{ error }}
+              </li>
+            </ul>
 
             <template #footer>
               <div class="flex flex-col gap-3">
