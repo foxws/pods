@@ -49,7 +49,7 @@ Open questions:
 
 - **Sleeping applications.** A route straight to `systemd-stry-reverb:6001` gets a 502 while an on-demand app sleeps, because its services sleep with it. Today the app's own Caddy sits behind the on-demand socket, so any hostname wakes it. Most traffic to Reverb or S3 comes from a page the app just served, so the app is awake then, but opening Mailpit or the RustFS console on its own wouldn't be. Options: send the app's main hostname through its socket (`127.0.0.1:8000`) and the others straight to their containers; let a route say `wake: true` to go through the socket, with the app forwarding it; or have Caddy start the app's socket service on a 502 and retry.
 - **The proxy itself** must not sleep, so it's always on, unlike the applications behind it.
-- **Pods' own hostname.** Once Pods ships as Quadlets (see Packaging below), its own route can go through the same proxy.
+- **Pods' own hostname.** `install.sh --proxy --host NAME` routes Pods itself through the proxy.
 - **stry** keeps `Support\Octane\CaddySites` until the proxy exists, then drops it in the same change that adds `routes` to its `pods.yml`.
 
 ## More of pods.yml
@@ -72,5 +72,5 @@ Pods installs Quadlets from Git. Development setups, such as stry's `containers/
 - **Streaming logs** for applications, containers and the journal, instead of polling.
 - **An application catalog** of repositories with a `pods.yml`, installable in a few clicks.
 - **Application metadata.** The name and description from `pods.yml` (and a URL and icon) shown next to each installed application.
-- **Packaging.** Pods ships as its own plain, socket-activated Quadlets (like `cockpit.socket`), with SQLite on a volume and the database queue, so it can sleep when nobody uses it. An install script sets up the units, the SSH key and the owner.
+- **Packaging.** `install.sh` installs Pods as plain Quadlets (`containers/quadlets/production`) with SQLite on a volume. Next: socket activation (like `cockpit.socket`), so Pods sleeps when nobody uses it, and pinned releases of Pods and lpod instead of `main`.
 - **Compose to Quadlet.** A converter, possibly AI-assisted. Pods itself stays Quadlet-only: no Docker and no Podman Compose.
