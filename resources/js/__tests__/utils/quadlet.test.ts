@@ -1,4 +1,4 @@
-import { describeQuadlet, isQuadletFile, renderQuadlet, secretsIn } from '@/utils/quadlet'
+import { describeQuadlet, isQuadletFile, renderQuadlet, secretsIn, selectedByDefault } from '@/utils/quadlet'
 import { expect, test } from 'vite-plus/test'
 
 test('writes sections and skips empty values and sections', () => {
@@ -32,6 +32,22 @@ test('gives the names of the referenced secrets', () => {
 test('only accepts quadlet extensions', () => {
   expect(isQuadletFile('nextcloud.pod')).toBe(true)
   expect(isQuadletFile('README.md')).toBe(false)
+  expect(isQuadletFile('pods.yml')).toBe(false)
+})
+
+test('only ticks the yaml and env files that a unit refers to', () => {
+  expect(
+    selectedByDefault([
+      { name: 'app.kube', content: '[Kube]\nYaml=app.yaml\n' },
+      { name: 'app.yaml', content: 'kind: Pod\n' },
+      { name: 'web.container', content: '[Container]\nEnvironmentFile=web.env\n' },
+      { name: 'web.env', content: 'A=1\n' },
+      { name: 'pnpm-lock.yaml', content: 'lockfileVersion: 9\n' },
+      { name: 'other.env', content: 'B=2\n' },
+      { name: 'pods.yml', content: 'version: 1\n' },
+      { name: 'README.md', content: '# App\n' },
+    ]),
+  ).toEqual(['app.kube', 'app.yaml', 'web.container', 'web.env'])
 })
 
 test('names the image of a container and the ports of a pod', () => {

@@ -15,7 +15,14 @@ import type {
   SecretData,
 } from '@/types'
 import { pluralize } from '@/utils/application'
-import { describeQuadlet, isQuadletFile, secretsIn, type QuadletFile } from '@/utils/quadlet'
+import {
+  describeQuadlet,
+  isQuadletFile,
+  manifestFile,
+  secretsIn,
+  selectedByDefault,
+  type QuadletFile,
+} from '@/utils/quadlet'
 import { Head, useHttp } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TabsItem } from '@nuxt/ui'
 import { computed, reactive, ref, watch } from 'vue'
@@ -117,7 +124,7 @@ const chooseSource = (name: string | undefined): void => {
 
 const showFiles = (files: QuadletFile[]): void => {
   available.value = files
-  selected.value = files.filter((file) => isQuadletFile(file.name)).map((file) => file.name)
+  selected.value = selectedByDefault(files)
 }
 
 const uploaded = ref<File[] | null>(null)
@@ -496,7 +503,11 @@ const serverErrors = computed(() =>
                   <span class="flex min-w-0 flex-1 flex-col">
                     <span class="font-mono text-sm text-highlighted">{{ file.name }}</span>
                     <span class="truncate font-mono text-xs text-muted">{{
-                      isQuadletFile(file.name) ? describeQuadlet(file) : 'not a Quadlet file'
+                      isQuadletFile(file.name)
+                        ? describeQuadlet(file)
+                        : file.name === manifestFile
+                          ? 'Pods manifest'
+                          : 'not a Quadlet file'
                     }}</span>
                   </span>
                   <UBadge
