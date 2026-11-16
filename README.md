@@ -75,7 +75,7 @@ php artisan db:seed
 composer dev
 ```
 
-The seeder creates `administrator@example.com` with the password `password`. Pods has a single owner for now; use `php artisan users:create` instead of the seeder outside of development.
+In development (`APP_ENV=local`), the seeder creates `administrator@example.com` with the password `password`; elsewhere it only creates the roles. Pods has a single owner for now; use `php artisan users:create` instead of the seeder outside of development.
 
 Connect the local host:
 

@@ -63,8 +63,7 @@ fi
 # tables first.
 if [[ "${APP_COMMAND}" == *octane:frankenphp* ]]; then
     log "INFO" "Migrating the database..."
-    ${PHP_CLI} migrate --force --no-interaction
-    ${PHP_CLI} db:seed --force --no-interaction --class='Database\Seeders\PermissionSeeder'
+    ${PHP_CLI} migrate --seed --force --no-interaction
 fi
 
 if [ "${APP_OPTIMIZE:-true}" = "true" ]; then
