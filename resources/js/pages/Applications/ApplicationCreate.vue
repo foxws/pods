@@ -6,8 +6,16 @@ import QuadletCheckStatus from '@/components/Quadlets/QuadletCheckStatus.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useQuadletCheck, useQuadletInstall, type SecretInput } from '@/composables/quadlets'
-import type { EnvironmentData, HostProperty, QuadletSourceData, SecretData } from '@/types'
+import type {
+  EnvironmentData,
+  HostProperty,
+  ManifestData,
+  ManifestSourceData,
+  QuadletSourceData,
+  SecretData,
+} from '@/types'
 import { pluralize } from '@/utils/application'
+import { parseDotenv } from '@/utils/dotenv'
 import { describeQuadlet, isQuadletFile, secretsIn, type QuadletFile } from '@/utils/quadlet'
 import { Head, useHttp } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TabsItem } from '@nuxt/ui'
@@ -30,6 +38,8 @@ const sources: TabsItem[] = [
 const available = ref<QuadletFile[]>([])
 const selected = ref<string[]>([])
 const commit = ref<string | null>(null)
+const manifest = ref<ManifestData | null>(null)
+const manifestError = ref<string | null>(null)
 
 const fetcher = useHttp<{ repository: string; reference: string; path: string }, HostProperty<QuadletSourceData>>({
   repository: '',
@@ -58,7 +68,20 @@ const fetchRepository = async (): Promise<void> => {
     }
 
     commit.value = response.data.commit
+    manifest.value = response.data.manifest
+    manifestError.value = response.data.manifest_error
+    chosenSource.value = activeSource.value?.name
     showFiles(response.data.files)
+
+    for (const secret of manifest.value?.secrets ?? []) {
+      if (secret.generate && !values[secret.name]) {
+        generate(secret.name)
+      }
+    }
+
+    if (!application.name && manifest.value?.name) {
+      application.name = manifest.value.name
+    }
 
     if (!application.name && git.path) {
       application.name = git.path.replace(/\/+$/, '').split('/').pop() ?? ''
@@ -66,6 +89,31 @@ const fetchRepository = async (): Promise<void> => {
   } catch {
     fetchError.value = fetcher.hasErrors ? null : 'The repository could not be fetched.'
   }
+}
+
+const activeSource = computed<ManifestSourceData | null>(
+  () => manifest.value?.sources.find((choice) => choice.path === git.path.replace(/^\/+|\/+$/g, '')) ?? null,
+)
+
+const chosenSource = ref<string | undefined>(undefined)
+
+const sourceChoices = computed(() =>
+  (manifest.value?.sources ?? []).map((choice) => ({
+    label: choice.name,
+    description: choice.description ?? choice.path,
+    value: choice.name,
+  })),
+)
+
+const chooseSource = (name: string | undefined): void => {
+  const choice = manifest.value?.sources.find((item) => item.name === name)
+
+  if (!choice || choice.path === activeSource.value?.path) {
+    return
+  }
+
+  git.path = choice.path
+  fetchRepository()
 }
 
 const showFiles = (files: QuadletFile[]): void => {
@@ -86,6 +134,8 @@ watch(source, () => {
   available.value = []
   selected.value = []
   commit.value = null
+  manifest.value = null
+  manifestError.value = null
 })
 
 const files = computed<QuadletFile[]>(() => {
@@ -116,7 +166,12 @@ const referenced = computed(() => {
     }
   }
 
-  return [...usage.entries()].map(([name, usedIn]) => ({ name, usedIn, existing: existing.value.get(name) ?? null }))
+  return [...usage.entries()].map(([name, usedIn]) => ({
+    name,
+    usedIn,
+    existing: existing.value.get(name) ?? null,
+    hint: manifest.value?.secrets.find((secret) => secret.name === name) ?? null,
+  }))
 })
 
 const missing = computed(() => referenced.value.filter((secret) => !secret.existing))
@@ -128,6 +183,36 @@ const generate = (name: string): void => {
 
   values[name] = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '')
 }
+
+/**
+ * Values the manifest takes from a key of a dotenv secret, such as DB_PASSWORD from the app's .env.
+ * A value is only filled in while it's empty or still the one filled in before, so an edit sticks.
+ */
+const derived = computed<Record<string, string>>(() => {
+  const result: Record<string, string> = {}
+
+  for (const secret of manifest.value?.secrets ?? []) {
+    if (!secret.from || !secret.key) {
+      continue
+    }
+
+    const value = parseDotenv(values[secret.from] ?? '')[secret.key]
+
+    if (value !== undefined) {
+      result[secret.name] = value
+    }
+  }
+
+  return result
+})
+
+watch(derived, (next, previous) => {
+  for (const [name, value] of Object.entries(next)) {
+    if (!values[name] || values[name] === previous?.[name]) {
+      values[name] = value
+    }
+  }
+})
 
 const application = reactive({ name: '', start: true, replace: false })
 
@@ -348,6 +433,48 @@ const serverErrors = computed(() =>
                 Fetched commit <span class="font-mono text-highlighted">{{ commit }}</span> ·
                 {{ pluralize(available.length, 'file') }} found
               </p>
+
+              <UAlert
+                v-if="manifestError"
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-file-warning"
+                :title="manifestError"
+              />
+
+              <div
+                v-if="manifest"
+                class="flex flex-col gap-3"
+              >
+                <p class="flex items-center gap-2 text-sm">
+                  <UIcon
+                    name="i-lucide-file-cog"
+                    class="size-4 text-muted"
+                  />
+                  <span class="font-mono text-highlighted">pods.yml</span>
+                  <span
+                    v-if="manifest.description"
+                    class="text-muted"
+                    >· {{ manifest.description }}</span
+                  >
+                </p>
+                <UFormField
+                  v-if="sourceChoices.length"
+                  label="Source"
+                  :description="
+                    activeSource ? undefined : 'Choose which of the repository\'s Quadlet directories to install.'
+                  "
+                >
+                  <URadioGroup
+                    v-model="chosenSource"
+                    :items="sourceChoices"
+                    orientation="horizontal"
+                    variant="table"
+                    :disabled="isFetching"
+                    @update:model-value="chooseSource"
+                  />
+                </UFormField>
+              </div>
             </div>
           </UCard>
 
@@ -460,6 +587,11 @@ const serverErrors = computed(() =>
                     />
                     {{ secret.name }}
                   </span>
+                  <span
+                    v-if="secret.hint?.description"
+                    class="text-sm text-toned"
+                    >{{ secret.hint.description }}</span
+                  >
                   <span class="truncate font-mono text-xs text-muted">
                     {{
                       secret.existing
@@ -467,9 +599,32 @@ const serverErrors = computed(() =>
                         : secret.usedIn.join(', ')
                     }}
                   </span>
+                  <span
+                    v-if="!secret.existing && secret.hint?.from"
+                    class="text-xs text-muted"
+                  >
+                    {{
+                      derived[secret.name] !== undefined
+                        ? `Filled in from ${secret.hint.key} in ${secret.hint.from}`
+                        : `Filled in from ${secret.hint.key} once you enter ${secret.hint.from}`
+                    }}
+                  </span>
                 </span>
+                <UTextarea
+                  v-if="!secret.existing && secret.hint?.format === 'dotenv'"
+                  v-model="values[secret.name]"
+                  :rows="4"
+                  autoresize
+                  :maxrows="12"
+                  spellcheck="false"
+                  autocomplete="off"
+                  placeholder="Paste the .env file"
+                  :aria-label="`Value of ${secret.name}`"
+                  class="font-mono sm:w-80"
+                  :ui="{ base: 'text-xs leading-5' }"
+                />
                 <div
-                  v-if="!secret.existing"
+                  v-else-if="!secret.existing"
                   class="flex gap-2 sm:w-80"
                 >
                   <UInput
