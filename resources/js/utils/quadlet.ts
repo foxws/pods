@@ -48,8 +48,37 @@ export const quadletExtensions = [
   'yml',
 ]
 
+/**
+ * The repository manifest Pods reads when fetching from Git. It's never installed.
+ */
+export const manifestFile = 'pods.yml'
+
+/**
+ * Files that units use, rather than units themselves: Kubernetes YAML for a .kube unit and
+ * environment files. A repository root has plenty of unrelated ones, such as pnpm-lock.yaml.
+ */
+const supportExtensions = ['env', 'yaml', 'yml']
+
+const extensionOf = (name: string): string => name.split('.').pop() ?? ''
+
 export function isQuadletFile(name: string): boolean {
-  return quadletExtensions.includes(name.split('.').pop() ?? '')
+  return name !== manifestFile && quadletExtensions.includes(extensionOf(name))
+}
+
+/**
+ * The files to tick when they're fetched or uploaded: every unit, and a YAML or .env file only
+ * when one of those units refers to it by name.
+ */
+export function selectedByDefault(files: QuadletFile[]): string[] {
+  const units = files.filter((file) => isQuadletFile(file.name) && !supportExtensions.includes(extensionOf(file.name)))
+
+  return files
+    .filter((file) => isQuadletFile(file.name))
+    .filter(
+      (file) =>
+        !supportExtensions.includes(extensionOf(file.name)) || units.some((unit) => unit.content.includes(file.name)),
+    )
+    .map((file) => file.name)
 }
 
 /**
