@@ -83,7 +83,8 @@ it('shows an application with its containers, files and journal', function () {
                 ->has('application.data.items', 4)
                 ->where('application.data.secrets', ['immich-db-password'])
                 ->where('files.data.0.name', 'immich-server.container')
-                ->has('logs.data', 5)));
+                ->has('logs.data', 5)
+                ->has('secrets.data', 6)));
 
     $lpod->assertRan(['immich', 'status', '--json']);
 });

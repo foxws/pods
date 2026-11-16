@@ -51,6 +51,7 @@ class ApplicationController implements HasMiddleware
             'application' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->application($environment, $application))),
             'files' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->files($environment, $application)), 'details'),
             'logs' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->logs($environment, $application)), 'details'),
+            'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment)), 'details'),
         ]);
     }
 
