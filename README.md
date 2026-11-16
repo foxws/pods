@@ -98,6 +98,32 @@ Every key is optional. Secret values stay in the browser until you install, and 
 
 [stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. Setup commands after installing (such as `php artisan app:install`), on-demand services and backup hints are planned; see the [roadmap](docs/roadmap.md).
 
+## Proxy
+
+`containers/proxy/` is an optional reverse proxy for a host: Caddy, as plain Quadlet files. It routes hostnames to the containers of the applications on that host, so the applications only need `ExposeHostPort=` and never clash over host ports. Install it like any application, from this repository with the directory `containers/proxy` and the name `pods-proxy`, or by hand:
+
+```bash
+podman quadlet install --application=pods-proxy containers/proxy
+systemctl --user start pods-proxy
+```
+
+The first start writes `~/.config/pods-proxy/Caddyfile`, which loads every file in `~/.config/pods-proxy/sites/`. To route an application:
+
+1. Copy its routes to `~/.config/pods-proxy/sites/`, for example `stry.Caddyfile` from stry's `containers/proxy/`.
+2. Let the proxy join the application's network, and give it the hostnames, with a drop-in such as `~/.config/containers/systemd/pods-proxy.container.d/stry.conf`:
+
+    ```ini
+    [Container]
+    Network=stry.network
+    Environment=STRY_HOST=stry.example.com
+    ```
+
+3. Run `systemctl --user daemon-reload` and `systemctl --user restart pods-proxy`. Only route changes? `podman exec systemd-pods-proxy caddy reload --config /etc/caddy/Caddyfile` applies them without a restart.
+
+It publishes ports 80 and 443 and gets certificates from Let's Encrypt. On a host shared with other users, each user runs their own proxy on other ports, with a drop-in such as `pods-proxy.container.d/ports.conf` (`PublishPort=` to clear the defaults, then `PublishPort=28080:80` and `PublishPort=28443:443`), and the host's main proxy forwards those users' hostnames to them. For local names, add `cert_issuer internal` (or `local_certs`) to the global options in the Caddyfile; Caddy's root certificate is then in the `pods-proxy-data` volume.
+
+Pods doesn't manage the proxy yet: installing it from the settings of a host, and adding routes from an application's `pods.yml`, are on the [roadmap](docs/roadmap.md#proxy).
+
 ## Backups
 
 Pods doesn't back up anything yet. Until it does, back up your volumes on the host, for example:

@@ -1,0 +1,4 @@
+[Volume]
+# Caddy's saved runtime configuration.
+VolumeName=pods-proxy-config
+Label=pods-proxy-config
