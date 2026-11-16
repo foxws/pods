@@ -2,8 +2,10 @@
 import { show as applicationShow } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { create, show } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import ContainerOperationController from '@/actions/Modules/Web/Containers/Controllers/ContainerOperationController'
+import ContainerPruneController from '@/actions/Modules/Web/Containers/Controllers/ContainerPruneController'
 import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
+import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
 import DataTable, { type DataTableFilter } from '@/components/Ui/DataTable.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import RowActions from '@/components/Ui/RowActions.vue'
@@ -13,11 +15,12 @@ import StateBadge from '@/components/Ui/StateBadge.vue'
 import { useHostPolling } from '@/composables/applications'
 import { useHostAction } from '@/composables/hostActions'
 import type { ContainerOperation, EnvironmentData, HostContainerData, HostProperty, HostStatsData } from '@/types'
+import { pluralize } from '@/utils/application'
 import { containerState, shortImage } from '@/utils/containers'
 import { formatBytes, formatPercent, formatPort, formatUptime } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -29,6 +32,11 @@ const list = computed(() => props.containers?.data ?? [])
 
 const running = computed(() => list.value.filter((container) => container.state === 'running'))
 const unmanaged = computed(() => list.value.filter((container) => !container.quadlet))
+const stopped = computed(() =>
+  list.value.filter((container) => ['exited', 'stopped', 'created'].includes(container.state)),
+)
+
+const isPruning = ref(false)
 
 const cpu = computed(() => running.value.reduce((total, container) => total + (container.cpu ?? 0), 0))
 const memory = computed(() => running.value.reduce((total, container) => total + (container.memory ?? 0), 0))
@@ -57,7 +65,7 @@ const columns: TableColumn<HostContainerData>[] = [
   { id: 'actions', header: '' },
 ]
 
-const { send } = useHostAction()
+const { send, processing } = useHostAction()
 
 const operate = (container: HostContainerData, operation: ContainerOperation): void =>
   send('post', ContainerOperationController.url([props.environment.id, container.name, operation]))
@@ -108,6 +116,14 @@ const searchText = (container: HostContainerData): string =>
         </template>
 
         <template #actions>
+          <UButton
+            icon="i-lucide-trash-2"
+            label="Prune stopped"
+            color="neutral"
+            variant="outline"
+            :disabled="!stopped.length"
+            @click="isPruning = true"
+          />
           <UButton
             icon="i-lucide-plus"
             label="Add container"
@@ -254,6 +270,29 @@ const searchText = (container: HostContainerData): string =>
           />
         </template>
       </DataTable>
+
+      <ConfirmModal
+        v-model:open="isPruning"
+        title="Prune stopped containers"
+        description="Removes every stopped container. Quadlet recreates its containers when their units start, so only the ones started with podman run are gone for good."
+        :confirm-label="`Prune ${pluralize(stopped.length, 'container')}`"
+        :processing="processing"
+        @confirm="(close) => send('post', ContainerPruneController.url(environment.id), {}, close)"
+      >
+        <ul class="flex flex-col divide-y divide-default rounded-lg border border-default text-sm">
+          <li
+            v-for="container in stopped"
+            :key="container.id"
+            class="flex items-center justify-between gap-3 px-3 py-2"
+          >
+            <span class="flex min-w-0 flex-col">
+              <span class="truncate font-mono text-highlighted">{{ container.name }}</span>
+              <span class="truncate text-xs text-muted">{{ shortImage(container.image) }}</span>
+            </span>
+            <span class="shrink-0 text-xs text-muted">{{ container.quadlet ? 'Quadlet' : 'podman run' }}</span>
+          </li>
+        </ul>
+      </ConfirmModal>
     </template>
   </UDashboardPanel>
 </template>

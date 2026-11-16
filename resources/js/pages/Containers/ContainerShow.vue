@@ -16,6 +16,7 @@ import { useHostAction } from '@/composables/hostActions'
 import type {
   ContainerDetailData,
   ContainerOperation,
+  ContainerStatsData,
   EnvironmentData,
   HostProperty,
   JournalEntryData,
@@ -26,7 +27,7 @@ import { formatBytes, formatPercent, formatPort, formatRelative, formatUptime } 
 import { Head, Link, router } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
 import { useIntervalFn } from '@vueuse/core'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -34,6 +35,7 @@ const props = defineProps<{
   container?: HostProperty<ContainerDetailData>
   logs?: HostProperty<JournalEntryData[]>
   quadlet?: HostProperty<QuadletFileData | null>
+  stats?: HostProperty<ContainerStatsData>
 }>()
 
 const detail = computed(() => props.container?.data ?? null)
@@ -48,6 +50,7 @@ const tab = ref('overview')
 const tabs = computed<TabsItem[]>(() => [
   { label: 'Overview', value: 'overview', icon: 'i-lucide-layout-dashboard' },
   { label: 'Logs', value: 'logs', icon: 'i-lucide-scroll-text' },
+  ...(isRunning.value ? [{ label: 'Stats', value: 'stats', icon: 'i-lucide-activity' }] : []),
   ...(summary.value?.quadlet ? [{ label: 'Quadlet', value: 'quadlet', icon: 'i-lucide-file-code' }] : []),
 ])
 
@@ -77,6 +80,52 @@ const toggleFollowing = (): void => {
 }
 
 const isEditingQuadlet = ref(false)
+
+/**
+ * The sample before the current one, to turn the I/O totals into rates.
+ */
+const previousStats = ref<ContainerStatsData | null>(null)
+
+watch(
+  () => props.stats?.data,
+  (_current, previous) => {
+    previousStats.value = previous ?? null
+  },
+)
+
+const { pause: stopSampling, resume: startSampling } = useIntervalFn(() => router.reload({ only: ['stats'] }), 5000, {
+  immediate: false,
+  immediateCallback: true,
+})
+
+watch(
+  tab,
+  (current) => {
+    if (current === 'stats') {
+      startSampling()
+
+      return
+    }
+
+    stopSampling()
+  },
+  { immediate: true },
+)
+
+const rate = (key: 'net_in' | 'net_out' | 'block_in' | 'block_out'): number | null => {
+  const current = props.stats?.data
+  const previous = previousStats.value
+
+  if (!current || !previous || current[key] === null || previous[key] === null) {
+    return null
+  }
+
+  const seconds = (Date.parse(current.sampled_at ?? '') - Date.parse(previous.sampled_at ?? '')) / 1000
+
+  return seconds > 0 ? Math.max(0, ((current[key] as number) - (previous[key] as number)) / seconds) : null
+}
+
+const formatRate = (bytes: number | null): string => (bytes === null ? '–' : `${formatBytes(bytes)}/s`)
 
 const breadcrumb = computed<BreadcrumbItem[]>(() => [
   { label: 'Containers', to: containersIndex.url(props.environment.id) },
@@ -475,6 +524,68 @@ const memoryHint = computed(() =>
           class="m-4 h-64"
         />
       </UCard>
+
+      <div
+        v-else-if="tab === 'stats'"
+        class="flex flex-col gap-4"
+      >
+        <HostError
+          v-if="stats?.error"
+          :error="stats.error"
+        />
+
+        <StatGrid
+          v-else
+          :loading="!stats?.data"
+        >
+          <template v-if="stats?.data">
+            <StatCard
+              label="CPU"
+              :value="formatPercent(stats.data.cpu)"
+            />
+            <StatCard
+              label="Memory"
+              :value="formatBytes(stats.data.memory)"
+              :hint="stats.data.memory_limit ? `of ${formatBytes(stats.data.memory_limit)}` : 'no limit'"
+              :progress="
+                stats.data.memory_limit && stats.data.memory
+                  ? Math.round((stats.data.memory / stats.data.memory_limit) * 100)
+                  : undefined
+              "
+            />
+            <StatCard
+              label="Network"
+              :value="formatRate(rate('net_in'))"
+              :hint="`in · out ${formatRate(rate('net_out'))}`"
+            />
+            <StatCard
+              label="Disk"
+              :value="formatRate(rate('block_out'))"
+              :hint="`written · read ${formatRate(rate('block_in'))}`"
+            />
+          </template>
+        </StatGrid>
+
+        <UCard v-if="stats?.data">
+          <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr_auto_1fr]">
+            <dt class="text-muted">Received</dt>
+            <dd>{{ formatBytes(stats.data.net_in) }}</dd>
+            <dt class="text-muted">Sent</dt>
+            <dd>{{ formatBytes(stats.data.net_out) }}</dd>
+            <dt class="text-muted">Read</dt>
+            <dd>{{ formatBytes(stats.data.block_in) }}</dd>
+            <dt class="text-muted">Written</dt>
+            <dd>{{ formatBytes(stats.data.block_out) }}</dd>
+            <dt class="text-muted">Processes</dt>
+            <dd>{{ stats.data.pids ?? '–' }}</dd>
+            <dt class="text-muted">Sampled</dt>
+            <dd>{{ formatRelative(stats.data.sampled_at) }}</dd>
+          </dl>
+          <p class="mt-3 text-xs text-muted">
+            Totals since the container started. Rates appear after the second sample, 5 seconds apart.
+          </p>
+        </UCard>
+      </div>
 
       <div
         v-else
