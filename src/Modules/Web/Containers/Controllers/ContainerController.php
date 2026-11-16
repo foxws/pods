@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Web\Containers\Controllers;
 
+use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -58,6 +59,22 @@ class ContainerController implements HasMiddleware
             'name' => $container,
             'container' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->container($environment, $container))),
             'logs' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->containerLogs($environment, $container)), 'details'),
+            'quadlet' => Inertia::defer(fn (): array => $this->fromHost(fn (): ?QuadletFileData => $this->quadletOf($lpod, $environment, $container)), 'details'),
         ]);
+    }
+
+    /**
+     * Gives the Quadlet file that defines the container, or null when it was started outside Quadlet.
+     */
+    protected function quadletOf(LpodClient $lpod, Environment $environment, string $container): ?QuadletFileData
+    {
+        $summary = $lpod->container($environment, $container)->container;
+
+        if ($summary->quadlet === null || $summary->application === null) {
+            return null;
+        }
+
+        return collect($lpod->files($environment, $summary->application))
+            ->firstWhere('name', $summary->quadlet);
     }
 }
