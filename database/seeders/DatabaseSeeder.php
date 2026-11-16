@@ -9,15 +9,11 @@ use Illuminate\Database\Seeder;
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Production runs this on every start (migrate --seed), so only the roles are
-     * seeded there. The example admin is for local development only.
+     * Only the roles and permissions: production runs this on every start
+     * (migrate --seed). Create the owner with "php artisan users:create --super-admin".
      */
     public function run(): void
     {
         $this->call(PermissionSeeder::class);
-
-        if (app()->isLocal()) {
-            $this->call(AdminSeeder::class);
-        }
     }
 }

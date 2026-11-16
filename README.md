@@ -70,12 +70,12 @@ On a host shared with other users, give the proxy other ports with `--proxy-port
 ## Getting started (development)
 
 ```bash
-composer setup     # install, .env, key, migrate, pnpm install and build
-php artisan db:seed
+composer setup     # install, .env, key, migrate and seed the roles, pnpm install and build
+php artisan users:create --super-admin
 composer dev
 ```
 
-In development (`APP_ENV=local`), the seeder creates `administrator@example.com` with the password `password`; elsewhere it only creates the roles. Pods has a single owner for now; use `php artisan users:create` instead of the seeder outside of development.
+`users:create --super-admin` asks for the owner's name, email address and password. Pods has a single owner for now.
 
 Connect the local host:
 
