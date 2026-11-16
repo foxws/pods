@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { create, show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import ImageUpdateController from '@/actions/Modules/Web/Images/Controllers/ImageUpdateController'
+import ApplicationForceStopModal from '@/components/Applications/ApplicationForceStopModal.vue'
 import ApplicationRemoveModal from '@/components/Applications/ApplicationRemoveModal.vue'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
@@ -66,6 +67,16 @@ const isRemoving = computed({
   },
 })
 
+const forceStopping = ref<string | null>(null)
+const isForceStopping = computed({
+  get: () => forceStopping.value !== null,
+  set: (open) => {
+    if (!open) {
+      forceStopping.value = null
+    }
+  },
+})
+
 const { send, processing } = useHostAction()
 
 const actions = (application: ApplicationData): DropdownMenuItem[][] => [
@@ -101,6 +112,15 @@ const actions = (application: ApplicationData): DropdownMenuItem[][] => [
       color: 'error',
       disabled: application.status === 'inactive',
       onSelect: () => run(application.name, 'down'),
+    },
+    {
+      label: 'Force stop',
+      icon: 'i-lucide-octagon-x',
+      color: 'error',
+      disabled: application.status === 'inactive' || application.status === 'unknown',
+      onSelect: () => {
+        forceStopping.value = application.name
+      },
     },
   ],
   [
@@ -372,6 +392,13 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
           </div>
         </template>
       </UTable>
+
+      <ApplicationForceStopModal
+        v-if="forceStopping"
+        v-model:open="isForceStopping"
+        :environment="environment"
+        :application="forceStopping"
+      />
 
       <ApplicationRemoveModal
         v-if="removing"

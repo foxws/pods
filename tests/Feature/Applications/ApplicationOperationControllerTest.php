@@ -22,7 +22,18 @@ it('queues the operation in systemd without waiting', function (ApplicationOpera
         ->assertInertiaFlash('type', 'success');
 
     $lpod->assertRan(['jellyfin', $operation->value, '--no-block', '--json']);
-})->with(ApplicationOperation::cases());
+})->with(array_filter(ApplicationOperation::cases(), fn (ApplicationOperation $operation) => $operation !== ApplicationOperation::ForceStop));
+
+it('force stops an application with lpod down --force', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->post(action(ApplicationOperationController::class, [$this->environment, 'stry', ApplicationOperation::ForceStop]))
+        ->assertRedirect()
+        ->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(['stry', 'down', '--force', '--json']);
+});
 
 it('flashes the error when lpod fails', function () {
     fakeLpod()->respond('* up --no-block --json', new HostResult(1, '', 'Unit jellyfin.service not found.'));
