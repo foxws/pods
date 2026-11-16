@@ -35,6 +35,23 @@ Open questions:
 - Generating the socket, proxy and idle units from labels on the app's container, so an application only declares its port and idle timeout.
 - Native socket activation (FrankenPHP or Caddy binding the socket's file descriptor) instead of `systemd-socket-proxyd`.
 
+## Proxy
+
+An optional reverse proxy per host, so hostnames reach the right container without each application routing for its neighbours. Today stry's own Caddy (FrankenPHP's `CADDY_EXTRA_CONFIG`, rendered by its `CaddySites` class) forwards `ws.example.com` to Reverb and `s3.example.com` to RustFS. With a Pods proxy, stry only serves stry, and the same works for any application, not just Laravel on FrankenPHP.
+
+1. **The proxy.** A Caddy Quadlet per host (`pods-proxy`), installed from the host's settings in Pods. It takes ports 80 and 443 and handles HTTPS in one place: an internal CA for local names such as `.home.arpa` (with a download for the root certificate), Let's Encrypt for public domains. The router or NAS in front then needs a single entry for the host.
+2. **Networks.** The proxy reaches containers by name (`systemd-stry-reverb:6001`), so it joins the network of every application it routes for, through a drop-in (`pods-proxy.container.d/stry.conf` with `Network=stry.network`). Adding the first route of an application adds the drop-in and restarts the proxy; later route changes only reload it.
+3. **lpod.** `lpod proxy install|remove --json`, `lpod proxy routes --json`, and `lpod proxy route add HOST UPSTREAM [--application APP] --json` / `route remove HOST --json`. lpod keeps the routes in one Caddyfile per application next to the proxy's Quadlet and reloads Caddy through its admin endpoint inside the container, so open connections stay up.
+4. **pods.yml.** `routes` maps a role to an upstream (`app: systemd-stry:8000`, `websockets: systemd-stry-reverb:6001`, `s3: systemd-stry-rustfs:9000`). Pods asks for the hostname of each when installing, with a suggestion from the application name (`ws.stry.home.arpa`), the same way it asks for secrets, and shows them on the application page to edit later. The hostnames the app itself needs (`APP_URL`, `VITE_REVERB_HOST`, `AWS_URL`) still come from its `.env`.
+5. **Without Pods.** Applications document a Caddyfile for your own proxy, so installing by hand keeps working.
+
+Open questions:
+
+- **Sleeping applications.** A route straight to `systemd-stry-reverb:6001` gets a 502 while an on-demand app sleeps, because its services sleep with it. Today the app's own Caddy sits behind the on-demand socket, so any hostname wakes it. Most traffic to Reverb or S3 comes from a page the app just served, so the app is awake then, but opening Mailpit or the RustFS console on its own wouldn't be. Options: send the app's main hostname through its socket (`127.0.0.1:8000`) and the others straight to their containers; let a route say `wake: true` to go through the socket, with the app forwarding it; or have Caddy start the app's socket service on a 502 and retry.
+- **The proxy itself** must not sleep, so it's always on, unlike the applications behind it.
+- **Pods' own hostname.** Once Pods ships as Quadlets (see Packaging below), its own route can go through the same proxy.
+- **stry** keeps `Support\Octane\CaddySites` until the proxy exists, then drops it in the same change that adds `routes` to its `pods.yml`.
+
 ## More of pods.yml
 
 Pods reads the sources, the application name and the secrets of a repository's `pods.yml` today. Next:
@@ -43,6 +60,7 @@ Pods reads the sources, the application name and the secrets of a repository's `
 2. **On-demand.** `ondemand` (port, idle timeout, idle check and the workers to stop) lets lpod write the socket, proxy and idle units, so an application doesn't ship them itself. See [On-demand applications](#on-demand-applications).
 3. **Backups.** `backups` lists the volumes to leave out (such as bind-backed ones) and a database dump command. See [Volume backups and restores](#volume-backups-and-restores).
 4. **Updates.** With the stored source, the application page can offer "Update to tag X" and reinstall from it with `--replace`.
+5. **Routes.** `routes` lists the upstreams the [proxy](#proxy) should give a hostname.
 
 ## Installing applications from a checkout
 
