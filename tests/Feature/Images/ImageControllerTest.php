@@ -24,7 +24,7 @@ it('lists the images with their updates', function () {
             ->component('Images/ImageIndex')
             ->loadDeferredProps(fn ($reload) => $reload
                 ->has('images.data', 6)
-                ->where('images.data.3.update', '13.1')
+                ->where('images.data.3.update', '13')
                 ->where('images.data.5.dangling', true)
                 ->where('images.data.5.repository', null)));
 });

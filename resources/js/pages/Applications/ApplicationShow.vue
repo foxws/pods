@@ -9,7 +9,7 @@ import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
 import type { ApplicationDetailData, EnvironmentData, HostProperty, JournalEntryData, QuadletFileData } from '@/types'
-import { formatBytes, formatPort, formatRelative } from '@/utils/format'
+import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TabsItem } from '@nuxt/ui'
@@ -194,9 +194,7 @@ const isRemoving = ref(false)
                   >
                   <span class="truncate font-mono text-xs text-muted">{{ container.image }}</span>
                 </div>
-                <span class="w-14 text-right text-sm text-muted">{{
-                  container.cpu === null ? '–' : `${container.cpu}%`
-                }}</span>
+                <span class="w-14 text-right text-sm text-muted">{{ formatPercent(container.cpu) }}</span>
                 <span class="w-20 text-right text-sm text-muted">{{ formatBytes(container.memory) }}</span>
               </li>
             </ul>

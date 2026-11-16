@@ -13,7 +13,7 @@ import { useHostPolling } from '@/composables/applications'
 import { useHostAction } from '@/composables/hostActions'
 import type { ContainerDetailData, ContainerOperation, EnvironmentData, HostProperty, JournalEntryData } from '@/types'
 import { containerState } from '@/utils/containers'
-import { formatBytes, formatPort, formatRelative, formatUptime } from '@/utils/format'
+import { formatBytes, formatPercent, formatPort, formatRelative, formatUptime } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
 import { computed, ref } from 'vue'
@@ -201,7 +201,7 @@ const memoryHint = computed(() =>
           <template v-if="summary && detail">
             <StatCard
               label="CPU"
-              :value="summary.cpu === null ? '–' : `${summary.cpu}%`"
+              :value="formatPercent(summary.cpu)"
             />
             <StatCard
               label="Memory"
