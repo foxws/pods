@@ -233,6 +233,19 @@ export type NetworkData = {
   default: boolean
 }
 export type PaginatedDataCollection<TKey, TValue> = LengthAwarePaginator<TKey, TValue>
+export type PodData = {
+  id: string
+  name: string
+  status: string
+  application: string | null
+  quadlet: string | null
+  unit: string | null
+  containers: number
+  running: number
+  ports: string[]
+  networks: string[]
+  created_at: string | null
+}
 export type PruneResultData = {
   removed: string[]
   reclaimed: number | null

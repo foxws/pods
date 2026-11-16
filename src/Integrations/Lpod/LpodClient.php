@@ -18,6 +18,7 @@ use Domain\Environments\DataObjects\HostSettingsData;
 use Domain\Environments\Models\Environment;
 use Domain\Images\DataObjects\ImageData;
 use Domain\Networks\DataObjects\NetworkData;
+use Domain\Pods\DataObjects\PodData;
 use Domain\Quadlets\DataObjects\QuadletCheckData;
 use Domain\Quadlets\DataObjects\QuadletSourceData;
 use Domain\Secrets\DataObjects\SecretData;
@@ -142,7 +143,7 @@ class LpodClient
             '--json',
         ]);
 
-        $this->forget($environment, 'apps', "apps.{$application}", 'host', 'containers', 'images', 'volumes', 'networks', 'secrets');
+        $this->forget($environment, 'apps', "apps.{$application}", 'host', 'containers', 'pods', 'images', 'volumes', 'networks', 'secrets');
     }
 
     /**
@@ -175,6 +176,16 @@ class LpodClient
     /**
      * Runs the operation through the container's systemd unit, or podman itself when no Quadlet manages it.
      */
+    /**
+     * @return list<PodData>
+     */
+    public function pods(Environment $environment): array
+    {
+        $payload = $this->cached($environment, 'pods', ['pods', '--json']);
+
+        return array_map(PodData::fromLpod(...), array_values($payload['pods'] ?? []));
+    }
+
     public function containerStats(Environment $environment, string $container): ContainerStatsData
     {
         $payload = $this->json($environment, ['container', $container, 'stats', '--json']);
@@ -189,7 +200,7 @@ class LpodClient
     {
         $result = PruneResultData::fromLpod($this->json($environment, ['containers', 'prune', '--json'], timeout: 120));
 
-        $this->forget($environment, 'containers', 'host');
+        $this->forget($environment, 'containers', 'pods', 'host');
 
         return $result;
     }
@@ -210,7 +221,7 @@ class LpodClient
     {
         $this->json($environment, ['container', $container, $operation->value, '--json']);
 
-        $this->forget($environment, 'containers', "containers.{$container}", 'apps', 'host');
+        $this->forget($environment, 'containers', "containers.{$container}", 'apps', 'pods', 'host');
     }
 
     /**
@@ -379,7 +390,7 @@ class LpodClient
             '--stdin', '--json',
         ], input: $this->encodeFiles($files), timeout: 600);
 
-        $this->forget($environment, 'apps', "apps.{$application}", 'host', 'containers', 'volumes', 'networks', 'secrets');
+        $this->forget($environment, 'apps', "apps.{$application}", 'host', 'containers', 'pods', 'volumes', 'networks', 'secrets');
     }
 
     /**
@@ -429,7 +440,7 @@ class LpodClient
     {
         $this->json($environment, [$application, $operation, '--no-block', '--json']);
 
-        $this->forget($environment, 'apps', "apps.{$application}", 'host');
+        $this->forget($environment, 'apps', "apps.{$application}", 'pods', 'host');
     }
 
     /**
