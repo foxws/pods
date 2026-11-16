@@ -1,0 +1,5 @@
+[Network]
+# The network of Pods' development units, which the Pods proxy joins to
+# reach them by name (see containers/proxy/pods-proxy.container.d/pods-dev.conf).
+NetworkName=systemd-pods-dev
+Label=pods-dev

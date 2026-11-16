@@ -44,6 +44,7 @@ bootstrap/cache/*.php
 bootstrap/ssr
 components.d.ts
 containers/*
+!containers/runtimes/development
 dist
 docs
 env.d.ts

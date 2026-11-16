@@ -1,0 +1,25 @@
+# The routes of Pods' development units (containers/quadlets/development)
+# for the Pods proxy. Copy this to ~/.config/pods-proxy/sites/, and set the
+# hostnames in the proxy's drop-in (pods-proxy.container.d/pods-dev.conf
+# next to this folder). They must match APP_URL, VITE_HMR_HOST and
+# REVERB_HOST in your .env.
+
+{$PROXY_SCHEME:https}://{$PODS_DEV_HOST} {
+	encode zstd gzip
+	reverse_proxy systemd-pods-dev:8000
+}
+
+# Vite dev server, for hot module replacement
+{$PROXY_SCHEME:https}://{$PODS_DEV_VITE_HOST} {
+	reverse_proxy systemd-pods-dev-vite:5173
+}
+
+# Laravel Reverb (WebSockets)
+{$PROXY_SCHEME:https}://{$PODS_DEV_WS_HOST} {
+	reverse_proxy systemd-pods-dev-reverb:8080
+}
+
+# Mailpit's web UI, which shows the mail the app sends
+{$PROXY_SCHEME:https}://{$PODS_DEV_MAIL_HOST} {
+	reverse_proxy systemd-pods-dev-mailpit:8025
+}

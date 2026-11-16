@@ -85,7 +85,16 @@ Connect the local host:
 
 Add remote hosts from **Environments** in the UI, with the same public key.
 
-The development Quadlets in `podman/development/` run Pods itself (Octane, queue, scheduler, Reverb, Vite, Valkey and Mailpit) under Podman.
+### Running Pods under Podman
+
+The units in `containers/quadlets/development` run Pods itself from a checkout in `~/projects/pods` (Octane, the queue worker, the scheduler, Reverb, Vite, Valkey and Mailpit). They're named `pods-dev`, so they can run next to an installed Pods. Change the path in `pods-dev.build` and `pods-dev-source.volume` if your checkout is elsewhere.
+
+```bash
+podman quadlet install --application=pods-dev containers/quadlets/development
+systemctl --user start pods-dev
+```
+
+The first start builds the image, which takes a while. The units publish no ports. Reach them through the Pods proxy: copy `containers/proxy/sites/pods-dev.Caddyfile` to `~/.config/pods-proxy/sites/`, and `containers/proxy/pods-proxy.container.d/pods-dev.conf` to `~/.config/containers/systemd/pods-proxy.container.d/` with your hostnames. Then set `APP_URL`, `VITE_HMR_HOST` and `REVERB_HOST` (with `REVERB_PORT=443` and `REVERB_SCHEME=https`) in `.env` to match, and restart the proxy. Without the proxy, publish the app with a drop-in instead (see the comment in `pods-dev.container`). Vite's hot reload then won't reach the browser.
 
 ## Application manifest (pods.yml)
 
