@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SecretFileButton from '@/components/Secrets/SecretFileButton.vue'
 import { destroy, update } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData, SecretData } from '@/types'
@@ -105,7 +106,7 @@ const toggleRestart = (application: string, checked: boolean | 'indeterminate'):
           required
           :error="form.errors.value"
         >
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <UInput
               v-model="form.value"
               type="password"
@@ -118,6 +119,10 @@ const toggleRestart = (application: string, checked: boolean | 'indeterminate'):
               color="neutral"
               variant="outline"
               @click="generate"
+            />
+            <SecretFileButton
+              @load="form.value = $event"
+              @error="form.setError('value', $event)"
             />
           </div>
         </UFormField>
