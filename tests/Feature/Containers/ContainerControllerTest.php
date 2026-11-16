@@ -31,6 +31,16 @@ it('lists every container, including ones no quadlet manages', function () {
                 ->where('host.data.containers_running', 12)));
 });
 
+it('asks to update lpod when it does not know the command yet', function () {
+    fakeLpod()->respond('containers --json', new HostResult(125, '', "Error: unknown flag: --json\nSee 'podman --help'"));
+
+    $this->actingAs($this->owner)
+        ->get(action([ContainerController::class, 'index'], $this->environment))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps(fn ($reload) => $reload
+            ->where('containers.data', null)
+            ->where('containers.error', 'The lpod on this host doesn\'t support "lpod containers --json" yet. Update lpod to a release that implements the whole of contract 1.')));
+});
+
 it('shows a container with its mounts, secrets and logs', function () {
     $lpod = fakeLpod();
 

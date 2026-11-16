@@ -411,6 +411,10 @@ class LpodClient
             throw LpodException::notInstalled($environment);
         }
 
+        if (! $result->successful() && preg_match('/\bunknown (shorthand )?(flag|command)\b/', $result->errorOutput) === 1) {
+            throw LpodException::unsupportedCommand($command);
+        }
+
         if (! $result->successful()) {
             throw LpodException::commandFailed($command, $result);
         }
