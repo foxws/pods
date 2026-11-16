@@ -1,0 +1,12 @@
+[Build]
+# Builds the development image from your checkout of Pods. Change
+# ~/projects/pods below (three times here, and in pods-dev-source.volume)
+# if your checkout is somewhere else. The paths are absolute on purpose:
+# SetWorkingDirectory= only sets the build context, so podman build would
+# look for a relative File= or IgnoreFile= in the service's own directory.
+ImageTag=localhost/pods-dev:latest
+BuildArg=UID=%U
+BuildArg=GID=%G
+SetWorkingDirectory=%h/projects/pods
+File=%h/projects/pods/containers/runtimes/development/Containerfile
+IgnoreFile=%h/projects/pods/containers/runtimes/development/dockerignore

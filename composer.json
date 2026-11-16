@@ -1,16 +1,15 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "foxws/vue-starter-kit",
+    "name": "foxws/pods",
     "type": "project",
-    "description": "A Laravel starter kit with Inertia, Vue, Fortify, Octane (FrankenPHP) and a domain-driven structure.",
+    "description": "A self-hosted web UI for Podman Quadlet, made for homelabs. It manages Podman hosts over SSH through lpod.",
     "keywords": [
         "laravel",
-        "inertia",
-        "vue",
-        "octane",
-        "frankenphp",
-        "ddd",
-        "starter-kit"
+        "podman",
+        "quadlet",
+        "systemd",
+        "homelab",
+        "self-hosted"
     ],
     "license": "MIT",
     "require": {
@@ -43,7 +42,6 @@
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.8",
         "fakerphp/faker": "^1.24.1",
-        "foxws/laravel-podman": "^6.6",
         "larastan/larastan": "^3.15.0",
         "laravel/boost": "^2.10.4",
         "laravel/pail": "^1.3.0",

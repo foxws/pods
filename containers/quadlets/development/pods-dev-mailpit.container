@@ -1,7 +1,11 @@
-# FileName={{application}}-mailpit
 [Unit]
-Description=Mailpit container
-StopWhenUnneeded={{ondemand}}
+Description=Pods development Mailpit
+StopWhenUnneeded=yes
+# Restart=always retries a crash every 5 seconds, which never reaches
+# systemd's default start limit (5 in 10s). Give up after 5 tries in
+# 5 minutes instead, so a broken setup ends up failed, not looping.
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Container]
 Image=docker.io/axllent/mailpit:latest
@@ -10,9 +14,8 @@ Environment=MP_MAX_MESSAGES=5000
 Environment=MP_DATABASE=/data/mailpit.db
 Environment=MP_SMTP_AUTH_ACCEPT_ANY=1
 Environment=MP_SMTP_AUTH_ALLOW_INSECURE=1
-Volume={{application}}-mailpit.volume:/data:rw,Z,U
-Network={{application}}.network
-Network={{proxy}}.network
+Volume=pods-dev-mailpit.volume:/data:rw,Z,U
+Network=pods-dev.network
 ExposeHostPort=1025
 ExposeHostPort=1110
 ExposeHostPort=8025
@@ -30,8 +33,3 @@ Restart=always
 RestartSec=5
 TimeoutStartSec=120
 TimeoutStopSec=60
----
-# FileName={{application}}-mailpit
-[Volume]
-Label={{application}}-mailpit
-VolumeName={{application}}-mailpit

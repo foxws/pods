@@ -1,6 +1,5 @@
 <?php
 
-use Foxws\Podman\Support\PodmanCaddySites;
 use Laravel\Octane\Contracts\OperationTerminated;
 use Laravel\Octane\Events\OperationReleased;
 use Laravel\Octane\Events\RequestHandled;
@@ -240,37 +239,6 @@ return [
     */
 
     'state_file' => env('OCTANE_STATE_FILE', storage_path('logs/octane-server-state.json')),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Extra Caddy Sites
-    |--------------------------------------------------------------------------
-    |
-    | Sibling services (Vite, Reverb, S3/rustfs) run on the same internal
-    | network as this container, so FrankenPHP's embedded Caddy can reverse
-    | proxy them by hostname. A single upstream proxy entry that sends every
-    | subdomain to Octane then reaches each service. Add a service by adding
-    | its public hostname and internal "host:port" upstream to the map below.
-    |
-    | Services reached directly, whose public host is their upstream host
-    | (e.g. Reverb on "localhost"), are skipped so they never take over the
-    | app's own hostname.
-    |
-    | Guarded so foxws/laravel-podman (which provides PodmanCaddySites) can
-    | stay a require-dev package, e.g. for a "composer install --no-dev" build.
-    |
-    */
-
-    'caddy' => [
-        'env' => ! env('PODMAN_ENABLED', true) || ! class_exists(PodmanCaddySites::class) ? [] : [
-            // Port must match the "--port" passed to "octane:frankenphp" in APP_COMMAND.
-            'CADDY_EXTRA_CONFIG' => PodmanCaddySites::render(array_filter([
-                (string) env('VITE_HMR_HOST') => PodmanCaddySites::hostPort((string) env('VITE_SERVER_HOST'), (string) env('VITE_SERVER_PORT', 5173)),
-                (string) env('VITE_REVERB_HOST', env('REVERB_HOST')) => PodmanCaddySites::hostPort((string) env('REVERB_HOST'), (string) env('REVERB_PORT', 8080)),
-                PodmanCaddySites::hostFromUrl((string) env('AWS_URL')) => PodmanCaddySites::hostPortFromUrl((string) env('AWS_ENDPOINT')),
-            ], fn (string $upstream, string $host): bool => ! str_starts_with($upstream, "{$host}:"), ARRAY_FILTER_USE_BOTH), (int) env('OCTANE_PORT', 8000)),
-        ],
-    ],
 
     /*
     |--------------------------------------------------------------------------
