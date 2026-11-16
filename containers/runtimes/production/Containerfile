@@ -38,10 +38,11 @@ RUN --mount=type=cache,target=/home/docker/.cache/composer,uid=1000,gid=1000 \
 
 RUN ${PHP_CLI} key:generate && ${PHP_CLI} storage:link
 
-# Octane copies its worker script into public/ on start when it's missing. Do
-# it here, because at runtime the "docker" user may be renumbered to the
-# host's UID, which can't write to the image's public/.
-RUN cp vendor/laravel/octane/src/Commands/stubs/frankenphp-worker.php public/frankenphp-worker.php
+# Installs Octane's worker script into public/, which "octane:frankenphp" would
+# otherwise do on start. At runtime the "docker" user may be renumbered to the
+# host's UID, which can't write to the image's public/. The binary is the base
+# image's, and the config/octane.php of the repository is kept.
+RUN ${PHP_CLI} octane:install --server=frankenphp --no-interaction
 
 # Build the frontend and prune the devDependencies in one layer, so they
 # don't stay in the image.
