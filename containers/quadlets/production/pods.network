@@ -1,0 +1,4 @@
+[Network]
+# Pods' own network, which the Pods proxy joins to reach it by name.
+NetworkName=systemd-pods
+Label=pods
