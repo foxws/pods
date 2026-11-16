@@ -57,7 +57,7 @@ Pods runs on a host as rootless Podman Quadlets, for the user whose applications
 curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash
 ```
 
-It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and asks for the owner's name, email address and password. Pods then listens on `127.0.0.1:9090`: open it on the host, or through an SSH tunnel (`ssh -L 9090:127.0.0.1:9090 HOST`).
+It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9090`: open it on the host, or through an SSH tunnel (`ssh -L 9090:127.0.0.1:9090 HOST`).
 
 To reach it by a hostname, add the [proxy](#proxy):
 
@@ -75,7 +75,7 @@ php artisan users:create --super-admin
 composer dev
 ```
 
-`users:create --super-admin` asks for the owner's name, email address and password. Pods has a single owner for now.
+`users:create --super-admin` asks for the owner's name, email address and password. Or skip it: while Pods has no owner, it sends you to `/setup`, which asks for the code `php artisan pods:setup` prints. Pods has a single owner for now.
 
 Connect the local host:
 

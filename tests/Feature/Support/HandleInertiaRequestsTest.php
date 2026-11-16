@@ -5,6 +5,9 @@ declare(strict_types=1);
 use Domain\Users\Models\User;
 use Foundation\Settings\GeneralSettings;
 
+// An instance that has its owner, so guests aren't sent to the setup page.
+beforeEach(fn () => User::factory()->create()->assignRole('super-admin'));
+
 it('shares validation errors with the next inertia response', function () {
     User::factory()->create(['email' => 'test@example.com']);
 

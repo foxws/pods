@@ -37,6 +37,8 @@ it('does not route unknown sections', function () {
 });
 
 it('redirects guests to the login page', function () {
+    User::factory()->create()->assignRole('super-admin'); // an instance with its owner, so guests see the login page
+
     $this->get(action([SettingsController::class, 'show'], 'account'))
         ->assertRedirect(route('login'));
 });

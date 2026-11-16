@@ -32,6 +32,8 @@ it('lists only the passkeys of the authenticated user', function () {
 });
 
 it('redirects guests away from the passkey list', function () {
+    User::factory()->create()->assignRole('super-admin'); // an instance with its owner, so guests see the login page
+
     $response = $this->get(action([PasskeyController::class, 'index']));
 
     $response->assertRedirect(route('login'));

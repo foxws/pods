@@ -64,6 +64,8 @@ fi
 if [[ "${APP_COMMAND}" == *octane:frankenphp* ]]; then
     log "INFO" "Migrating the database..."
     ${PHP_CLI} migrate --seed --force --no-interaction
+    # Prints the setup code while Pods has no owner, so it's in the log.
+    ${PHP_CLI} pods:setup --no-interaction
 fi
 
 if [ "${APP_OPTIMIZE:-true}" = "true" ]; then

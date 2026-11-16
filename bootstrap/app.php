@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use Foundation\Http\Middleware\RedirectToOwnerSetup;
 use Foundation\Http\Middleware\SetCacheHeaders;
 use Foxws\Essentials\Csp\Middleware\AddTelescopeCspNonce;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -70,9 +72,16 @@ return Application::configure(basePath: $basePath)
         // Configure web middleware
         $middleware->web(append: [
             AddCspHeaders::class,
+            RedirectToOwnerSetup::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        // Send guests to the setup page before "auth" sends them to the login page
+        $middleware->prependToPriorityList(
+            before: AuthenticatesRequests::class,
+            prepend: RedirectToOwnerSetup::class,
+        );
 
         // Configure API middleware
         $middleware->api(append: [
