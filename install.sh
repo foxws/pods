@@ -251,6 +251,11 @@ connect_local_host() {
     chmod 600 "${HOME}/.ssh/authorized_keys"
 
     if ! grep -qxF "$key" "${HOME}/.ssh/authorized_keys"; then
+        # Start on a new line, or the key would be glued onto the last one.
+        if [ -s "${HOME}/.ssh/authorized_keys" ] && [ -n "$(tail -c 1 "${HOME}/.ssh/authorized_keys")" ]; then
+            echo >> "${HOME}/.ssh/authorized_keys"
+        fi
+
         echo "$key" >> "${HOME}/.ssh/authorized_keys"
         info "Added Pods' key to ~/.ssh/authorized_keys."
     fi

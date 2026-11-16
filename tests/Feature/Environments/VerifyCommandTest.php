@@ -23,7 +23,7 @@ it('explains an ssh key the host does not accept', function () {
     fakeLpod()->respond('version --json', new HostResult(255, '', 'blue@podman-01: Permission denied (publickey).'));
 
     $this->artisan('pods:verify')
-        ->expectsOutputToContain('Add the public key of Pods to ~blue/.ssh/authorized_keys')
+        ->expectsOutputToContain('As blue on the host, add the public key of Pods to ~/.ssh/authorized_keys.')
         ->assertFailed();
 
     expect($environment->refresh()->last_seen_at)->toBeNull();

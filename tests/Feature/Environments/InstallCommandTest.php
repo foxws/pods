@@ -36,3 +36,17 @@ it('keeps the local host when lpod cannot be reached yet', function () {
 
     expect(Environment::query()->sole()->facts)->toBeNull();
 });
+
+it('checks an already registered local host again', function () {
+    fakeLpod();
+    $environment = Environment::factory()->local()->create(['last_seen_at' => null, 'facts' => null]);
+
+    $this->artisan('pods:install')
+        ->expectsOutputToContain('The local environment is already registered.')
+        ->expectsOutputToContain('rootless as blue')
+        ->assertSuccessful();
+
+    expect($environment->refresh())
+        ->last_seen_at->not->toBeNull()
+        ->facts->toMatchArray(['contract' => 1]);
+});
