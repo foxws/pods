@@ -4,6 +4,7 @@ import overview from '@/actions/Modules/Web/Environments/Controllers/Environment
 import { index as images } from '@/actions/Modules/Web/Images/Controllers/ImageController'
 import journal from '@/actions/Modules/Web/Journal/Controllers/JournalController'
 import { index as networks } from '@/actions/Modules/Web/Networks/Controllers/NetworkController'
+import { index as pods } from '@/actions/Modules/Web/Pods/Controllers/PodController'
 import { index as secrets } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import { index as volumes } from '@/actions/Modules/Web/Volumes/Controllers/VolumeController'
 import { usePage } from '@inertiajs/vue3'
@@ -48,6 +49,7 @@ const sections: Section[] = [
     url: (id) => containers.url(id),
     inTabBar: false,
   },
+  { label: 'Pods', shortLabel: 'Pods', icon: 'i-lucide-boxes', url: (id) => pods.url(id), inTabBar: false },
   { label: 'Images', shortLabel: 'Images', icon: 'i-lucide-disc-3', url: (id) => images.url(id), inTabBar: false },
   {
     label: 'Volumes',
