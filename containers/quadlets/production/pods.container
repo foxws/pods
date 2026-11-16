@@ -13,7 +13,7 @@ Environment=PUID=%U
 Environment=PGID=%G
 UserNS=keep-id
 Secret=pods-env,target=/app/.env,mode=0400,uid=%U,gid=%G
-Volume=pods-storage.volume:/app/storage:rw
+Volume=pods-data.volume:/app/storage:rw
 Network=pods.network
 # Pods reaches the host it runs on over SSH, like every other host.
 AddHost=host.containers.internal:host-gateway

@@ -1,5 +1,5 @@
 [Volume]
 # Pods' storage folder: the SQLite database, its SSH key and known_hosts
 # files, and the logs. Back it up to keep the environments and the owner.
-VolumeName=pods-storage
-Label=pods-storage
+VolumeName=pods-data
+Label=pods-data

@@ -352,10 +352,10 @@ uninstall() {
 
     if [ "$PURGE" = true ]; then
         info "Removing Pods' data and the pods-env secret..."
-        podman volume rm pods-storage > /dev/null 2>&1 || true
+        podman volume rm pods-data > /dev/null 2>&1 || true
         podman secret rm pods-env > /dev/null 2>&1 || true
     else
-        info "Kept Pods' data (the pods-storage volume) and the pods-env secret. Add --purge to remove them."
+        info "Kept Pods' data (the pods-data volume) and the pods-env secret. Add --purge to remove them."
     fi
 
     systemctl --user daemon-reload

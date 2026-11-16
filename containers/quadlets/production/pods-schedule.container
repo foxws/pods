@@ -16,7 +16,7 @@ Environment=PGID=%G
 Environment=APP_COMMAND="php -d variables_order=EGPCS /app/artisan schedule:work"
 UserNS=keep-id
 Secret=pods-env,target=/app/.env,mode=0400,uid=%U,gid=%G
-Volume=pods-storage.volume:/app/storage:rw
+Volume=pods-data.volume:/app/storage:rw
 Network=pods.network
 
 [Service]
