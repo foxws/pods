@@ -10,6 +10,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 #[TypeScript]
 class SecretData extends Data
 {
+    public const string NamePattern = '/^[A-Za-z0-9][A-Za-z0-9_.-]{0,252}$/';
+
     /**
      * @param  list<string>  $used_by
      */

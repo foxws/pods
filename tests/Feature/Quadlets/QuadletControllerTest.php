@@ -137,6 +137,79 @@ it('fetches the files of a git repository', function () {
     $lpod->assertRan(['quadlet', 'fetch', 'https://codeberg.org/foxws/quadlets.git', '--ref', 'main', '--path', 'nextcloud', '--json']);
 });
 
+it('returns no manifest for a repository without pods.yml', function () {
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.manifest', null)
+        ->assertJsonPath('data.manifest_error', null);
+});
+
+it('reads the sources and secrets of the repository pods.yml', function () {
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, lpodFixture('quadlet-fetch-manifest'), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.manifest.name', 'nextcloud')
+        ->assertJsonPath('data.manifest.sources.0', ['name' => 'stable', 'path' => 'nextcloud', 'description' => 'Nextcloud with PostgreSQL'])
+        ->assertJsonPath('data.manifest.secrets.1', [
+            'name' => 'nextcloud-db-password',
+            'description' => 'Password of the database user',
+            'format' => 'text',
+            'generate' => true,
+            'from' => null,
+            'key' => null,
+        ])
+        ->assertJsonPath('data.manifest_error', null);
+});
+
+it('fills secrets in from a dotenv secret of the manifest', function () {
+    $manifest = "secrets:\n  app-env:\n    format: dotenv\n  app-db-password:\n    from: app-env\n    key: DB_PASSWORD\n";
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, json_encode(['contract' => 1, 'commit' => 'a41f9c2', 'manifest' => $manifest, 'files' => []]), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.manifest.secrets.0.format', 'dotenv')
+        ->assertJsonPath('data.manifest.secrets.1.from', 'app-env')
+        ->assertJsonPath('data.manifest.secrets.1.key', 'DB_PASSWORD');
+});
+
+it('still returns the files when pods.yml is invalid', function (string $manifest, string $error) {
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, json_encode([
+        ...json_decode(lpodFixture('quadlet-fetch'), true),
+        'manifest' => $manifest,
+    ]), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonCount(5, 'data.files')
+        ->assertJsonPath('data.manifest', null)
+        ->assertJsonPath('data.manifest_error', fn (string $message) => str_contains($message, $error));
+})->with([
+    'not yaml' => ["name: [unclosed\n", 'pods.yml is ignored'],
+    'newer version' => ["version: 2\n", "it's version 2, but Pods reads version 1"],
+    'path traversal' => ["sources:\n  evil:\n    path: ../../etc\n", 'sources.evil.path'],
+    'invalid secret name' => ["secrets:\n  '--rm':\n    description: x\n", 'isn\'t a valid secret name'],
+    'from a plain secret' => ["secrets:\n  app-env: {}\n  db:\n    from: app-env\n    key: DB_PASSWORD\n", "which isn't a secret with format: dotenv"],
+]);
+
 it('rejects repositories and references that are not plain', function (array $input, string $field) {
     $lpod = fakeLpod();
 

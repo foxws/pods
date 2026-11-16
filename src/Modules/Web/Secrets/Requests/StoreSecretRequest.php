@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Web\Secrets\Requests;
 
+use Domain\Secrets\DataObjects\SecretData;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSecretRequest extends FormRequest
 {
-    public const string NamePattern = '/^[A-Za-z0-9][A-Za-z0-9_.-]{0,252}$/';
+    public const string NamePattern = SecretData::NamePattern;
 
     public function authorize(): bool
     {
