@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { store } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
+import SecretFileButton from '@/components/Secrets/SecretFileButton.vue'
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { ApplicationData, EnvironmentData } from '@/types'
 import { useForm } from '@inertiajs/vue3'
@@ -138,13 +139,22 @@ const onSubmit = (close: () => void) => {
           required
           :error="form.errors.value"
         >
-          <UTextarea
-            v-model="form.value"
-            :rows="3"
-            autocomplete="off"
-            spellcheck="false"
-            class="w-full font-mono"
-          />
+          <div class="flex flex-col gap-2">
+            <UTextarea
+              v-model="form.value"
+              :rows="3"
+              autocomplete="off"
+              spellcheck="false"
+              class="w-full font-mono"
+            />
+            <div class="flex items-center gap-2">
+              <SecretFileButton
+                @load="form.value = $event"
+                @error="form.setError('value', $event)"
+              />
+              <span class="text-xs text-muted">Or use the contents of a text file, such as a key or certificate.</span>
+            </div>
+          </div>
         </UFormField>
 
         <UFormField

@@ -37,8 +37,9 @@ it('lists the applications and host stats of an environment', function () {
             ->component('Applications/ApplicationIndex')
             ->where('environment.id', $this->environment->ulid)
             ->missing('applications')
-            ->loadDeferredProps(fn ($reload) => $reload
+            ->loadDeferredProps(['default', 'images'], fn ($reload) => $reload
                 ->has('applications.data', 6)
+                ->where('images.data.3.update', '13')
                 ->where('applications.data.0.name', 'immich')
                 ->where('applications.data.0.description', 'Self-hosted photo library')
                 ->where('applications.data.4.status', 'failed')
