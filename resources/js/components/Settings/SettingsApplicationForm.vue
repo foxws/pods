@@ -30,16 +30,6 @@ onMounted(async () => {
   loaded.value = true
 })
 
-defineExpose({
-  submit: onSubmit,
-  get processing() {
-    return form.processing
-  },
-  get recentlySuccessful() {
-    return form.recentlySuccessful
-  },
-})
-
 const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
 </script>
 
@@ -112,6 +102,17 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
             <USwitch v-model="form.allow_registration" />
           </UFormField>
         </template>
+      </template>
+
+      <template #footer>
+        <UButton
+          v-if="loaded"
+          type="submit"
+          :label="form.recentlySuccessful ? 'Saved' : 'Save changes'"
+          :icon="form.recentlySuccessful ? 'i-lucide-check' : undefined"
+          :color="form.recentlySuccessful ? 'success' : 'primary'"
+          :loading="form.processing"
+        />
       </template>
     </UPageCard>
   </UForm>

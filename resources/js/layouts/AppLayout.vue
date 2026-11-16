@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import SettingsModal from '@/components/Settings/SettingsModal.vue'
 import AppHeader from '@/components/Ui/AppHeader.vue'
 import { useAppearance } from '@/composables/appearance'
 import { useFlash } from '@/composables/flash'
-import { provideSettings } from '@/composables/settings'
 
 const { nonce } = useAppearance()
 useFlash()
-
-const { isOpen: isSettingsOpen, section: settingsSection } = provideSettings()
 </script>
 
 <template>
@@ -22,10 +18,5 @@ const { isOpen: isSettingsOpen, section: settingsSection } = provideSettings()
         </UContainer>
       </UMain>
     </div>
-
-    <SettingsModal
-      v-model:open="isSettingsOpen"
-      v-model:section="settingsSection"
-    />
   </UApp>
 </template>

@@ -15,16 +15,6 @@ const onSubmit = () =>
     preserveScroll: true,
     onSuccess: () => form.reset(),
   })
-
-defineExpose({
-  submit: onSubmit,
-  get processing() {
-    return form.processing
-  },
-  get recentlySuccessful() {
-    return form.recentlySuccessful
-  },
-})
 </script>
 
 <template>
@@ -87,6 +77,16 @@ defineExpose({
               />
             </UFormField>
           </div>
+        </template>
+
+        <template #footer>
+          <UButton
+            type="submit"
+            :label="form.recentlySuccessful ? 'Saved' : 'Save changes'"
+            :icon="form.recentlySuccessful ? 'i-lucide-check' : undefined"
+            :color="form.recentlySuccessful ? 'success' : 'primary'"
+            :loading="form.processing"
+          />
         </template>
       </UPageCard>
     </UForm>
