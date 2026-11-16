@@ -47,8 +47,16 @@ class InstallCommand extends Command implements Isolatable
             return self::SUCCESS;
         }
 
-        if (Environment::query()->where('is_local', true)->exists()) {
+        $local = Environment::query()->where('is_local', true)->first();
+
+        if ($local !== null) {
             info('The local environment is already registered.');
+
+            // Check it again: an earlier run may have registered it before its key was
+            // authorized, and only a successful check marks it as connected.
+            if ($this->call('pods:verify', ['environment' => $local->ulid]) !== self::SUCCESS) {
+                note('Run pods:verify once that is fixed.');
+            }
 
             return self::SUCCESS;
         }

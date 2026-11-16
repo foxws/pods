@@ -18,7 +18,7 @@ class LpodException extends RuntimeException
         $error = trim($result->errorOutput) ?: 'ssh exited with code 255';
 
         $hint = match (true) {
-            str_contains($error, 'Permission denied') => " Add the public key of Pods to ~{$environment->user}/.ssh/authorized_keys on the host.",
+            str_contains($error, 'Permission denied') => " As {$environment->user} on the host, add the public key of Pods to ~/.ssh/authorized_keys.",
             str_contains($error, 'Host key verification failed'), str_contains($error, 'HOST IDENTIFICATION HAS CHANGED') => ' The host key no longer matches the pinned one.',
             default => '',
         };
