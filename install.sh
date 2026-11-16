@@ -26,8 +26,8 @@ LOCAL_PORT=9090
 
 PROXY=false
 HOST=""
-HTTP_PORT=""
-HTTPS_PORT=""
+HTTP_PORT=80
+HTTPS_PORT=443
 BEHIND_PROXY=false
 UNINSTALL=false
 PURGE=false
@@ -44,7 +44,7 @@ Usage: install.sh [options]
 
   --proxy               Also install the Pods proxy (Caddy), and route --host to Pods
   --host NAME           The hostname Pods is reached at through the proxy, e.g. pods.example.com
-  --proxy-ports H,S     Publish the proxy on these host ports instead of 80 and 443,
+  --proxy-ports H,S     The proxy's host ports for HTTP and HTTPS (default 80,443),
                         e.g. 28080,28443 on a host shared with other users
   --behind-proxy        Another proxy in front handles HTTPS: the Pods proxy serves plain HTTP
   --name NAME           The owner's name, instead of asking for it
@@ -79,6 +79,7 @@ parse_arguments() {
             --proxy) PROXY=true ;;
             --host) HOST="${2:-}"; shift ;;
             --proxy-ports)
+                [[ "${2:-}" == *,* ]] || fail "--proxy-ports takes two port numbers, e.g. 28080,28443"
                 HTTP_PORT="${2%%,*}"
                 HTTPS_PORT="${2#*,}"
                 shift
@@ -100,7 +101,7 @@ parse_arguments() {
     fi
 
     for port in "$HTTP_PORT" "$HTTPS_PORT"; do
-        if [ -n "$port" ] && ! [[ "$port" =~ ^[0-9]{1,5}$ ]]; then
+        if ! [[ "$port" =~ ^[0-9]{1,5}$ ]]; then
             fail "--proxy-ports takes two port numbers, e.g. 28080,28443"
         fi
     done
@@ -319,13 +320,9 @@ EOF
     {
         echo "# Written by Pods' install.sh: the proxy's ports and scheme."
         echo "[Container]"
-
-        if [ -n "$HTTP_PORT" ]; then
-            echo "PublishPort="
-            echo "PublishPort=${HTTP_PORT}:80"
-            echo "PublishPort=${HTTPS_PORT}:443"
-            echo "PublishPort=${HTTPS_PORT}:443/udp"
-        fi
+        echo "PublishPort=${HTTP_PORT}:80"
+        echo "PublishPort=${HTTPS_PORT}:443"
+        echo "PublishPort=${HTTPS_PORT}:443/udp"
 
         if [ "$BEHIND_PROXY" = true ]; then
             echo "Environment=PROXY_SCHEME=http"
