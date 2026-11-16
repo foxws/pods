@@ -6,16 +6,26 @@ import {
 } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { index as environmentsIndex } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentController'
 import { index as imagesIndex } from '@/actions/Modules/Web/Images/Controllers/ImageController'
+import journal from '@/actions/Modules/Web/Journal/Controllers/JournalController'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useHostPolling } from '@/composables/applications'
-import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, ImageData, SecretData } from '@/types'
+import type {
+  ApplicationData,
+  EnvironmentData,
+  HostEventData,
+  HostProperty,
+  HostStatsData,
+  ImageData,
+  SecretData,
+} from '@/types'
 import { describeApplication } from '@/utils/application'
 import { attentionItems, type AttentionItem } from '@/utils/attention'
 import { formatBytes, formatRelative, formatUptime } from '@/utils/format'
+import { describeEvent, eventTime } from '@/utils/events'
 import { totalSize, unusedImages } from '@/utils/images'
 import { pluralize } from '@/utils/application'
 import { isTransitioning } from '@/utils/status'
@@ -29,7 +39,16 @@ const props = defineProps<{
   applications?: HostProperty<ApplicationData[]>
   secrets?: HostProperty<SecretData[]>
   images?: HostProperty<ImageData[]>
+  events?: HostProperty<HostEventData[]>
 }>()
+
+const activity = computed(() =>
+  (props.events?.data ?? []).slice(0, 8).map((event, index) => ({
+    key: `${event.time}-${event.name}-${index}`,
+    time: eventTime(event.time),
+    ...describeEvent(event),
+  })),
+)
 
 const reclaimable = computed(() => totalSize(unusedImages(props.images?.data ?? [])))
 
@@ -40,7 +59,7 @@ const list = computed(() => props.applications?.data ?? [])
 
 const isBusy = computed(() => list.value.some((application) => isTransitioning(application.status)))
 
-useHostPolling(['host', 'applications'], isBusy)
+useHostPolling(['host', 'applications', 'events'], isBusy)
 
 const percentage = (used: number, total: number): number => (total > 0 ? Math.round((used / total) * 100) : 0)
 
@@ -319,6 +338,59 @@ const podmanLine = computed(() =>
                 class="size-4 text-success"
               />
               Nothing needs attention.
+            </p>
+          </UCard>
+
+          <UCard :ui="{ body: 'p-0 sm:p-0' }">
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h2 class="font-semibold text-highlighted">Recent activity</h2>
+                <UButton
+                  label="Open journal"
+                  color="neutral"
+                  variant="link"
+                  size="sm"
+                  :to="journal.url(environment.id)"
+                />
+              </div>
+            </template>
+
+            <ul
+              v-if="activity.length"
+              class="divide-y divide-default"
+            >
+              <li
+                v-for="item in activity"
+                :key="item.key"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm"
+              >
+                <span class="w-20 shrink-0 text-muted tabular-nums">{{ item.time }}</span>
+                <UIcon
+                  :name="item.icon"
+                  class="size-4 shrink-0"
+                  :class="item.color"
+                />
+                <span class="min-w-0 truncate">
+                  <span class="font-medium text-highlighted">{{ item.subject }}</span>
+                  {{ item.summary }}
+                </span>
+              </li>
+            </ul>
+            <USkeleton
+              v-else-if="!events"
+              class="m-4 h-24"
+            />
+            <p
+              v-else-if="events.error"
+              class="p-4 text-sm text-muted"
+            >
+              {{ events.error }}
+            </p>
+            <p
+              v-else
+              class="p-4 text-sm text-muted"
+            >
+              Nothing happened to containers or images in the last 24 hours.
             </p>
           </UCard>
 

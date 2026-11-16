@@ -27,8 +27,8 @@ it('forbids users who are not the owner', function () {
     $lpod->assertNothingRan();
 });
 
-it('shows the host, its applications and its secrets', function () {
-    fakeLpod();
+it('shows the host, its applications, its secrets and the recent events', function () {
+    $lpod = fakeLpod();
 
     $this->actingAs($this->owner)
         ->get(action(EnvironmentOverviewController::class, $this->environment))
@@ -37,7 +37,7 @@ it('shows the host, its applications and its secrets', function () {
             ->component('Environments/EnvironmentOverview')
             ->where('environment.id', $this->environment->ulid)
             ->missing('host')
-            ->loadDeferredProps(['default', 'secrets'], fn ($reload) => $reload
+            ->loadDeferredProps(['default', 'secrets', 'events'], fn ($reload) => $reload
                 ->where('host.data.cpu_load', [1.42, 0.98, 0.87])
                 ->where('host.data.swap_total', 8589934592)
                 ->where('host.data.os', 'Fedora Linux 45')
@@ -46,7 +46,23 @@ it('shows the host, its applications and its secrets', function () {
                 ->has('applications.data', 6)
                 ->where('secrets.data.5.name', 'ha-mqtt-password')
                 ->where('secrets.data.5.missing', true)
-                ->has('images.data', 6)));
+                ->has('images.data', 6)
+                ->has('events.data', 5)
+                ->where('events.data.2.exit_code', 125)
+                ->where('events.data.1.application', 'immich')));
+
+    $lpod->assertRan(['events', '--json', '--since', '24h', '--limit', '20']);
+});
+
+it('shows the rest of the overview when lpod has no events command yet', function () {
+    fakeLpod()->respond('events --json *', new HostResult(125, '', 'Error: unknown flag: --since'));
+
+    $this->actingAs($this->owner)
+        ->get(action(EnvironmentOverviewController::class, $this->environment))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps(['default', 'events'], fn ($reload) => $reload
+            ->has('applications.data', 6)
+            ->where('events.data', null)
+            ->where('events.error', fn (string $error) => str_contains($error, 'Update lpod'))));
 });
 
 it('leaves the system details empty for an lpod that does not report them', function () {

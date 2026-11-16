@@ -10,8 +10,10 @@ use Domain\Applications\DataObjects\HostStatsData;
 use Domain\Applications\DataObjects\JournalEntryData;
 use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Containers\DataObjects\ContainerDetailData;
+use Domain\Containers\DataObjects\ContainerStatsData;
 use Domain\Containers\DataObjects\HostContainerData;
 use Domain\Containers\Enums\ContainerOperation;
+use Domain\Environments\DataObjects\HostEventData;
 use Domain\Environments\DataObjects\HostSettingsData;
 use Domain\Environments\Models\Environment;
 use Domain\Images\DataObjects\ImageData;
@@ -173,6 +175,37 @@ class LpodClient
     /**
      * Runs the operation through the container's systemd unit, or podman itself when no Quadlet manages it.
      */
+    public function containerStats(Environment $environment, string $container): ContainerStatsData
+    {
+        $payload = $this->json($environment, ['container', $container, 'stats', '--json']);
+
+        return ContainerStatsData::fromLpod($payload['stats'] ?? []);
+    }
+
+    /**
+     * Removes every stopped container. Quadlet recreates its containers when their units start.
+     */
+    public function pruneContainers(Environment $environment): PruneResultData
+    {
+        $result = PruneResultData::fromLpod($this->json($environment, ['containers', 'prune', '--json'], timeout: 120));
+
+        $this->forget($environment, 'containers', 'host');
+
+        return $result;
+    }
+
+    /**
+     * What happened to containers and images in the last day, newest first.
+     *
+     * @return list<HostEventData>
+     */
+    public function events(Environment $environment, int $limit = 20): array
+    {
+        $payload = $this->json($environment, ['events', '--json', '--since', '24h', '--limit', (string) $limit]);
+
+        return array_map(HostEventData::fromLpod(...), array_values($payload['events'] ?? []));
+    }
+
     public function operateContainer(Environment $environment, string $container, ContainerOperation $operation): void
     {
         $this->json($environment, ['container', $container, $operation->value, '--json']);

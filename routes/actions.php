@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Applications\Controllers\ApplicationOperationController;
 use Modules\Web\Containers\Controllers\ContainerOperationController;
+use Modules\Web\Containers\Controllers\ContainerPruneController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
 use Modules\Web\Environments\Controllers\EnvironmentSettingsController;
 use Modules\Web\Images\Controllers\ImageController;
@@ -38,6 +39,7 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     Route::post('/applications/{application}/{operation}', ApplicationOperationController::class)->name('applications.operation');
 
     // Containers
+    Route::post('/containers/prune', ContainerPruneController::class)->name('containers.prune');
     Route::post('/containers/{container}/{operation}', ContainerOperationController::class)->name('containers.operation');
 
     // Images

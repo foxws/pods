@@ -66,6 +66,17 @@ export type ContainerMountData = {
   mode: string | null
 }
 export type ContainerOperation = 'start' | 'stop' | 'restart'
+export type ContainerStatsData = {
+  cpu: number | null
+  memory: number | null
+  memory_limit: number | null
+  net_in: number | null
+  net_out: number | null
+  block_in: number | null
+  block_out: number | null
+  pids: number | null
+  sampled_at: string | null
+}
 export type CursorPaginatedDataCollection<TKey, TValue> = CursorPaginator<TKey, TValue>
 export type CursorPaginator<TKey, TValue> = {
   data: TKey extends string ? Record<TKey, TValue> : TValue[]
@@ -112,6 +123,15 @@ export type HostContainerData = {
   cpu: number | null
   memory: number | null
   started_at: string | null
+}
+export type HostEventData = {
+  time: string | null
+  type: string
+  action: string
+  name: string
+  image: string | null
+  application: string | null
+  exit_code: number | null
 }
 export type HostSettingsData = {
   auto_update: boolean
