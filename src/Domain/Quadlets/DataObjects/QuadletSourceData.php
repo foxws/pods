@@ -36,7 +36,7 @@ class QuadletSourceData extends Data
 
         if (is_string($payload['manifest'] ?? null)) {
             try {
-                $manifest = ManifestData::fromYaml($payload['manifest']);
+                $manifest = ManifestData::fromYaml($payload['manifest'], (string) ($payload['manifest_path'] ?? ''));
             } catch (InvalidManifestException $exception) {
                 $manifestError = $exception->getMessage();
             }

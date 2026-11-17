@@ -7,6 +7,8 @@ import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useQuadletCheck, useQuadletInstall, type DerivedSecretInput, type SecretInput } from '@/composables/quadlets'
 import type {
+  CatalogApplicationData,
+  CatalogData,
   EnvironmentData,
   HostProperty,
   ManifestData,
@@ -29,13 +31,15 @@ import { computed, reactive, ref, watch } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
+  catalog?: HostProperty<CatalogData>
   secrets?: HostProperty<SecretData[]>
 }>()
 
-type Source = 'git' | 'upload' | 'write'
+type Source = 'catalog' | 'git' | 'upload' | 'write'
 
-const source = ref<Source>('git')
+const source = ref<Source>('catalog')
 const sources: TabsItem[] = [
+  { label: 'Catalog', value: 'catalog', icon: 'i-lucide-layout-grid' },
   { label: 'Git repository', value: 'git', icon: 'i-lucide-git-branch' },
   { label: 'Upload files', value: 'upload', icon: 'i-lucide-upload' },
   { label: 'Write quadlet', value: 'write', icon: 'i-lucide-pencil' },
@@ -122,6 +126,43 @@ const chooseSource = (name: string | undefined): void => {
   fetchRepository()
 }
 
+const catalogEntry = ref<CatalogApplicationData | null>(null)
+const catalogSearch = ref('')
+
+const catalogResults = computed(() => {
+  const query = catalogSearch.value.trim().toLowerCase()
+
+  return (props.catalog?.data?.applications ?? []).filter((entry) =>
+    [entry.name, entry.manifest.label, entry.manifest.description, entry.manifest.category, entry.manifest.author].some(
+      (value) => value?.toLowerCase().includes(query),
+    ),
+  )
+})
+
+/**
+ * A catalog application is a directory with its own pods.yml. Pods fetches its first source
+ * straight away (or the directory itself when it has none); the source picker then switches
+ * between them, such as production and development.
+ */
+const chooseCatalogEntry = (entry: CatalogApplicationData): void => {
+  catalogEntry.value = entry
+  git.repository = entry.repository
+  git.reference = entry.reference
+  git.path = entry.manifest.sources[0]?.path ?? entry.path
+  application.name = entry.name
+  fetchRepository()
+}
+
+const leaveCatalogEntry = (): void => {
+  catalogEntry.value = null
+  available.value = []
+  selected.value = []
+  commit.value = null
+  manifest.value = null
+  manifestError.value = null
+  fetchError.value = null
+}
+
 const showFiles = (files: QuadletFile[]): void => {
   available.value = files
   selected.value = selectedByDefault(files)
@@ -137,6 +178,7 @@ watch(uploaded, async (list) => {
 const written = reactive({ name: '', content: '[Container]\nImage=\n\n[Install]\nWantedBy=default.target\n' })
 
 watch(source, () => {
+  catalogEntry.value = null
   available.value = []
   selected.value = []
   commit.value = null
@@ -328,6 +370,163 @@ const serverErrors = computed(() =>
               />
 
               <div
+                v-if="source === 'catalog' && !catalogEntry"
+                class="flex flex-col gap-3"
+              >
+                <UInput
+                  v-model="catalogSearch"
+                  icon="i-lucide-search"
+                  placeholder="Search the catalog"
+                  aria-label="Search the catalog"
+                  class="w-full sm:w-80"
+                />
+                <HostError
+                  v-if="catalog?.error"
+                  :error="catalog.error"
+                />
+                <UAlert
+                  v-if="catalog?.data?.errors.length"
+                  color="warning"
+                  variant="subtle"
+                  icon="i-lucide-file-warning"
+                  title="Some applications were left out, because Pods can't read their pods.yml"
+                  :description="catalog.data.errors.join(' · ')"
+                />
+                <div
+                  v-if="!catalog"
+                  class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+                >
+                  <USkeleton
+                    v-for="index in 6"
+                    :key="index"
+                    class="h-20 w-full"
+                  />
+                </div>
+                <ul
+                  v-else-if="catalogResults.length"
+                  class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+                >
+                  <li
+                    v-for="entry in catalogResults"
+                    :key="entry.name"
+                  >
+                    <button
+                      type="button"
+                      class="flex h-full w-full items-start gap-3 rounded-md border border-default p-3 text-left transition hover:border-accented hover:bg-elevated/50 focus-visible:outline-2 focus-visible:outline-primary"
+                      @click="chooseCatalogEntry(entry)"
+                    >
+                      <UIcon
+                        :name="entry.manifest.icon ?? 'i-lucide-package'"
+                        class="mt-0.5 size-5 shrink-0 text-primary"
+                      />
+                      <span class="flex min-w-0 flex-col gap-0.5">
+                        <span class="font-medium text-highlighted">{{ entry.manifest.label ?? entry.name }}</span>
+                        <span
+                          v-if="entry.manifest.description"
+                          class="text-sm text-muted"
+                          >{{ entry.manifest.description }}</span
+                        >
+                        <span class="text-xs text-dimmed">{{
+                          [entry.manifest.category, entry.manifest.author ? `by ${entry.manifest.author}` : null]
+                            .filter(Boolean)
+                            .join(' · ')
+                        }}</span>
+                      </span>
+                    </button>
+                  </li>
+                </ul>
+                <p
+                  v-else-if="catalog.data"
+                  class="text-sm text-muted"
+                >
+                  {{
+                    catalogSearch
+                      ? `Nothing in the catalog matches “${catalogSearch}”.`
+                      : 'The catalog has no applications.'
+                  }}
+                </p>
+              </div>
+
+              <div
+                v-if="source === 'catalog' && catalogEntry"
+                class="flex flex-col gap-3 rounded-md border border-default p-4"
+              >
+                <div class="flex items-start gap-3">
+                  <UIcon
+                    :name="catalogEntry.manifest.icon ?? 'i-lucide-package'"
+                    class="mt-0.5 size-6 shrink-0 text-primary"
+                  />
+                  <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <p class="font-semibold text-highlighted">{{ catalogEntry.manifest.label ?? catalogEntry.name }}</p>
+                    <p
+                      v-if="catalogEntry.manifest.description"
+                      class="text-sm text-muted"
+                    >
+                      {{ catalogEntry.manifest.description }}
+                    </p>
+                  </div>
+                  <UButton
+                    label="Choose another"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    :disabled="isFetching"
+                    @click="leaveCatalogEntry"
+                  />
+                </div>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                  <template v-if="catalogEntry.manifest.author">
+                    <dt class="text-muted">Author</dt>
+                    <dd>{{ catalogEntry.manifest.author }}</dd>
+                  </template>
+                  <template
+                    v-for="link in [
+                      { label: 'Website', url: catalogEntry.manifest.website },
+                      { label: 'Source code', url: catalogEntry.manifest.repository },
+                    ].filter((item) => item.url)"
+                    :key="link.label"
+                  >
+                    <dt class="text-muted">{{ link.label }}</dt>
+                    <dd class="min-w-0 truncate">
+                      <ULink
+                        :to="link.url ?? undefined"
+                        target="_blank"
+                        class="hover:underline"
+                        >{{ link.url }}</ULink
+                      >
+                    </dd>
+                  </template>
+                  <dt class="text-muted">Quadlets</dt>
+                  <dd class="min-w-0 truncate font-mono text-xs leading-5">
+                    <ULink
+                      :to="catalogEntry.repository"
+                      target="_blank"
+                      class="hover:underline"
+                      >{{ catalogEntry.repository }}</ULink
+                    >
+                    · {{ catalogEntry.reference }} · {{ catalogEntry.path }}/
+                  </dd>
+                </dl>
+                <UAlert
+                  v-if="catalogEntry.manifest.notes"
+                  color="info"
+                  variant="subtle"
+                  icon="i-lucide-info"
+                  :description="catalogEntry.manifest.notes"
+                />
+                <p
+                  v-if="isFetching"
+                  class="flex items-center gap-2 text-sm text-muted"
+                >
+                  <UIcon
+                    name="i-lucide-loader-circle"
+                    class="size-4 animate-spin"
+                  />
+                  Fetching the files on {{ environment.hostname ?? environment.host }}…
+                </p>
+              </div>
+
+              <div
                 v-if="source === 'git'"
                 class="grid gap-4 sm:grid-cols-2"
                 @keydown.enter.prevent="fetchRepository"
@@ -439,7 +638,10 @@ const serverErrors = computed(() =>
                 v-if="manifest"
                 class="flex flex-col gap-3"
               >
-                <p class="flex items-center gap-2 text-sm">
+                <p
+                  v-if="source !== 'catalog'"
+                  class="flex items-center gap-2 text-sm"
+                >
                   <UIcon
                     name="i-lucide-file-cog"
                     class="size-4 text-muted"
@@ -525,7 +727,13 @@ const serverErrors = computed(() =>
               v-else
               class="p-4 text-sm text-muted"
             >
-              {{ source === 'git' ? 'Fetch a repository to see its files.' : 'Upload files to see them here.' }}
+              {{
+                source === 'catalog'
+                  ? 'Choose an application from the catalog to see its files.'
+                  : source === 'git'
+                    ? 'Fetch a repository to see its files.'
+                    : 'Upload files to see them here.'
+              }}
             </p>
 
             <template

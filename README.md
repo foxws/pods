@@ -98,14 +98,21 @@ The first start builds the image, which takes a while. The units publish no port
 
 ## Application manifest (pods.yml)
 
-A repository can tell Pods how to install it with a `pods.yml` in its root. When you add an application from Git, Pods reads it to offer the repository's Quadlet directories, fill in the application name, and explain and fill in the secrets the units need. It never changes the Quadlet files: they stay installable with plain `podman quadlet install`, and a repository without `pods.yml` installs as before.
+A repository can tell Pods how to install it with a `pods.yml` in its root, or in a directory per application. When you add an application from Git, Pods reads it to offer the repository's Quadlet directories, fill in the application name, and explain and fill in the secrets the units need. It never changes the Quadlet files: they stay installable with plain `podman quadlet install`, and a repository without `pods.yml` installs as before.
 
 ```yaml
 version: 1 # Pods ignores manifests of a version it doesn't know
 name: stry # the default application name
+label: stry # shown in the catalog, like the keys below
 description: Self-hosted video library
+author: francoism90
+icon: i-lucide-film # a Lucide icon
+category: Media
+website: https://github.com/francoism90/stry
+repository: https://github.com/francoism90/stry # its source code
+notes: Shown before installing.
 
-sources: # Quadlet directories to choose from, relative to the root
+sources: # Quadlet directories to choose from, relative to this pods.yml
     production:
         path: containers/quadlets/production
         description: The published image
@@ -121,9 +128,13 @@ secrets: # how to ask for the secrets the units use
         generate: true # filled in with a random value
 ```
 
-Every key is optional. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
+Every key is optional. When you fetch a directory, Pods reads the nearest `pods.yml`: the one in that directory, or else in a directory above it. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
 
 [stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. Setup commands after installing (such as `php artisan app:install`), on-demand services and backup hints are planned; see the [roadmap](docs/roadmap.md).
+
+### Catalog
+
+The Install application page lists the applications of the repositories in `config/catalog.php`, [foxws/quadlets](https://github.com/foxws/quadlets) by default. Every directory at such a repository's root with a `pods.yml` is one application, such as `mariadb/pods.yml` with `production` and `development` sources next to it. The host clones the repository to read them, and Pods keeps the list for a few minutes.
 
 ## Proxy
 
