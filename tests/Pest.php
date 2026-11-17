@@ -54,6 +54,10 @@ function fakeLpod(): FakeHostRunner
         'host --json' => $fixture('host'),
         'apps --json' => $fixture('apps'),
         'secrets --json' => $fixture('secrets'),
+        // Before "* status --json", which would match "APP ondemand status --json" too.
+        '* ondemand status --json' => $fixture('ondemand-status'),
+        '* ondemand enable *' => $fixture('ok'),
+        '* ondemand disable --json' => $fixture('ok'),
         '* status --json' => $fixture('app-status'),
         '* files --json' => $fixture('app-files'),
         '* logs --json *' => $fixture('app-logs'),

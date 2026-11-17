@@ -8,6 +8,8 @@ use Domain\Applications\DataObjects\ApplicationData;
 use Domain\Applications\DataObjects\ApplicationDetailData;
 use Domain\Applications\DataObjects\HostStatsData;
 use Domain\Applications\DataObjects\JournalEntryData;
+use Domain\Applications\DataObjects\OnDemandData;
+use Domain\Applications\DataObjects\OnDemandSettingsData;
 use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Containers\DataObjects\ContainerDetailData;
 use Domain\Containers\DataObjects\ContainerStatsData;
@@ -128,6 +130,34 @@ class LpodClient
         $this->json($environment, ['secret', 'rm', $name, '--json']);
 
         $this->forget($environment, 'secrets');
+    }
+
+    public function onDemand(Environment $environment, string $application): OnDemandData
+    {
+        $payload = $this->cached($environment, "apps.{$application}.ondemand", [$application, 'ondemand', 'status', '--json']);
+
+        return OnDemandData::fromLpod($payload['ondemand']);
+    }
+
+    /**
+     * Lets a socket start the application on its first request, and its units sleep when idle. lpod stops
+     * every unit of the application first, so the app starts on the next request with its new port.
+     */
+    public function enableOnDemand(Environment $environment, string $application, OnDemandSettingsData $settings): void
+    {
+        $this->json($environment, [$application, 'ondemand', 'enable', ...$settings->toLpodArguments(), '--json'], timeout: 120);
+
+        $this->forget($environment, 'apps', "apps.{$application}", "apps.{$application}.ondemand", 'pods', 'host');
+    }
+
+    /**
+     * Removes the on-demand units, and starts the application again, now at boot too.
+     */
+    public function disableOnDemand(Environment $environment, string $application): void
+    {
+        $this->json($environment, [$application, 'ondemand', 'disable', '--json'], timeout: 120);
+
+        $this->forget($environment, 'apps', "apps.{$application}", "apps.{$application}.ondemand", 'pods', 'host');
     }
 
     /**
@@ -444,14 +474,14 @@ class LpodClient
     {
         $this->json($environment, [$application, 'down', '--force', '--json']);
 
-        $this->forget($environment, 'apps', "apps.{$application}", 'pods', 'host');
+        $this->forget($environment, 'apps', "apps.{$application}", "apps.{$application}.ondemand", 'pods', 'host');
     }
 
     protected function lifecycle(Environment $environment, string $application, string $operation): void
     {
         $this->json($environment, [$application, $operation, '--no-block', '--json']);
 
-        $this->forget($environment, 'apps', "apps.{$application}", 'pods', 'host');
+        $this->forget($environment, 'apps', "apps.{$application}", "apps.{$application}.ondemand", 'pods', 'host');
     }
 
     /**

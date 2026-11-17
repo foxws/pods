@@ -251,6 +251,36 @@ export type NetworkData = {
   applications: string[]
   default: boolean
 }
+export type OnDemandData = {
+  enabled: boolean
+  listening: boolean
+  awake: boolean
+  settings: OnDemandSettingsData | null
+}
+export type OnDemandIdleCheckData = {
+  container: string
+  user: string | null
+  command: string
+}
+export type OnDemandScheduleData = {
+  container: string
+  at: string[]
+  environment: Record<string, string>
+}
+export type OnDemandSettingsData = {
+  port: number | null
+  app_port: number | null
+  listen: string | null
+  idle_timeout: string
+  workers: string[]
+  idle_check: OnDemandIdleCheckData | null
+  schedule: OnDemandScheduleData | null
+}
+export type OnDemandSuggestionData = {
+  laravel: boolean
+  containers: string[]
+  settings: OnDemandSettingsData
+}
 export type PaginatedDataCollection<TKey, TValue> = LengthAwarePaginator<TKey, TValue>
 export type PodData = {
   id: string
