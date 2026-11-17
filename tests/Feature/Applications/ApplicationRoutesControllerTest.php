@@ -43,6 +43,10 @@ it('shows the routes of an application, then the ones its pods.yml names with a 
               s3:
                 upstream: systemd-stry-rustfs:9000
                 description: Object storage
+                via: main
+              mail:
+                upstream: systemd-stry-mailpit:8025
+                description: Mailpit
             YAML,
     ]);
 
@@ -51,10 +55,12 @@ it('shows the routes of an application, then the ones its pods.yml names with a 
         ->assertInertia(fn ($page) => $page->loadDeferredProps('routes', fn ($reload) => $reload
             ->where('routes.data.proxy_installed', true)
             ->where('routes.data.proxy_running', true)
-            ->where('routes.data.routes', fn ($routes): bool => collect($routes)->map(fn ($route): array => collect($route)->only(['role', 'host', 'suggested_host', 'target', 'main', 'from_manifest', 'description'])->all())->all() === [
-                ['role' => 'app', 'description' => 'The web app', 'main' => true, 'host' => 'stry.home.arpa', 'suggested_host' => 'stry.home.arpa', 'target' => 'host.containers.internal:8000', 'from_manifest' => true],
-                ['role' => 'websockets', 'description' => null, 'main' => false, 'host' => 'ws.stry.home.arpa', 'suggested_host' => 'websockets.stry.home.arpa', 'target' => 'systemd-stry-reverb:6001', 'from_manifest' => true],
-                ['role' => 's3', 'description' => 'Object storage', 'main' => false, 'host' => null, 'suggested_host' => 's3.stry.home.arpa', 'target' => null, 'from_manifest' => true],
+            ->where('routes.data.layout', 'sites')
+            ->where('routes.data.routes', fn ($routes): bool => collect($routes)->map(fn ($route): array => collect($route)->only(['role', 'host', 'suggested_host', 'target', 'main', 'via', 'from_manifest', 'description'])->all())->all() === [
+                ['role' => 'app', 'description' => 'The web app', 'main' => true, 'via' => null, 'host' => 'stry.home.arpa', 'suggested_host' => 'stry.home.arpa', 'target' => 'host.containers.internal:8000', 'from_manifest' => true],
+                ['role' => 'websockets', 'description' => null, 'main' => false, 'via' => null, 'host' => 'ws.stry.home.arpa', 'suggested_host' => 'websockets.stry.home.arpa', 'target' => 'systemd-stry-reverb:6001', 'from_manifest' => true],
+                ['role' => 's3', 'description' => 'Object storage', 'main' => false, 'via' => 'main', 'host' => 's3.stry.home.arpa', 'suggested_host' => 's3.stry.home.arpa', 'target' => 'host.containers.internal:8000', 'from_manifest' => true],
+                ['role' => 'mail', 'description' => 'Mailpit', 'main' => false, 'via' => null, 'host' => null, 'suggested_host' => 'mail.stry.home.arpa', 'target' => null, 'from_manifest' => true],
             ])));
 });
 
@@ -80,14 +86,44 @@ it('saves the routes with lowercase hostnames and one main route', function (arr
 })->with([
     'the first is the main one' => [
         [['role' => 'app', 'host' => 'Stry.Home.Arpa', 'upstream' => 'systemd-stry:8000'], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001']],
-        [['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'main' => true], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'main' => false]],
+        [['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'main' => true, 'via' => null], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'main' => false, 'via' => null]],
     ],
     'the first that says so' => [
         [['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'main' => false], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'main' => true], ['role' => 's3', 'host' => 's3.stry.home.arpa', 'upstream' => 'systemd-stry-rustfs:9000', 'main' => true]],
-        [['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'main' => false], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'main' => true], ['role' => 's3', 'host' => 's3.stry.home.arpa', 'upstream' => 'systemd-stry-rustfs:9000', 'main' => false]],
+        [['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'main' => false, 'via' => null], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'main' => true, 'via' => null], ['role' => 's3', 'host' => 's3.stry.home.arpa', 'upstream' => 'systemd-stry-rustfs:9000', 'main' => false, 'via' => null]],
     ],
     'none, which removes them' => [[], []],
 ]);
+
+it('suggests hostnames one label under the wildcard site of the proxy', function () {
+    fakeLpod()->respond('proxy routes --json', json_encode(['contract' => 1, 'proxy' => ['installed' => true, 'running' => true, 'layout' => 'handlers', 'domain' => 'home.example.com'], 'routes' => []]));
+    Installation::factory()->for($this->environment)->create([
+        'application' => 'stry',
+        'manifest' => "routes:\n  app:\n    upstream: systemd-stry:8000\n  ws:\n    upstream: systemd-stry-reverb:6001\n    via: main\n",
+    ]);
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'stry']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps('routes', fn ($reload) => $reload
+            ->where('routes.data.layout', 'handlers')
+            ->where('routes.data.domain', 'home.example.com')
+            ->where('routes.data.routes.0.suggested_host', 'stry.home.example.com')
+            ->where('routes.data.routes.1.suggested_host', 'stry-ws.home.example.com')
+            ->where('routes.data.routes.1.via', 'main')));
+});
+
+it('sends a route through the main one, but never the main route itself', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'stry']), ['routes' => [
+            ['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'via' => 'main'],
+            ['role' => 'ws', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'via' => 'main'],
+        ]])
+        ->assertInertiaFlash('type', 'success');
+
+    expect(array_column(routesSentTo($lpod, 'stry'), 'via', 'role'))->toBe(['app' => null, 'ws' => 'main']);
+});
 
 it('refuses routes lpod would refuse', function (array $route, string $field) {
     $lpod = fakeLpod();
@@ -105,6 +141,7 @@ it('refuses routes lpod would refuse', function (array $route, string $field) {
     'the same host in other case' => [['role' => 'web', 'host' => 'STRY.home.arpa', 'upstream' => 'systemd-stry:8000'], 'routes.1.host'],
     'the same role twice' => [['role' => 'app', 'host' => 'www.stry.home.arpa', 'upstream' => 'systemd-stry:8000'], 'routes.1.role'],
     'an upstream without a port' => [['role' => 'web', 'host' => 'www.stry.home.arpa', 'upstream' => 'systemd-stry'], 'routes.1.upstream'],
+    'via anything but main' => [['role' => 'web', 'host' => 'www.stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'via' => 'ws'], 'routes.1.via'],
 ]);
 
 it('shows the error when lpod cannot save the routes', function () {
@@ -141,7 +178,7 @@ it('routes the hostnames entered when installing, after the install', function (
         ->assertInertiaFlash('type', 'success');
 
     $commands = collect($lpod->recorded())->pluck('arguments');
-    expect(routesSentTo($lpod, 'uptime-kuma'))->toBe([['role' => 'app', 'host' => 'status.home.arpa', 'upstream' => 'systemd-uptime-kuma:3001', 'main' => true]])
+    expect(routesSentTo($lpod, 'uptime-kuma'))->toBe([['role' => 'app', 'host' => 'status.home.arpa', 'upstream' => 'systemd-uptime-kuma:3001', 'main' => true, 'via' => null]])
         ->and($commands->search(['uptime-kuma', 'routes', 'set', '--stdin', '--json']))
         ->toBeGreaterThan($commands->search(fn (array $arguments): bool => $arguments[0] === 'quadlet' && $arguments[1] === 'install'));
 });
@@ -183,4 +220,5 @@ it('refuses a pods.yml with routes lpod would refuse', function (string $routes,
     'a role in capitals' => ["  App:\n    upstream: app:8000\n", "\"App\" isn't a valid route role"],
     'two main routes' => ["  app:\n    upstream: app:8000\n    main: true\n  ws:\n    upstream: app-ws:6001\n    main: true\n", 'only one route can be the main one'],
     'an upstream without a port' => ["  app:\n    upstream: app\n", 'routes.app.upstream'],
+    'via anything but main' => ["  app:\n    upstream: app:8000\n  ws:\n    upstream: app-ws:6001\n    via: app\n", 'routes.ws.via'],
 ]);

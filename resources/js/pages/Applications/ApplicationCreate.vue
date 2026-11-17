@@ -21,6 +21,7 @@ import type {
   ManifestData,
   ManifestSourceData,
   QuadletSourceData,
+  ProxyRoutesData,
   SecretData,
 } from '@/types'
 import { pluralize } from '@/utils/application'
@@ -42,6 +43,7 @@ const props = defineProps<{
   environment: EnvironmentData
   catalog?: HostProperty<CatalogData>
   secrets?: HostProperty<SecretData[]>
+  proxy?: HostProperty<ProxyRoutesData>
 }>()
 
 type Source = 'catalog' | 'git' | 'upload' | 'write'
@@ -285,6 +287,11 @@ const hosts = reactive<Record<string, string>>({})
 const manifestRoutes = computed(() => manifest.value?.routes ?? [])
 
 /**
+ * Behind a wildcard site, hostnames stay one label under its domain.
+ */
+const wildcard = computed(() => props.proxy?.data?.domain ?? null)
+
+/**
  * Only routes with a hostname are sent, so an error's index is the route's place among those.
  */
 const routeError = (role: string): string | undefined => {
@@ -295,7 +302,7 @@ const routeError = (role: string): string | undefined => {
 
 const fillInHosts = (): void => {
   for (const route of manifestRoutes.value) {
-    hosts[route.role] = suggestedHost(application.name, route.role, route.main)
+    hosts[route.role] = suggestedHost(application.name, route.role, route.main, wildcard.value)
   }
 }
 
@@ -317,6 +324,7 @@ const submit = (): void => {
       host: (hosts[route.role] ?? '').trim(),
       upstream: route.upstream,
       main: route.main,
+      via: route.via,
     }))
   form.secrets = missing.value
     .filter((secret) => !isFilledIn(secret))
@@ -988,13 +996,13 @@ const serverErrors = computed(() =>
                   v-for="route in manifestRoutes"
                   :key="route.role"
                   :label="route.description ?? route.role"
-                  :description="`${route.main ? 'Main route · ' : ''}${route.upstream}`"
+                  :description="`${route.main ? 'Main route · ' : ''}${route.via === 'main' ? 'through the main route' : route.upstream}`"
                   :error="routeError(route.role)"
                 >
                   <UInput
                     v-model="hosts[route.role]"
                     :model-modifiers="{ trim: true }"
-                    :placeholder="suggestedHost(application.name, route.role, route.main)"
+                    :placeholder="suggestedHost(application.name, route.role, route.main, wildcard)"
                     class="w-full font-mono sm:w-80"
                   />
                 </UFormField>

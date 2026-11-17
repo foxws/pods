@@ -130,11 +130,11 @@ class InstallQuadletsRequest extends QuadletFilesRequest
     /**
      * The hostnames to route to the application through the Pods proxy once it's installed.
      *
-     * @return list<array{role: string, host: string, upstream: string, main: bool}>
+     * @return list<array{role: string, host: string, upstream: string, main: bool, via: ?string}>
      */
     public function routes(): array
     {
-        /** @var array<array-key, array{role: string, host: string, upstream: string, main?: bool}> $routes */
+        /** @var array<array-key, array{role: string, host: string, upstream: string, main?: bool, via?: ?string}> $routes */
         $routes = $this->array('routes');
 
         return RouteData::forLpod($routes);

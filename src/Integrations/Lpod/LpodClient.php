@@ -100,7 +100,7 @@ class LpodClient
      * Replaces the hostnames the Pods proxy sends to the application, and applies them: lpod reloads
      * Caddy, or restarts the proxy when the networks it joins change. No routes removes them.
      *
-     * @param  list<array{role: string, host: string, upstream: string, main: bool}>  $routes
+     * @param  list<array{role: string, host: string, upstream: string, main: bool, via: ?string}>  $routes
      */
     public function setRoutes(Environment $environment, string $application, array $routes): void
     {

@@ -72,6 +72,7 @@ export type {
   OnDemandSettingsData,
   OnDemandSuggestionData,
   PodData,
+  ProxyRoutesData,
   QuadletCheckData,
   QuadletFileData,
   QuadletSourceData,

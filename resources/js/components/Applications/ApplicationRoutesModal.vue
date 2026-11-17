@@ -12,6 +12,8 @@ const props = defineProps<{
   environment: EnvironmentData
   application: string
   routes: RouteSuggestionData[]
+  /** The proxy's wildcard domain, which hostnames stay one label under. */
+  wildcard: string | null
 }>()
 
 type Row = {
@@ -20,6 +22,7 @@ type Row = {
   host: string
   upstream: string
   main: boolean
+  viaMain: boolean
   fromManifest: boolean
 }
 
@@ -37,6 +40,7 @@ watch(open, (isOpen) => {
       host: route.host ?? '',
       upstream: route.upstream,
       main: route.main,
+      viaMain: route.via === 'main',
       fromManifest: route.from_manifest,
     })),
   })
@@ -47,7 +51,15 @@ watch(open, (isOpen) => {
 const addRow = (): void => {
   const role = form.rows.some((row) => row.role === 'app') ? `route-${form.rows.length + 1}` : 'app'
 
-  form.rows.push({ role, description: null, host: '', upstream: '', main: form.rows.length === 0, fromManifest: false })
+  form.rows.push({
+    role,
+    description: null,
+    host: '',
+    upstream: '',
+    main: form.rows.length === 0,
+    viaMain: false,
+    fromManifest: false,
+  })
 }
 
 const removeRow = (index: number): void => {
@@ -55,7 +67,10 @@ const removeRow = (index: number): void => {
 }
 
 const makeMain = (index: number): void => {
-  form.rows.forEach((row, rowIndex) => (row.main = rowIndex === index))
+  form.rows.forEach((row, rowIndex) => {
+    row.main = rowIndex === index
+    row.viaMain = row.main ? false : row.viaMain
+  })
 }
 
 /**
@@ -147,7 +162,7 @@ const onSubmit = (close: () => void): void => {
             >
               <UInput
                 v-model="row.host"
-                :placeholder="suggestedHost(application, row.role, row.main)"
+                :placeholder="suggestedHost(application, row.role, row.main, wildcard)"
                 class="w-full font-mono"
               >
                 <template
@@ -159,7 +174,7 @@ const onSubmit = (close: () => void): void => {
                     color="neutral"
                     variant="link"
                     size="xs"
-                    @click="row.host = suggestedHost(application, row.role, row.main)"
+                    @click="row.host = suggestedHost(application, row.role, row.main, wildcard)"
                   />
                 </template>
               </UInput>
@@ -177,6 +192,14 @@ const onSubmit = (close: () => void): void => {
               />
             </UFormField>
           </div>
+
+          <UCheckbox
+            v-if="!row.main"
+            v-model="row.viaMain"
+            :disabled="row.fromManifest"
+            label="Through the main route"
+            description="For an application that routes its own hostnames. It wakes a sleeping application too."
+          />
         </div>
 
         <UButton
