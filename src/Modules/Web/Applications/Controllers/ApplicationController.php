@@ -6,6 +6,7 @@ namespace Modules\Web\Applications\Controllers;
 
 use Domain\Applications\Actions\ListApplicationUpdates;
 use Domain\Applications\Actions\SuggestOnDemandSettings;
+use Domain\Applications\Actions\SuggestRoutes;
 use Domain\Applications\Actions\SyncInstallation;
 use Domain\Applications\DataObjects\InstallationData;
 use Domain\Applications\DataObjects\QuadletFileData;
@@ -55,6 +56,7 @@ class ApplicationController implements HasMiddleware
         SuggestOnDemandSettings $suggestOnDemandSettings,
         SyncInstallation $syncInstallation,
         ListApplicationUpdates $listApplicationUpdates,
+        SuggestRoutes $suggestRoutes,
     ): Response {
         Gate::authorize('view', $environment);
 
@@ -82,6 +84,11 @@ class ApplicationController implements HasMiddleware
 
                 return $installation !== null ? InstallationData::fromModel($syncInstallation($installation, $readFiles())) : null;
             }), 'details'),
+            'routes' => Inertia::defer(fn (): array => $this->fromHost(fn () => $suggestRoutes(
+                $application,
+                $lpod->proxyRoutes($environment),
+                $environment->installations()->firstWhere('application', $application)?->manifest(),
+            )), 'routes'),
             'updates' => Inertia::defer(fn (): array => $this->fromHost(function () use ($environment, $application, $listApplicationUpdates): array {
                 $installation = $environment->installations()->firstWhere('application', $application);
 

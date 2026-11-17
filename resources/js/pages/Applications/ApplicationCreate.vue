@@ -10,6 +10,7 @@ import {
   useQuadletInstall,
   type DerivedSecretInput,
   type InstallSourceInput,
+  type RouteInput,
   type SecretInput,
 } from '@/composables/quadlets'
 import type {
@@ -23,6 +24,7 @@ import type {
   SecretData,
 } from '@/types'
 import { pluralize } from '@/utils/application'
+import { suggestedHost } from '@/utils/routes'
 import {
   describeQuadlet,
   isQuadletFile,
@@ -275,6 +277,28 @@ const isFilledIn = (secret: (typeof missing.value)[number]): boolean =>
 
 const application = reactive({ name: '', start: true, replace: false })
 
+/**
+ * The hostnames entered for the routes pods.yml names. An empty one gets no route.
+ */
+const hosts = reactive<Record<string, string>>({})
+
+const manifestRoutes = computed(() => manifest.value?.routes ?? [])
+
+/**
+ * Only routes with a hostname are sent, so an error's index is the route's place among those.
+ */
+const routeError = (role: string): string | undefined => {
+  const index = form.routes.findIndex((route) => route.role === role)
+
+  return index === -1 ? undefined : form.errors[`routes.${index}.host` as keyof typeof form.errors]
+}
+
+const fillInHosts = (): void => {
+  for (const route of manifestRoutes.value) {
+    hosts[route.role] = suggestedHost(application.name, route.role, route.main)
+  }
+}
+
 const unfilled = computed(() => missing.value.filter((secret) => !values[secret.name] && !isFilledIn(secret)))
 
 const { result, checking } = useQuadletCheck(() => props.environment, files)
@@ -286,6 +310,14 @@ const submit = (): void => {
   form.start = application.start
   form.replace = application.replace
   form.source = fetched.value
+  form.routes = manifestRoutes.value
+    .filter((route) => (hosts[route.role] ?? '').trim() !== '')
+    .map<RouteInput>((route) => ({
+      role: route.role,
+      host: (hosts[route.role] ?? '').trim(),
+      upstream: route.upstream,
+      main: route.main,
+    }))
   form.secrets = missing.value
     .filter((secret) => !isFilledIn(secret))
     .map<SecretInput>((secret) => ({ name: secret.name, driver: 'file', value: values[secret.name] ?? '' }))
@@ -932,6 +964,41 @@ const serverErrors = computed(() =>
                   class="w-full font-mono sm:w-80"
                 />
               </UFormField>
+              <div
+                v-if="manifestRoutes.length"
+                class="flex flex-col gap-3"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium text-highlighted">Hostnames</span>
+                    <span class="text-sm text-muted">
+                      The Pods proxy sends these to the application. Leave one empty for no route.
+                    </span>
+                  </div>
+                  <UButton
+                    label="Suggest"
+                    icon="i-lucide-wand-sparkles"
+                    color="neutral"
+                    variant="outline"
+                    size="xs"
+                    @click="fillInHosts"
+                  />
+                </div>
+                <UFormField
+                  v-for="route in manifestRoutes"
+                  :key="route.role"
+                  :label="route.description ?? route.role"
+                  :description="`${route.main ? 'Main route · ' : ''}${route.upstream}`"
+                  :error="routeError(route.role)"
+                >
+                  <UInput
+                    v-model="hosts[route.role]"
+                    :model-modifiers="{ trim: true }"
+                    :placeholder="suggestedHost(application.name, route.role, route.main)"
+                    class="w-full font-mono sm:w-80"
+                  />
+                </UFormField>
+              </div>
               <USwitch
                 v-model="application.start"
                 label="Start after installing"

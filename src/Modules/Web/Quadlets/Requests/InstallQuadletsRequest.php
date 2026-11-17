@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Web\Quadlets\Requests;
 
+use Domain\Applications\DataObjects\RouteData;
 use Domain\Quadlets\DataObjects\ManifestData;
 use Domain\Quadlets\Exceptions\InvalidManifestException;
 use Dotenv\Dotenv;
@@ -45,6 +46,7 @@ class InstallQuadletsRequest extends QuadletFilesRequest
             'source.commit' => ['nullable', 'string', 'regex:/^[0-9a-f]{4,64}$/'],
             'source.manifest' => ['nullable', 'string', 'max:65536'],
             'source.manifest_path' => ['nullable', 'string', 'max:1024'],
+            ...RouteData::rules('routes'),
         ];
     }
 
@@ -123,6 +125,19 @@ class InstallQuadletsRequest extends QuadletFilesRequest
         }
 
         return $secrets;
+    }
+
+    /**
+     * The hostnames to route to the application through the Pods proxy once it's installed.
+     *
+     * @return list<array{role: string, host: string, upstream: string, main: bool}>
+     */
+    public function routes(): array
+    {
+        /** @var array<array-key, array{role: string, host: string, upstream: string, main?: bool}> $routes */
+        $routes = $this->array('routes');
+
+        return RouteData::forLpod($routes);
     }
 
     /**
