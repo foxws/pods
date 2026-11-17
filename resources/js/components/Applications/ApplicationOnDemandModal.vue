@@ -109,6 +109,15 @@ const onSubmit = (close: () => void): void => {
   >
     <template #body>
       <div class="flex flex-col gap-4">
+        <UAlert
+          v-if="!current && suggestion?.from_manifest"
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-file-cog"
+          title="Filled in from the application's pods.yml"
+          description="Change anything before turning it on, such as a longer idle timeout while you develop."
+        />
+
         <div class="grid gap-4 sm:grid-cols-2">
           <UFormField
             label="Socket port"

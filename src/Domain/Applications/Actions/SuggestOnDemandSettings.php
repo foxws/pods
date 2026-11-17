@@ -9,11 +9,13 @@ use Domain\Applications\DataObjects\OnDemandScheduleData;
 use Domain\Applications\DataObjects\OnDemandSettingsData;
 use Domain\Applications\DataObjects\OnDemandSuggestionData;
 use Domain\Applications\DataObjects\QuadletFileData;
+use Domain\Quadlets\DataObjects\ManifestData;
 use Illuminate\Support\Str;
 
 /**
- * Reads an application's Quadlet files for the on-demand settings to offer: the port its main unit
- * listens on, and for a Laravel application, its queue workers and its scheduler.
+ * The on-demand settings to offer for an application. Its stored pods.yml says them in its ondemand
+ * section. Without one, Pods reads its Quadlet files: the port its main unit listens on, and for a
+ * Laravel application, its queue workers and its scheduler.
  */
 class SuggestOnDemandSettings
 {
@@ -27,7 +29,7 @@ class SuggestOnDemandSettings
     /**
      * @param  list<QuadletFileData>  $files
      */
-    public function __invoke(ApplicationData $application, array $files): OnDemandSuggestionData
+    public function __invoke(ApplicationData $application, array $files, ?ManifestData $manifest = null): OnDemandSuggestionData
     {
         $mainFileName = $this->mainFileName($application);
 
@@ -56,9 +58,15 @@ class SuggestOnDemandSettings
             ? array_keys(array_filter($containers, fn (QuadletFileData $file): bool => preg_match(self::WorkerPattern, $file->content) === 1))
             : [];
 
+        $containerNames = array_map(strval(...), array_keys($containers));
+
+        if ($manifest?->ondemand !== null) {
+            return $this->fromManifest($manifest->ondemand, $containerNames, $isLaravel, $main);
+        }
+
         return new OnDemandSuggestionData(
             laravel: $isLaravel,
-            containers: array_map(strval(...), array_keys($containers)),
+            containers: $containerNames,
             settings: new OnDemandSettingsData(
                 port: null,
                 app_port: $main !== null ? $this->appPort($main->content) : null,
@@ -68,6 +76,33 @@ class SuggestOnDemandSettings
                 idle_check: null,
                 schedule: $isLaravel ? $this->schedule($containers) : null,
             ),
+            from_manifest: false,
+        );
+    }
+
+    /**
+     * The manifest's settings as they are. A port it leaves out is still read from the main unit, and
+     * workers or a scheduler in it show the Laravel settings, whatever the files look like.
+     *
+     * @param  list<string>  $containers
+     */
+    protected function fromManifest(OnDemandSettingsData $settings, array $containers, bool $isLaravel, ?QuadletFileData $main): OnDemandSuggestionData
+    {
+        $hasBackgroundWork = $settings->workers !== [] || $settings->idle_check !== null || $settings->schedule !== null;
+
+        return new OnDemandSuggestionData(
+            laravel: $isLaravel || $hasBackgroundWork,
+            containers: $containers,
+            settings: new OnDemandSettingsData(
+                port: $settings->port,
+                app_port: $settings->app_port ?? ($main !== null ? $this->appPort($main->content) : null),
+                listen: $settings->listen,
+                idle_timeout: $settings->idle_timeout,
+                workers: $settings->workers,
+                idle_check: $settings->idle_check,
+                schedule: $settings->schedule,
+            ),
+            from_manifest: true,
         );
     }
 

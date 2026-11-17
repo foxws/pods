@@ -8,8 +8,8 @@ use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
- * The on-demand settings Pods suggests for an application, read from its Quadlet files. Only a Laravel
- * application gets workers and a scheduler.
+ * The on-demand settings Pods suggests for an application: the ondemand section of its stored pods.yml,
+ * or else what its Quadlet files suggest. Only a Laravel application gets workers and a scheduler.
  */
 #[TypeScript]
 class OnDemandSuggestionData extends Data
@@ -21,5 +21,6 @@ class OnDemandSuggestionData extends Data
         public bool $laravel,
         public array $containers,
         public OnDemandSettingsData $settings,
+        public bool $from_manifest,
     ) {}
 }

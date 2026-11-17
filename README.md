@@ -145,11 +145,26 @@ after_install: # commands to run once the units are up, from the application pag
                 option: --email # passed as --email=VALUE
             password:
                 type: password # an input without an option goes on stdin
+
+ondemand: # fills in the on-demand switch; the keys match lpod's ondemand status
+    port: 8000 # the socket on the host
+    app_port: 8000 # inside the app container, read from its unit when left out
+    idle_timeout: 10min
+    workers: [stry-horizon] # keep running until the idle check says there's no work
+    idle_check:
+        container: stry-horizon
+        user: docker
+        command: php /app/artisan app:idle
+    schedule: # runs schedule:run only at these minutes, in UTC
+        container: stry-schedule
+        at: ["*:00", "01:00"]
+        environment:
+            APP_COMMAND: php /app/artisan schedule:run
 ```
 
 Every key is optional. When you fetch a directory, Pods reads the nearest `pods.yml`: the one in that directory, or else in a directory above it. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. A step's inputs aren't stored; at most one input goes on stdin, and a password always does, so it never shows in the arguments. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
 
-[stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. On-demand services from the manifest, backup hints and routes are planned; see the [roadmap](docs/roadmap.md).
+[stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. Backup hints and routes are planned; see the [roadmap](docs/roadmap.md).
 
 ### Catalog
 

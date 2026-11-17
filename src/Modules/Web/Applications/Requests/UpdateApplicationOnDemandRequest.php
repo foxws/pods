@@ -13,16 +13,6 @@ use Illuminate\Support\Str;
 
 class UpdateApplicationOnDemandRequest extends FormRequest
 {
-    /**
-     * A container Quadlet's name, without its extension.
-     */
-    protected const string ContainerPattern = '/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/';
-
-    /**
-     * A systemd time span without spaces, such as 10min or 1h30min.
-     */
-    protected const string TimeSpanPattern = '/^(\d+(us|ms|s|sec|m|min|h|hr|d|w)?){1,4}$/';
-
     public function authorize(): bool
     {
         return true;
@@ -37,15 +27,15 @@ class UpdateApplicationOnDemandRequest extends FormRequest
             // lpod gives the app the socket's port + 10000 on 127.0.0.1.
             'port' => ['required', 'integer', 'between:1,55535'],
             'app_port' => ['required', 'integer', 'between:1,65535'],
-            'idle_timeout' => ['required', 'string', 'max:32', 'regex:'.self::TimeSpanPattern],
+            'idle_timeout' => ['required', 'string', 'max:32', 'regex:'.OnDemandSettingsData::TimeSpanPattern],
             'workers' => ['array', 'max:20', 'required_with:idle_container'],
-            'workers.*' => ['string', 'distinct', 'regex:'.self::ContainerPattern],
-            'idle_container' => ['nullable', 'string', 'required_with:idle_command', 'regex:'.self::ContainerPattern],
-            'idle_user' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/'],
+            'workers.*' => ['string', 'distinct', 'regex:'.OnDemandSettingsData::ContainerPattern],
+            'idle_container' => ['nullable', 'string', 'required_with:idle_command', 'regex:'.OnDemandSettingsData::ContainerPattern],
+            'idle_user' => ['nullable', 'string', 'max:64', 'regex:'.OnDemandSettingsData::UserPattern],
             'idle_command' => ['nullable', 'string', 'required_with:idle_container', 'max:500', 'not_regex:/[\r\n]/'],
-            'schedule' => ['nullable', 'string', 'regex:'.self::ContainerPattern],
+            'schedule' => ['nullable', 'string', 'regex:'.OnDemandSettingsData::ContainerPattern],
             'schedule_at' => ['array', 'max:24', 'required_with:schedule'],
-            'schedule_at.*' => ['string', 'distinct', 'regex:/^(\*|[01]\d|2[0-3]):[0-5]\d$/'],
+            'schedule_at.*' => ['string', 'distinct', 'regex:'.OnDemandSettingsData::ScheduleAtPattern],
             'schedule_env' => ['array', 'max:20'],
             'schedule_env.*' => ['string', 'max:500', 'regex:/^[A-Za-z_][A-Za-z0-9_]*=/', 'not_regex:/[\r\n$]/'],
         ];
