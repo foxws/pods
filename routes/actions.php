@@ -13,6 +13,7 @@ use Modules\Web\Applications\Controllers\ApplicationUpdateController;
 use Modules\Web\Containers\Controllers\ContainerOperationController;
 use Modules\Web\Containers\Controllers\ContainerPruneController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
+use Modules\Web\Environments\Controllers\EnvironmentProxyController;
 use Modules\Web\Environments\Controllers\EnvironmentSettingsController;
 use Modules\Web\Images\Controllers\ImageController;
 use Modules\Web\Images\Controllers\ImagePruneController;
@@ -38,6 +39,13 @@ Route::resource('environments', EnvironmentController::class)->only(['store', 'd
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
     // Settings
     Route::put('/settings', [EnvironmentSettingsController::class, 'update'])->name('settings.update');
+
+    // Proxy
+    Route::prefix('/proxy')->name('proxy.')->group(function () {
+        Route::post('/', [EnvironmentProxyController::class, 'store'])->name('store');
+        Route::put('/', [EnvironmentProxyController::class, 'update'])->name('update');
+        Route::get('/certificate', [EnvironmentProxyController::class, 'certificate'])->name('certificate');
+    });
 
     // Applications
     Route::resource('applications', ApplicationController::class)->only(['destroy']);

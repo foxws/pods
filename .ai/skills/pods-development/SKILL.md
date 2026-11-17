@@ -5,7 +5,7 @@ description: >
   (applications, containers, pods, images, volumes, networks, secrets, journal, host settings, Quadlets),
   touching LpodClient, SshHostRunner, SshIdentity, FakeHostRunner or fakeLpod(), the lpod JSON contract
   or its fixtures, pods.yml (ManifestData), installations (Installation, pods:sync), setup steps,
-  on-demand, updates, proxy routes, environments, pods:install or pods:verify, or when planning volume backups.
+  on-demand, updates, proxy routes and proxy settings, environments, pods:install or pods:verify, or when planning volume backups.
 license: MIT
 metadata:
   author: foxws
@@ -67,20 +67,23 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 
 ## Proxy routes
 
-lpod generates each application's routes file, with the routes kept on its `# lpod-routes:` line. It writes `sites/APP.Caddyfile` with a site per hostname, or, when the proxy's Caddyfile imports `sites/*.caddy` inside a wildcard site, `sites/APP.caddy` with matchers and `handle`s (`proxy.layout` is `handlers`, and `proxy.domain` is the wildcard domain). It also writes and a `pods-proxy.container.d/lpod-routes-APP.conf` drop-in with the app's networks, from `lpod APP routes set --stdin --json` (`{"routes": [{role, host, upstream, main}]}`). An empty list removes them, and it reloads Caddy or restarts the proxy when the networks change. While an app is on demand, its main route targets its socket (`host.containers.internal:PORT`, reported as `target`). Pods reads `lpod proxy routes --json` (`LpodClient::proxyRoutes()`, cached as `proxy.routes`) for `ProxyRoutesData`, and writes with `setRoutes()`.
+lpod generates each application's routes file, with the routes kept on its `# lpod-routes:` line. It writes `sites/APP.Caddyfile` with a site per hostname, or, when the proxy's Caddyfile imports `sites/*.caddy` inside a wildcard site, `sites/APP.caddy` with matchers and `handle`s (`proxy.layout` is `handlers`, and `proxy.domain` is the wildcard domain). It also writes a `pods-proxy.container.d/lpod-routes-APP.conf` drop-in with the app's networks, from `lpod APP routes set --stdin --json` (`{"routes": [{role, host, upstream, main}]}`). An empty list removes them, and it reloads Caddy or restarts the proxy when the networks change. While an app is on demand, its main route targets its socket (`host.containers.internal:PORT`, reported as `target`). Pods reads `lpod proxy routes --json` (`LpodClient::proxyRoutes()`, cached as `proxy.routes`) for `ProxyRoutesData`, and writes with `setRoutes()`.
 
 - `RouteData` holds the patterns (role, host, upstream), `rules($key)` and `forLpod()` (lowercase hosts, one main route, and `via` dropped from the main route). Use them for any request that takes routes. A route with `via: main` goes where the main route goes and shares its matcher, for apps that route their own hostnames (stry). Every `reverse_proxy` gets `stream_close_delay 5m`, and reloads go through `admin unix//…` when the Caddyfile has it.
 - `SuggestRoutes` merges an app's routes with the ones its stored pods.yml names, and suggests `APP.home.arpa` for the main one and `ROLE.APP.home.arpa` for the others, or `APP.DOMAIN` and `APP-ROLE.DOMAIN` behind a wildcard site (one label, so its certificate covers them). The install page gets a deferred `proxy` prop for that. `resources/js/utils/routes.ts` mirrors that suggestion, so keep both in step.
 - The application page has a deferred `routes` prop (group `routes`) for `ApplicationRoutesCard.vue` and `ApplicationRoutesModal.vue`, and `PUT applications/{app}/routes` saves them (`ApplicationRoutesController`). The install page sends `routes` with the install, and `QuadletController` sets them afterwards. If that fails, the install still succeeds and the toast says so.
 - Inside a `v-for`, Nuxt UI's `ULink` made vue-tsc lose the loop variable, so `ApplicationRoutesCard.vue` uses a plain `<a>`.
-- Round 2 (planned in docs/roadmap.md, Proxy): `lpod proxy install|remove|settings|certificate`, with four certificate modes. In Let's Encrypt, local CA and plain HTTP, routes are sites. In the wildcard-through-DNS mode, they're handlers in `sites/APP.caddy` inside `*.DOMAIN`, and hostnames must be one label deep (`APP-ROLE.DOMAIN`). Also planned:
-  - a `via: main` route option for apps that route their own hostnames (stry's `ws` and `s3`);
-  - `stream_close_delay 5m` on every `reverse_proxy`;
-  - the admin API on `unix//config/admin.sock`;
-  - your own image as an override of `ghcr.io/foxws/pods-proxy:main`, which already exists: Caddy built with xcaddy and `caddy-dns/cloudflare` (`containers/runtimes/proxy/Containerfile`, built by `.github/workflows/build-proxy.yml` on changes and weekly). Add a DNS plugin with another `--with` line;
-  - port warnings for rootless.
 
-  Until then `pods-proxy` is installed by hand (README, Proxy).
+### Proxy settings
+
+- `lpod proxy settings [set --stdin] --json` (`LpodClient::proxySettings()`, cached as `proxy.settings`, and `updateProxySettings()`, which forgets `proxy.settings`, `proxy.routes` and `secrets`) reads and writes the mode (`ProxySettingsData::Modes`: `letsencrypt`, `local`, `wildcard`, `http`), email, wildcard domain, DNS provider (`DnsProviders`, Cloudflare only, the plugin in `ghcr.io/foxws/pods-proxy`), resolvers, ports and image. lpod keeps them on the Caddyfile's `# lpod-proxy:` line and in `pods-proxy.container.d/lpod-proxy.conf`. `managed: false` means a hand-written Caddyfile, read as far as lpod can, that saving backs up (`backup` in the reply) and replaces.
+- The DNS token goes in the settings JSON on stdin (`dns_token`), into the Podman secret `pods-proxy-dns-token`; leave it out to keep the one on the host. It's never in arguments, props or the database.
+- `ProxySettingsRequest` validates both the install and the save, and drops what the mode doesn't use (`exclude_unless:mode,wildcard`, no HTTPS port in `http`).
+- `EnvironmentProxyController`: `POST environments/{environment}/proxy` runs `InstallProxy` (fetch `config('catalog.proxy')`, Pods' own `containers/proxy`, and install it as `pods-proxy` through `InstallQuadlets` without starting it, so the `Installation` keeps its source), then saves the settings, then `up`, so the first start has the right ports. `PUT` saves them, and `GET …/proxy/certificate` downloads `lpod proxy certificate --json` as a `.crt`. Removing the proxy is the application's remove.
+- UI: `ProxySettingsCard.vue` on the host's settings page (deferred `proxy` prop, group `proxy`). It warns when rootless Podman can't publish the ports (`unprivileged_port_start`). The certificate button is a `UButton` with `external`, so it's a plain download, not an Inertia visit.
+- `ghcr.io/foxws/pods-proxy:main` is Caddy built with xcaddy (`containers/runtimes/proxy/Containerfile`, published by `.github/workflows/build-proxy.yml` on changes and weekly). A new DNS provider needs another `--with` line there, its name in `ProxySettingsData::DnsProviders`, and its token variable in lpod's `proxy_dns_env`.
+- `install.sh --proxy` calls `lpod proxy settings set` only while there's no Caddyfile yet, so running it again keeps settings made in Pods.
+- Still planned (docs/roadmap.md, Proxy): suggestions under the Let's Encrypt domain, and Pods' own hostname as a route of the `pods` application.
 
 ## Volume backups and restores (planned)
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentSettingsController'
 import HostError from '@/components/Environments/HostError.vue'
+import ProxySettingsCard from '@/components/Environments/ProxySettingsCard.vue'
 import SettingsLayout from '@/components/Settings/SettingsLayout.vue'
-import type { EnvironmentData, HostProperty, HostSettingsData } from '@/types'
+import type { EnvironmentData, HostProperty, HostSettingsData, ProxySettingsData } from '@/types'
 import { formatRelative } from '@/utils/format'
 import { Head, useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
@@ -10,6 +11,7 @@ import { computed, watch } from 'vue'
 const props = defineProps<{
   environment: EnvironmentData
   settings?: HostProperty<HostSettingsData>
+  proxy?: HostProperty<ProxySettingsData>
 }>()
 
 const form = useForm({
@@ -53,7 +55,7 @@ const submit = (): void => {
 
   <SettingsLayout
     :title="environment.name"
-    :description="`Auto-update and defaults for ${environment.user}@${environment.host}. lpod applies them on the host.`"
+    :description="`Auto-update, defaults and the proxy for ${environment.user}@${environment.host}. lpod applies them on the host.`"
   >
     <HostError
       v-if="settings?.error"
@@ -212,5 +214,10 @@ const submit = (): void => {
         />
       </div>
     </form>
+
+    <ProxySettingsCard
+      :environment="environment"
+      :proxy="proxy"
+    />
   </SettingsLayout>
 </template>

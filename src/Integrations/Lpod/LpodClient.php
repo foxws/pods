@@ -11,6 +11,7 @@ use Domain\Applications\DataObjects\JournalEntryData;
 use Domain\Applications\DataObjects\OnDemandData;
 use Domain\Applications\DataObjects\OnDemandSettingsData;
 use Domain\Applications\DataObjects\ProxyRoutesData;
+use Domain\Applications\DataObjects\ProxySettingsData;
 use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Catalog\DataObjects\CatalogData;
 use Domain\Containers\DataObjects\ContainerDetailData;
@@ -94,6 +95,44 @@ class LpodClient
     public function proxyRoutes(Environment $environment): ProxyRoutesData
     {
         return ProxyRoutesData::fromLpod($this->cached($environment, 'proxy.routes', ['proxy', 'routes', '--json']));
+    }
+
+    /**
+     * How the Pods proxy gets its certificates, its ports and its image.
+     */
+    public function proxySettings(Environment $environment): ProxySettingsData
+    {
+        return ProxySettingsData::fromLpod($this->cached($environment, 'proxy.settings', ['proxy', 'settings', '--json']));
+    }
+
+    /**
+     * Writes the proxy's Caddyfile and ports from the settings, rewrites every application's routes
+     * for the mode, and restarts the proxy. The DNS token travels on stdin with the settings, into
+     * a Podman secret; without one, lpod keeps the token it has.
+     *
+     * @param  array{mode: string, email: ?string, domain: ?string, dns_provider: ?string, resolvers: ?string, http_port: int, https_port: ?int, image: ?string}  $settings
+     * @return string|null where lpod kept the hand-written Caddyfile it replaced
+     */
+    public function updateProxySettings(Environment $environment, array $settings, ?string $dnsToken = null): ?string
+    {
+        $input = $dnsToken !== null ? [...$settings, 'dns_token' => $dnsToken] : $settings;
+
+        $payload = $this->json($environment, ['proxy', 'settings', 'set', '--stdin', '--json'], input: (string) json_encode($input, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), timeout: 120);
+
+        $this->forget($environment, 'proxy.settings', 'proxy.routes', 'secrets');
+
+        return is_string($payload['backup'] ?? null) ? $payload['backup'] : null;
+    }
+
+    /**
+     * The root certificate (PEM) of the proxy's local certificate authority, or null until Caddy
+     * has made one or while the proxy isn't running.
+     */
+    public function proxyCertificate(Environment $environment): ?string
+    {
+        $payload = $this->json($environment, ['proxy', 'certificate', '--json']);
+
+        return is_string($payload['certificate'] ?? null) ? $payload['certificate'] : null;
     }
 
     /**
