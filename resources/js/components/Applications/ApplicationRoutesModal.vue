@@ -92,6 +92,7 @@ const onSubmit = (close: () => void): void => {
         host: row.host.trim(),
         upstream: row.upstream.trim(),
         main: row.main,
+        via: !row.main && row.viaMain ? 'main' : null,
       })),
     }))
     .put(update.url([props.environment.id, props.application]), {
