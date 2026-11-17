@@ -35,6 +35,8 @@ export type {
   ApplicationData,
   ApplicationDetailData,
   ApplicationOperation,
+  CatalogApplicationData,
+  CatalogData,
   ContainerData,
   ContainerDetailData,
   ContainerMountData,

@@ -6,6 +6,7 @@ namespace Modules\Web\Applications\Controllers;
 
 use Domain\Applications\Actions\SuggestOnDemandSettings;
 use Domain\Applications\DataObjects\QuadletFileData;
+use Domain\Catalog\Actions\ListCatalog;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
 use Illuminate\Http\RedirectResponse;
@@ -71,12 +72,13 @@ class ApplicationController implements HasMiddleware
         ]);
     }
 
-    public function create(Environment $environment, LpodClient $lpod): Response
+    public function create(Environment $environment, LpodClient $lpod, ListCatalog $listCatalog): Response
     {
         Gate::authorize('operate', $environment);
 
         return Inertia::render('Applications/ApplicationCreate', [
             'environment' => EnvironmentData::fromModel($environment),
+            'catalog' => Inertia::defer(fn (): array => $this->fromHost(fn () => $listCatalog($environment)), 'catalog'),
             'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment))),
         ]);
     }

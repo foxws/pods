@@ -23,6 +23,17 @@ export type ApplicationDetailData = {
   items: ContainerData[]
 }
 export type ApplicationOperation = 'up' | 'down' | 'force-stop' | 'restart' | 'redeploy'
+export type CatalogApplicationData = {
+  name: string
+  repository: string
+  reference: string
+  path: string
+  manifest: ManifestData
+}
+export type CatalogData = {
+  applications: CatalogApplicationData[]
+  errors: string[]
+}
 export type ContainerData = {
   name: string
   image: string | null
@@ -221,7 +232,15 @@ export type LengthAwarePaginatorInterface<TKey, TValue> = LengthAwarePaginator<T
 export type Locale = 'en-US' | 'nl-NL'
 export type ManifestData = {
   name: string | null
+  label: string | null
   description: string | null
+  author: string | null
+  icon: string | null
+  category: string | null
+  website: string | null
+  repository: string | null
+  notes: string | null
+  directory: string
   sources: ManifestSourceData[]
   secrets: ManifestSecretData[]
 }

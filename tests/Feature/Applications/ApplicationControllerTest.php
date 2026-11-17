@@ -111,6 +111,42 @@ it('shows the install page with the secrets that already exist', function () {
             ->loadDeferredProps(fn ($reload) => $reload->has('secrets.data', 6)));
 });
 
+it('offers the applications of the catalog repositories on the install page', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->missing('catalog')
+            ->loadDeferredProps('catalog', fn ($reload) => $reload
+                ->has('catalog.data.applications', 2)
+                ->where('catalog.data.applications.0.name', 'jellyfin')
+                ->where('catalog.data.applications.0.repository', 'https://github.com/foxws/quadlets')
+                ->where('catalog.data.applications.0.path', 'jellyfin')
+                ->where('catalog.data.applications.0.manifest.author', 'francoism90')
+                ->where('catalog.data.applications.0.manifest.icon', 'i-lucide-clapperboard')
+                ->where('catalog.data.applications.0.manifest.sources', [])
+                ->where('catalog.data.applications.1.manifest.label', 'MariaDB')
+                ->where('catalog.data.applications.1.manifest.sources.0.path', 'mariadb/production')
+                ->where('catalog.data.errors', ["scratch: pods.yml is ignored: it's version 2, but Pods reads version 1. Update Pods."])
+                ->where('catalog.error', null)));
+
+    $lpod->assertRan(['quadlet', 'catalog', 'https://github.com/foxws/quadlets', '--ref', 'main', '--json']);
+});
+
+it('shows why the catalog could not be read', function () {
+    fakeLpod()->respond('quadlet catalog *', new HostResult(1, '', 'fatal: unable to access the repository'));
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps('catalog', fn ($reload) => $reload
+                ->where('catalog.data', null)
+                ->whereType('catalog.error', 'string')));
+});
+
 it('removes an application and the data it owns once confirmed', function () {
     $lpod = fakeLpod();
 

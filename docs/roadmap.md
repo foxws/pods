@@ -54,7 +54,7 @@ Open questions:
 
 ## More of pods.yml
 
-Pods reads the sources, the application name and the secrets of a repository's `pods.yml` today. Next:
+Pods reads the sources, the application name, the secrets and the catalog keys (label, description, author, icon, category, website, repository and notes) of a `pods.yml` today. Next:
 
 1. **Setup steps.** `after_install` lists the commands to run once the units are up, such as `php artisan app:install` and creating the first admin, with inputs the UI asks for (a password goes on stdin, never in the arguments). lpod needs `lpod container NAME exec --stdin --json -- COMMAND`, and Pods needs to remember the manifest of an installed application (a table keyed by environment and application, with the repository, tag and commit it came from), so the application page can show a "Finish setup" panel. This replaces what laravel-installer did.
 2. **On-demand.** `ondemand` (port, idle timeout, idle check and the workers to stop) lets lpod write the socket, proxy and idle units, so an application doesn't ship them itself. See [On-demand applications](#on-demand-applications).
@@ -70,7 +70,7 @@ Pods installs Quadlets from Git. Development setups, such as stry's `containers/
 
 - **Invited users.** The owner invites users and gives each a role per environment (viewer, operator or admin), using spatie/laravel-permission. Host routes are already scoped per environment and go through policies, so this doesn't need a rewrite.
 - **Streaming logs** for applications, containers and the journal, instead of polling.
-- **An application catalog** of repositories with a `pods.yml`, installable in a few clicks.
-- **Application metadata.** The name and description from `pods.yml` (and a URL and icon) shown next to each installed application.
+- **An application catalog.** Started: the Install application page lists the applications of the repositories in `config/catalog.php` (lpod's `quadlet catalog`), each a directory with its own `pods.yml` holding its label, description, author, icon, category, website, source repository and notes. [foxws/quadlets](https://github.com/foxws/quadlets) has services like lerd.sh's (PostgreSQL, MariaDB, MySQL, Redis, Valkey, Memcached, Meilisearch, Typesense, RustFS, Mailpit) with production and development sources, and homelab applications from francoism90/dotfiles (Jellyfin, Immich, Vaultwarden and more). Next: brand logos, and more of lerd's services.
+- **Application metadata.** The label, description and icon from `pods.yml`, which the catalog already shows, next to each installed application. This needs the stored manifest (see [More of pods.yml](#more-of-podsyml)).
 - **Packaging.** `install.sh` installs Pods as plain Quadlets (`containers/quadlets/production`) with SQLite on a volume. It's socket-activated like `cockpit.socket` (lpod's `pods ondemand enable --listen 127.0.0.1`), except with `--proxy`, where the proxy reaches Pods by name and would never wake it. Next: an idle Pods behind the proxy (such as a route through the socket that doesn't publish port 9090 on the network), and pinned releases of Pods and lpod instead of `main`.
 - **Compose to Quadlet.** A converter, possibly AI-assisted. Pods itself stays Quadlet-only: no Docker and no Podman Compose.

@@ -13,8 +13,10 @@ use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * A repository's pods.yml. It only tells Pods how to offer and install the Quadlet files
- * next to it: it never changes their contents.
+ * A pods.yml. It only tells Pods how to describe, offer and install the Quadlet files next
+ * to it: it never changes their contents. It sits at a repository's root, or in a directory
+ * of its own for each application of a catalog repository; the paths of its sources are
+ * relative to that directory, and are kept here relative to the repository's root.
  */
 #[TypeScript]
 class ManifestData extends Data
@@ -27,15 +29,25 @@ class ManifestData extends Data
      */
     public function __construct(
         public ?string $name,
+        public ?string $label,
         public ?string $description,
+        public ?string $author,
+        public ?string $icon,
+        public ?string $category,
+        public ?string $website,
+        public ?string $repository,
+        public ?string $notes,
+        public string $directory,
         public array $sources,
         public array $secrets,
     ) {}
 
     /**
+     * @param  string  $directory  where the pods.yml is in its repository, '' for the root
+     *
      * @throws InvalidManifestException
      */
-    public static function fromYaml(string $yaml): self
+    public static function fromYaml(string $yaml, string $directory = ''): self
     {
         try {
             $manifest = Yaml::parse($yaml);
@@ -59,12 +71,22 @@ class ManifestData extends Data
         /** @var array<string, array<string, mixed>> $secrets */
         $secrets = $manifest['secrets'] ?? [];
 
+        $directory = trim($directory, '/');
+
         return new self(
             name: $manifest['name'] ?? null,
+            label: $manifest['label'] ?? null,
             description: $manifest['description'] ?? null,
+            author: $manifest['author'] ?? null,
+            icon: $manifest['icon'] ?? null,
+            category: $manifest['category'] ?? null,
+            website: $manifest['website'] ?? null,
+            repository: $manifest['repository'] ?? null,
+            notes: $manifest['notes'] ?? null,
+            directory: $directory,
             sources: array_map(fn (string $name, array $source): ManifestSourceData => new ManifestSourceData(
                 name: $name,
-                path: trim((string) $source['path'], '/'),
+                path: ltrim("{$directory}/".trim((string) $source['path'], '/'), '/'),
                 description: $source['description'] ?? null,
             ), array_keys($sources), $sources),
             secrets: array_map(fn (string $name, array $secret): ManifestSecretData => new ManifestSecretData(
@@ -87,7 +109,14 @@ class ManifestData extends Data
     {
         $validator = Validator::make($manifest, [
             'name' => ['nullable', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/'],
+            'label' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
+            'author' => ['nullable', 'string', 'max:100'],
+            'icon' => ['nullable', 'string', 'max:100', 'regex:/^i-[a-z0-9]+(-[a-z0-9]+)+$/'],
+            'category' => ['nullable', 'string', 'max:50'],
+            'website' => ['nullable', 'string', 'max:2048', 'url:https,http'],
+            'repository' => ['nullable', 'string', 'max:2048', 'url:https,http'],
+            'notes' => ['nullable', 'string', 'max:1000'],
             'sources' => ['nullable', 'array', 'max:20'],
             'sources.*' => ['array'],
             'sources.*.path' => ['required', 'string', 'max:255', 'regex:#^[A-Za-z0-9._-][A-Za-z0-9._/-]*$#', 'not_regex:#\.\.#'],

@@ -11,6 +11,7 @@ use Domain\Applications\DataObjects\JournalEntryData;
 use Domain\Applications\DataObjects\OnDemandData;
 use Domain\Applications\DataObjects\OnDemandSettingsData;
 use Domain\Applications\DataObjects\QuadletFileData;
+use Domain\Catalog\DataObjects\CatalogData;
 use Domain\Containers\DataObjects\ContainerDetailData;
 use Domain\Containers\DataObjects\ContainerStatsData;
 use Domain\Containers\DataObjects\HostContainerData;
@@ -433,6 +434,21 @@ class LpodClient
             ...($path !== '' ? ['--path', $path] : []),
             '--json',
         ], timeout: 120));
+    }
+
+    /**
+     * The applications of a catalog repository: every directory at its root with a pods.yml.
+     * Kept for a few minutes, because the host clones the repository to read them.
+     */
+    public function catalog(Environment $environment, string $repository, string $reference): CatalogData
+    {
+        $key = 'catalog.'.hash('xxh128', "{$repository}#{$reference}");
+
+        return CatalogData::fromLpod(Cache::flexible(
+            $this->cacheKey($environment, $key),
+            [300, 3600],
+            fn (): array => $this->json($environment, ['quadlet', 'catalog', $repository, '--ref', $reference, '--json'], timeout: 120),
+        ), $repository, $reference);
     }
 
     /**

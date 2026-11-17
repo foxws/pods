@@ -311,3 +311,27 @@ it('forbids users who are not the owner', function () {
 
     $lpod->assertNothingRan();
 });
+
+it('resolves the sources of an application pods.yml relative to its directory', function () {
+    $payload = json_decode(lpodFixture('quadlet-catalog'), true);
+
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, json_encode([
+        'contract' => 1,
+        'commit' => '5e0b7d1',
+        'manifest' => $payload['applications'][1]['manifest'],
+        'manifest_path' => 'mariadb',
+        'files' => [['name' => 'mariadb.container', 'content' => "[Container]\nImage=docker.io/library/mariadb:11.8\n"]],
+    ]), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://github.com/foxws/quadlets',
+            'reference' => 'main',
+            'path' => 'mariadb/production',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.manifest.directory', 'mariadb')
+        ->assertJsonPath('data.manifest.label', 'MariaDB')
+        ->assertJsonPath('data.manifest.sources.0.path', 'mariadb/production')
+        ->assertJsonPath('data.manifest.sources.1.path', 'mariadb/development');
+});
