@@ -28,7 +28,7 @@ class SettingsController implements HasMiddleware
 
     public function show(string $section): Response
     {
-        if ($section === 'general') {
+        if (in_array($section, ['general', 'proxy'], true)) {
             Gate::authorize('manage-application-settings');
         }
 

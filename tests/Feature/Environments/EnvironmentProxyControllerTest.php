@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
+use Foundation\Settings\ProxySettings;
 use Integrations\Ssh\HostResult;
 use Integrations\Ssh\Testing\FakeHostRunner;
 use Modules\Web\Environments\Controllers\EnvironmentProxyController;
@@ -49,6 +50,19 @@ it('shows the settings of the proxy', function () {
             ])));
 
     $lpod->assertRan(['proxy', 'settings', '--json']);
+});
+
+it('gives the settings page the proxy defaults, for a host without a proxy', function () {
+    fakeLpod();
+    app(ProxySettings::class)->fill(['mode' => 'local', 'http_port' => 28080, 'https_port' => 28443])->save();
+
+    $this->actingAs($this->owner)
+        ->get(action([EnvironmentSettingsController::class, 'show'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->where('proxyDefaults.mode', 'local')
+            ->where('proxyDefaults.http_port', 28080)
+            ->where('proxyDefaults.https_port', 28443)
+            ->missing('proxyDefaults.dns_token'));
 });
 
 it('shows the error when lpod cannot read the settings of the proxy', function () {

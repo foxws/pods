@@ -33,7 +33,7 @@ Route::resource('passkeys', PasskeyController::class)->only(['index']);
 // Settings
 Route::prefix('/settings')->name('settings.')->group(function () {
     Route::get('/', [SettingsController::class, 'index'])->name('index');
-    Route::get('/{section}', [SettingsController::class, 'show'])->name('show')->whereIn('section', ['account', 'security', 'general']);
+    Route::get('/{section}', [SettingsController::class, 'show'])->name('show')->whereIn('section', ['account', 'security', 'general', 'proxy']);
 });
 
 // Environments

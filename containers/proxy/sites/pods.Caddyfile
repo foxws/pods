@@ -1,8 +1,0 @@
-# Pods' own route through the Pods proxy. install.sh --proxy copies it to
-# ~/.config/pods-proxy/sites/ and sets PODS_HOST in the proxy's drop-in
-# pods-proxy.container.d/pods.conf, which also joins pods.network.
-
-{$PROXY_SCHEME:https}://{$PODS_HOST} {
-	encode zstd gzip
-	reverse_proxy systemd-pods:8000
-}

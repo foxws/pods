@@ -28,6 +28,7 @@ export type ApplicationRoutesData = {
   proxy_running: boolean
   layout: string
   domain: string | null
+  default_domain: string | null
   routes: RouteSuggestionData[]
 }
 export type CatalogApplicationData = {

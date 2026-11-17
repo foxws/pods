@@ -330,15 +330,6 @@ install_proxy() {
     podman quadlet install --replace --application=pods-proxy "$units" > /dev/null
 
     mkdir -p "${PROXY_CONFIG}/sites" "${QUADLET_DIR}/pods-proxy.container.d"
-    cp "${WORK}/containers/proxy/sites/pods.Caddyfile" "${PROXY_CONFIG}/sites/pods.Caddyfile"
-
-    cat > "${QUADLET_DIR}/pods-proxy.container.d/pods.conf" <<EOF
-# Written by Pods' install.sh: lets the proxy reach Pods, and routes
-# ${HOST} to it (see ${PROXY_CONFIG}/sites/pods.Caddyfile).
-[Container]
-Network=pods.network
-Environment=PODS_HOST=${HOST}
-EOF
 
     # The proxy's ports and certificates. lpod writes them the first time;
     # after that they're changed in the Proxy section of the host's settings
@@ -367,8 +358,24 @@ EOF
         } > "${QUADLET_DIR}/pods-proxy.container.d/install.conf"
     fi
 
+    route_pods
+
     systemctl --user daemon-reload
     systemctl --user restart pods-proxy.service
+}
+
+# Pods' own hostname is a route of the application pods, like any other's:
+# lpod writes it into the proxy's sites and joins the proxy to pods.network,
+# and it's edited on the pods application's page in Pods from then on. An
+# older install.sh wrote sites/pods.Caddyfile and a pods.conf drop-in instead.
+route_pods() {
+    rm -f "${QUADLET_DIR}/pods-proxy.container.d/pods.conf" "${PROXY_CONFIG}/sites/pods.Caddyfile"
+
+    if ! jq -n --arg host "$HOST" \
+        '{routes: [{role: "app", host: $host, upstream: "systemd-pods:8000", main: true}]}' \
+        | "$LPOD" pods routes set --stdin --json > /dev/null; then
+        warn "lpod didn't route ${HOST} to Pods. Set the route on the pods application's page in Pods."
+    fi
 }
 
 uninstall() {
@@ -384,6 +391,10 @@ uninstall() {
 
     systemctl --user stop pods.service pods-schedule.service 2> /dev/null || true
     podman quadlet rm --force --recursive pods.container > /dev/null 2>&1 || true
+
+    if [ -x "$LPOD" ]; then
+        "$LPOD" pods routes remove --json > /dev/null 2>&1 || true
+    fi
 
     rm -f "${QUADLET_DIR}/pods-proxy.container.d/pods.conf" "${PROXY_CONFIG}/sites/pods.Caddyfile"
 

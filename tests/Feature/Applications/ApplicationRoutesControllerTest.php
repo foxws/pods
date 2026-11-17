@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
+use Foundation\Settings\ProxySettings;
 use Integrations\Ssh\HostResult;
 use Integrations\Ssh\Testing\FakeHostRunner;
 use Modules\Web\Applications\Controllers\ApplicationController;
@@ -110,6 +111,34 @@ it('suggests hostnames one label under the wildcard site of the proxy', function
             ->where('routes.data.routes.0.suggested_host', 'stry.home.example.com')
             ->where('routes.data.routes.1.suggested_host', 'stry-ws.home.example.com')
             ->where('routes.data.routes.1.via', 'main')));
+});
+
+it('suggests hostnames under the domain of the proxy defaults, but not behind a wildcard site', function (string $layout, ?string $wildcard, string $main, string $other) {
+    fakeLpod()->respond('proxy routes --json', json_encode(['contract' => 1, 'proxy' => ['installed' => true, 'running' => true, 'layout' => $layout, 'domain' => $wildcard], 'routes' => []]));
+    app(ProxySettings::class)->fill(['domain' => 'example.com'])->save();
+    Installation::factory()->for($this->environment)->create([
+        'application' => 'stry',
+        'manifest' => "routes:\n  app:\n    upstream: systemd-stry:8000\n  ws:\n    upstream: systemd-stry-reverb:6001\n",
+    ]);
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'stry']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps('routes', fn ($reload) => $reload
+            ->where('routes.data.default_domain', 'example.com')
+            ->where('routes.data.routes.0.suggested_host', $main)
+            ->where('routes.data.routes.1.suggested_host', $other)));
+})->with([
+    'a site per hostname' => ['sites', null, 'stry.example.com', 'ws.stry.example.com'],
+    'a wildcard site' => ['handlers', 'home.example.com', 'stry.home.example.com', 'stry-ws.home.example.com'],
+]);
+
+it('gives the install page the domain of the proxy defaults', function () {
+    fakeLpod();
+    app(ProxySettings::class)->fill(['domain' => 'example.com'])->save();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertInertia(fn ($page) => $page->where('defaultDomain', 'example.com'));
 });
 
 it('sends a route through the main one, but never the main route itself', function () {
