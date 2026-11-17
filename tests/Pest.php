@@ -99,6 +99,8 @@ function fakeLpod(): FakeHostRunner
         'quadlet fetch *' => $fixture('quadlet-fetch'),
         'quadlet catalog *' => $fixture('quadlet-catalog'),
         'quadlet tags *' => $fixture('quadlet-tags'),
+        'proxy routes --json' => $fixture('proxy-routes'),
+        '* routes set --stdin --json' => $fixture('ok'),
         'settings --json' => $fixture('host-settings'),
         'settings set *' => $fixture('ok'),
     ]);

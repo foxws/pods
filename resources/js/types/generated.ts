@@ -23,6 +23,11 @@ export type ApplicationDetailData = {
   items: ContainerData[]
 }
 export type ApplicationOperation = 'up' | 'down' | 'force-stop' | 'restart' | 'redeploy'
+export type ApplicationRoutesData = {
+  proxy_installed: boolean
+  proxy_running: boolean
+  routes: RouteSuggestionData[]
+}
 export type CatalogApplicationData = {
   name: string
   repository: string
@@ -274,6 +279,13 @@ export type ManifestData = {
   secrets: ManifestSecretData[]
   after_install: ManifestSetupStepData[]
   ondemand: OnDemandSettingsData | null
+  routes: ManifestRouteData[]
+}
+export type ManifestRouteData = {
+  role: string
+  upstream: string
+  description: string | null
+  main: boolean
 }
 export type ManifestSecretData = {
   name: string
@@ -363,6 +375,11 @@ export type PodData = {
   networks: string[]
   created_at: string | null
 }
+export type ProxyRoutesData = {
+  installed: boolean
+  running: boolean
+  routes: RouteData[]
+}
 export type PruneResultData = {
   removed: string[]
   reclaimed: number | null
@@ -387,6 +404,24 @@ export type QuadletSourceData = {
   manifest_error: string | null
   manifest_yaml: string | null
   manifest_path: string | null
+}
+export type RouteData = {
+  application: string | null
+  role: string
+  host: string
+  upstream: string
+  main: boolean
+  target: string
+}
+export type RouteSuggestionData = {
+  role: string
+  description: string | null
+  upstream: string
+  main: boolean
+  host: string | null
+  suggested_host: string
+  target: string | null
+  from_manifest: boolean
 }
 export type SearchResultData = {
   group: string

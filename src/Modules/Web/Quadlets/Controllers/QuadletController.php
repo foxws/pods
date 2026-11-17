@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Gate;
+use Integrations\Lpod\LpodClient;
 use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Environments\Concerns\WritesToHost;
 use Modules\Web\Quadlets\Requests\InstallQuadletsRequest;
@@ -26,7 +27,7 @@ class QuadletController implements HasMiddleware
         ];
     }
 
-    public function store(InstallQuadletsRequest $request, Environment $environment, InstallQuadlets $installQuadlets): RedirectResponse
+    public function store(InstallQuadletsRequest $request, Environment $environment, InstallQuadlets $installQuadlets, LpodClient $lpod): RedirectResponse
     {
         Gate::authorize('operate', $environment);
 
@@ -51,6 +52,18 @@ class QuadletController implements HasMiddleware
 
         if (! $installed) {
             return back();
+        }
+
+        $routes = $request->routes();
+
+        // The application is installed either way, so a routes failure doesn't send the owner back.
+        if ($routes !== []) {
+            $this->toHost(
+                fn () => $lpod->setRoutes($environment, $application, $routes),
+                success: __(':application installed', ['application' => $application]),
+                description: __('systemd is starting its units, and the proxy sends :hosts to it.', ['hosts' => implode(', ', array_column($routes, 'host'))]),
+                failure: __(':application installed, but its routes weren\'t saved', ['application' => $application]),
+            );
         }
 
         return to_action([ApplicationController::class, 'show'], [$environment, $application]);

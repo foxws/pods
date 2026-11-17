@@ -25,7 +25,7 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 
 ## Rules
 
-- **Contract.** Every lpod payload carries `"contract": 1` (`LpodClient::Contract`). Fixtures in `tests/Fixtures/lpod/contract-1/` must match lpod's `tests/fixtures/contract-1/` byte for byte; copy them across instead of editing one side.
+- **Contract.** Every lpod payload carries `"contract": 1` (`LpodClient::Contract`). Fixtures in `tests/Fixtures/lpod/contract-1/` must match lpod's `tests/fixtures/contract-1/` byte for byte; copy them across instead of editing one side. Pods runs `vp check` over them, so format a new fixture with `pnpm exec vp check --fix` before it goes into the lpod PR.
 - **Arguments.** Pass lpod arguments as a list. `SshHostRunner` escapes each with `escapeshellarg` and wraps the command for fish/zsh login shells; don't build shell strings yourself.
 - **Secrets.** Send secret values as the runner's `$input` (stdin). Never put them in arguments, props, logs, exceptions or the database. The same goes for passwords a setup step asks for.
 - **Caching.** Reads use `$this->cached($environment, 'key', [...])`, or `Cache::flexible` for slow Git reads (catalog, tags). Every write must `forget()` the keys it affects (often `host` too).
@@ -53,7 +53,7 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 - `secrets`: how to ask for each, `generate`, or `from` + `key` of a `format: dotenv` secret (resolved on the server).
 - `after_install`: setup steps (`ManifestSetupStepData`): a Quadlet `container`, `user`, `workdir`, a whitespace-split `command`, and `inputs`. An input with `option` goes in as one `--option=VALUE` argument (so a value starting with `-` can't pass as a flag); at most one input has no option and goes on stdin, and a password always does.
 - `ondemand`: the keys of lpod's ondemand status, parsed with `OnDemandSettingsData::fromLpod()` and validated with its shared patterns.
-- `routes`: planned in round 1 of the proxy work (see below).
+- `routes`: role → `upstream` (`CONTAINER:PORT`), `description` and `main` (`ManifestRouteData`); the first is the main one unless another says `main: true`. Hostnames are never in pods.yml.
 
 ## Installations
 
@@ -65,9 +65,15 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 - **On-demand:** `lpod APP ondemand enable|disable|status`. The dialog is filled from the stored manifest's `ondemand:` when it has one (`OnDemandSuggestionData::from_manifest`), or else from the Quadlet files (`SuggestOnDemandSettings`). A sleeping app's Start is Wake: lpod's `up` starts `APP-ondemand.service` instead of the `StopWhenUnneeded=yes` main unit.
 - **Updates:** `ListApplicationUpdates` offers the newer tags of the stored repository (`lpod quadlet tags`, `version_compare`, pre-releases only after a pre-release). `UpdateApplication` fetches the tag, runs `quadlet check`, refuses missing secrets, then stops and waits, removes the files Pods installed that the tag no longer has (`lpod APP files remove`), and installs with `--replace --start`.
 
-## Proxy routes (in progress)
+## Proxy routes
 
-Decided: lpod generates each application's Caddyfile (`~/.config/pods-proxy/sites/APP.Caddyfile`) and a `pods-proxy.container.d/lpod-routes-APP.conf` drop-in with its networks, from `lpod APP routes set --stdin --json` (`{"routes": [{role, host, upstream, main}]}`); `lpod APP routes --json` and `lpod proxy routes --json` read them. While an app is on demand, its main route targets its socket (`host.containers.internal:PORT`). Pods' part of round 1: pods.yml `routes:` (role → upstream), a Routes card on the application page with hostnames suggested from the app name (`.home.arpa`), and an install-page step. Installing the proxy from host settings is round 2; until then `pods-proxy` is installed by hand (README, Proxy).
+lpod generates each application's Caddyfile (`~/.config/pods-proxy/sites/APP.Caddyfile`, routes kept on its `# lpod-routes:` line) and a `pods-proxy.container.d/lpod-routes-APP.conf` drop-in with the app's networks, from `lpod APP routes set --stdin --json` (`{"routes": [{role, host, upstream, main}]}`). An empty list removes them, and it reloads Caddy or restarts the proxy when the networks change. While an app is on demand, its main route targets its socket (`host.containers.internal:PORT`, reported as `target`). Pods reads `lpod proxy routes --json` (`LpodClient::proxyRoutes()`, cached as `proxy.routes`) for `ProxyRoutesData`, and writes with `setRoutes()`.
+
+- `RouteData` holds the patterns (role, host, upstream), `rules($key)` and `forLpod()` (lowercase hosts, one main route). Use them for any request that takes routes.
+- `SuggestRoutes` merges an app's routes with the ones its stored pods.yml names, and suggests `APP.home.arpa` for the main one and `ROLE.APP.home.arpa` for the others. `resources/js/utils/routes.ts` mirrors that suggestion, so keep both in step.
+- The application page has a deferred `routes` prop (group `routes`) for `ApplicationRoutesCard.vue` and `ApplicationRoutesModal.vue`, and `PUT applications/{app}/routes` saves them (`ApplicationRoutesController`). The install page sends `routes` with the install, and `QuadletController` sets them afterwards. If that fails, the install still succeeds and the toast says so.
+- Inside a `v-for`, Nuxt UI's `ULink` made vue-tsc lose the loop variable, so `ApplicationRoutesCard.vue` uses a plain `<a>`.
+- Still to do (round 2): installing the proxy from host settings (`lpod proxy install|remove`, ports, internal CA or Let's Encrypt, root certificate download). Until then `pods-proxy` is installed by hand (README, Proxy).
 
 ## Volume backups and restores (planned)
 

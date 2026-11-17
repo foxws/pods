@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Domain\Quadlets\DataObjects;
 
 use Domain\Applications\DataObjects\OnDemandSettingsData;
+use Domain\Applications\DataObjects\RouteData;
 use Domain\Quadlets\Exceptions\InvalidManifestException;
 use Domain\Secrets\DataObjects\SecretData;
 use Illuminate\Support\Facades\Validator;
@@ -28,6 +29,7 @@ class ManifestData extends Data
      * @param  list<ManifestSourceData>  $sources
      * @param  list<ManifestSecretData>  $secrets
      * @param  list<ManifestSetupStepData>  $after_install
+     * @param  list<ManifestRouteData>  $routes  the upstreams the Pods proxy can give a hostname; the first is the main one unless another says main
      * @param  OnDemandSettingsData|null  $ondemand  what to fill the on-demand switch in with; its keys match lpod's ondemand status
      */
     public function __construct(
@@ -45,6 +47,7 @@ class ManifestData extends Data
         public array $secrets,
         public array $after_install,
         public ?OnDemandSettingsData $ondemand,
+        public array $routes,
     ) {}
 
     /**
@@ -116,7 +119,29 @@ class ManifestData extends Data
                 inputs: self::setupInputs($step['inputs'] ?? []),
             ), array_keys($steps), $steps),
             ondemand: is_array($manifest['ondemand'] ?? null) ? OnDemandSettingsData::fromLpod($manifest['ondemand']) : null,
+            routes: self::routes($manifest['routes'] ?? []),
         );
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $routes  checked by ensureIsValid()
+     * @return list<ManifestRouteData>
+     */
+    protected static function routes(array $routes): array
+    {
+        $chosen = in_array(true, array_map(fn (array $route): bool => ($route['main'] ?? false) === true, $routes), true);
+        $parsed = [];
+
+        foreach ($routes as $role => $route) {
+            $parsed[] = new ManifestRouteData(
+                role: $role,
+                upstream: (string) $route['upstream'],
+                description: $route['description'] ?? null,
+                main: $chosen ? ($route['main'] ?? false) === true : $parsed === [],
+            );
+        }
+
+        return $parsed;
     }
 
     /**
@@ -176,6 +201,11 @@ class ManifestData extends Data
             'after_install.*.inputs.*.description' => ['nullable', 'string', 'max:500'],
             'after_install.*.inputs.*.type' => ['nullable', 'string', 'in:text,email,password'],
             'after_install.*.inputs.*.option' => ['nullable', 'string', 'regex:/^--[A-Za-z0-9][A-Za-z0-9_-]*$/'],
+            'routes' => ['nullable', 'array', 'max:50'],
+            'routes.*' => ['array'],
+            'routes.*.upstream' => ['required', 'string', 'regex:'.RouteData::UpstreamPattern],
+            'routes.*.description' => ['nullable', 'string', 'max:500'],
+            'routes.*.main' => ['nullable', 'boolean'],
             'ondemand' => ['nullable', 'array'],
             'ondemand.port' => ['nullable', 'integer', 'between:1,55535'],
             'ondemand.app_port' => ['nullable', 'integer', 'between:1,65535'],
@@ -217,6 +247,19 @@ class ManifestData extends Data
             if ($from !== null && ($secrets[$from]['format'] ?? null) !== 'dotenv') {
                 throw InvalidManifestException::because("secret \"{$name}\" reads from \"{$from}\", which isn't a secret with format: dotenv.");
             }
+        }
+
+        foreach (array_keys($manifest['routes'] ?? []) as $role) {
+            if (! preg_match(RouteData::RolePattern, (string) $role)) {
+                throw InvalidManifestException::because("\"{$role}\" isn't a valid route role: use lowercase letters, digits, - and _.");
+            }
+        }
+
+        /** @var array<string, array<string, mixed>> $routes */
+        $routes = $manifest['routes'] ?? [];
+
+        if (count(array_filter($routes, fn (array $route): bool => ($route['main'] ?? false) === true)) > 1) {
+            throw InvalidManifestException::because('only one route can be the main one.');
         }
 
         foreach (array_keys($manifest['ondemand']['schedule']['environment'] ?? []) as $key) {

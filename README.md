@@ -146,6 +146,13 @@ after_install: # commands to run once the units are up, from the application pag
             password:
                 type: password # an input without an option goes on stdin
 
+routes: # upstreams the Pods proxy can give a hostname; Pods asks for the hostnames
+    app:
+        upstream: systemd-stry:8000 # a container and its port
+        description: The web app # the first route is the main one, unless another says main: true
+    websockets:
+        upstream: systemd-stry-reverb:6001
+
 ondemand: # fills in the on-demand switch; the keys match lpod's ondemand status
     port: 8000 # the socket on the host
     app_port: 8000 # inside the app container, read from its unit when left out
@@ -197,7 +204,7 @@ The first start writes `~/.config/pods-proxy/Caddyfile`, which loads every file 
 
 The unit publishes no host ports itself, so pick them with a drop-in, `~/.config/containers/systemd/pods-proxy.container.d/ports.conf`: `PublishPort=80:80`, `PublishPort=443:443` and `PublishPort=443:443/udp` (`install.sh --proxy` writes this for you). It gets certificates from Let's Encrypt. On a host shared with other users, each user runs their own proxy on other ports, such as `PublishPort=28080:80` and `PublishPort=28443:443`, and the host's main proxy forwards those users' hostnames to them. For local names, add `cert_issuer internal` (or `local_certs`) to the global options in the Caddyfile; Caddy's root certificate is then in the `pods-proxy-data` volume.
 
-Pods doesn't manage the proxy yet: installing it from the settings of a host, and adding routes from an application's `pods.yml`, are on the [roadmap](docs/roadmap.md#proxy).
+Once the proxy is installed, Pods manages the routes: the install page asks for a hostname for each route an application's `pods.yml` names, and the Routes card on the application page adds, changes and removes them (suggesting names like `stry.home.arpa`). lpod writes `~/.config/pods-proxy/sites/APP.Caddyfile` and a drop-in that joins the application's networks, then reloads Caddy, or restarts the proxy when it joins a new network. The main route of an on-demand application goes to its socket, so a request wakes it. Applications installed this way don't need their own Caddyfile or drop-in from the steps above. Installing the proxy itself from the settings of a host is on the [roadmap](docs/roadmap.md#proxy).
 
 ## Backups
 

@@ -10,6 +10,7 @@ use Domain\Applications\DataObjects\HostStatsData;
 use Domain\Applications\DataObjects\JournalEntryData;
 use Domain\Applications\DataObjects\OnDemandData;
 use Domain\Applications\DataObjects\OnDemandSettingsData;
+use Domain\Applications\DataObjects\ProxyRoutesData;
 use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Catalog\DataObjects\CatalogData;
 use Domain\Containers\DataObjects\ContainerDetailData;
@@ -85,6 +86,27 @@ class LpodClient
         $payload = $this->json($environment, [$application, 'files', '--json']);
 
         return array_map(QuadletFileData::fromLpod(...), array_values($payload['files'] ?? []));
+    }
+
+    /**
+     * Whether the Pods proxy is installed and running, and every application's routes.
+     */
+    public function proxyRoutes(Environment $environment): ProxyRoutesData
+    {
+        return ProxyRoutesData::fromLpod($this->cached($environment, 'proxy.routes', ['proxy', 'routes', '--json']));
+    }
+
+    /**
+     * Replaces the hostnames the Pods proxy sends to the application, and applies them: lpod reloads
+     * Caddy, or restarts the proxy when the networks it joins change. No routes removes them.
+     *
+     * @param  list<array{role: string, host: string, upstream: string, main: bool}>  $routes
+     */
+    public function setRoutes(Environment $environment, string $application, array $routes): void
+    {
+        $this->json($environment, [$application, 'routes', 'set', '--stdin', '--json'], input: (string) json_encode(['routes' => $routes], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), timeout: 120);
+
+        $this->forget($environment, 'proxy.routes');
     }
 
     /**

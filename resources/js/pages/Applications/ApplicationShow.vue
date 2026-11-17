@@ -2,6 +2,7 @@
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { show as containerShow } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import { destroy as disableOnDemand } from '@/actions/Modules/Web/Applications/Controllers/ApplicationOnDemandController'
+import ApplicationRoutesCard from '@/components/Applications/ApplicationRoutesCard.vue'
 import ApplicationSetupCard from '@/components/Applications/ApplicationSetupCard.vue'
 import ApplicationSourceCard from '@/components/Applications/ApplicationSourceCard.vue'
 import ApplicationForceStopModal from '@/components/Applications/ApplicationForceStopModal.vue'
@@ -19,6 +20,7 @@ import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
 import type {
   ApplicationDetailData,
+  ApplicationRoutesData,
   ContainerData,
   EnvironmentData,
   GitTagData,
@@ -46,6 +48,7 @@ const props = defineProps<{
   files?: HostProperty<QuadletFileData[]>
   installation?: HostProperty<InstallationData | null>
   updates?: HostProperty<GitTagData[]>
+  routes?: HostProperty<ApplicationRoutesData>
   logs?: HostProperty<JournalEntryData[]>
   secrets?: HostProperty<SecretData[]>
 }>()
@@ -410,6 +413,12 @@ const isRemoving = ref(false)
             :application="name"
             :installation="installation"
             :updates="updates"
+          />
+
+          <ApplicationRoutesCard
+            :environment="environment"
+            :application="name"
+            :routes="routes"
           />
 
           <UCard>
