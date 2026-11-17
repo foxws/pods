@@ -73,7 +73,14 @@ lpod generates each application's Caddyfile (`~/.config/pods-proxy/sites/APP.Cad
 - `SuggestRoutes` merges an app's routes with the ones its stored pods.yml names, and suggests `APP.home.arpa` for the main one and `ROLE.APP.home.arpa` for the others. `resources/js/utils/routes.ts` mirrors that suggestion, so keep both in step.
 - The application page has a deferred `routes` prop (group `routes`) for `ApplicationRoutesCard.vue` and `ApplicationRoutesModal.vue`, and `PUT applications/{app}/routes` saves them (`ApplicationRoutesController`). The install page sends `routes` with the install, and `QuadletController` sets them afterwards. If that fails, the install still succeeds and the toast says so.
 - Inside a `v-for`, Nuxt UI's `ULink` made vue-tsc lose the loop variable, so `ApplicationRoutesCard.vue` uses a plain `<a>`.
-- Still to do (round 2): installing the proxy from host settings (`lpod proxy install|remove`, ports, internal CA or Let's Encrypt, root certificate download). Until then `pods-proxy` is installed by hand (README, Proxy).
+- Round 2 (planned in docs/roadmap.md, Proxy): `lpod proxy install|remove|settings|certificate`, with four certificate modes. In Let's Encrypt, local CA and plain HTTP, routes are sites. In the wildcard-through-DNS mode, they're handlers in `sites/APP.caddy` inside `*.DOMAIN`, and hostnames must be one label deep (`APP-ROLE.DOMAIN`). Also planned:
+  - a `via: main` route option for apps that route their own hostnames (stry's `ws` and `s3`);
+  - `stream_close_delay 5m` on every `reverse_proxy`;
+  - the admin API on `unix//config/admin.sock`;
+  - a published `ghcr.io/foxws/pods-proxy` image with DNS plugins (your own as an override);
+  - port warnings for rootless.
+
+  Until then `pods-proxy` is installed by hand (README, Proxy).
 
 ## Volume backups and restores (planned)
 
