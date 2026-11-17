@@ -47,8 +47,49 @@ it('offers the newer tags of the repository an application was installed at', fu
     'a release, without release candidates' => ['v3.1.0', ['v3.2.0']],
     'a release candidate, with the newer ones' => ['v3.2.0-rc.0', ['v3.2.0', 'v3.2.0-rc.1']],
     'the newest release' => ['v3.2.0', []],
-    'a branch' => ['main', []],
 ]);
+
+it('offers the newest commit of the branch an application was installed from', function () {
+    $lpod = fakeLpod();
+    Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'main', 'commit' => 'a41f9c2']);
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'immich']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps('updates', fn ($reload) => $reload
+            ->where('updates.data', [['name' => 'main', 'commit' => 'c41e9a2']])));
+
+    $lpod->assertRan(['quadlet', 'head', 'https://github.com/foxws/quadlets', '--ref', 'main', '--json']);
+});
+
+it('offers no update when the branch has no newer commit, or the reference is no branch', function (?string $head) {
+    fakeLpod()->respond('quadlet head *', json_encode(['contract' => 1, 'branch' => 'main', 'commit' => $head]));
+    Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'main', 'commit' => 'a41f9c2']);
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'immich']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps('updates', fn ($reload) => $reload->where('updates.data', [])));
+})->with([
+    'the installed commit' => ['a41f9c2b8e0d6f4a1c3e5b7d9f2a4c6e8b0d1f3a'],
+    'no such branch' => [null],
+]);
+
+it('updates an application installed from a branch to its newest commit', function () {
+    $lpod = fakeLpod()
+        ->respond('quadlet fetch *', immichRelease())
+        ->respond('immich down --json', lpodFixture('ok'));
+    Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'main', 'commit' => 'a41f9c2']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'main'])
+        ->assertRedirect()
+        ->assertInertiaFlash('type', 'success')
+        ->assertInertiaFlash('title', 'immich is at main (c41e9a2)');
+
+    $lpod->assertRan(['quadlet', 'fetch', 'https://github.com/foxws/quadlets', '--ref', 'main', '--path', 'immich', '--json']);
+    expect($this->environment->installations()->sole())
+        ->reference->toBe('main')
+        ->commit->toBe('c41e9a2');
+});
 
 it('offers no update to an application that did not come from git', function () {
     $lpod = fakeLpod();

@@ -564,6 +564,21 @@ class LpodClient
     }
 
     /**
+     * The newest commit (in full) of a branch of a repository, or null when it has no such branch.
+     * Kept for a couple of minutes, because the host asks the Git server for it.
+     */
+    public function branchHead(Environment $environment, string $repository, string $branch): ?string
+    {
+        $payload = Cache::flexible(
+            $this->cacheKey($environment, 'head.'.hash('xxh128', $repository."\n".$branch)),
+            [120, 600],
+            fn (): array => $this->json($environment, ['quadlet', 'head', $repository, '--ref', $branch, '--json'], timeout: 60),
+        );
+
+        return is_string($payload['commit'] ?? null) ? $payload['commit'] : null;
+    }
+
+    /**
      * @param  list<array{name: string, content: string}>  $files
      */
     protected function encodeFiles(array $files): string

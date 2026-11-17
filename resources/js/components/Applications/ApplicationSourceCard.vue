@@ -31,6 +31,11 @@ const isAccepting = ref(false)
 
 const newerTags = computed(() => props.updates?.data ?? [])
 
+/**
+ * An application installed from a branch is offered that branch, at its newest commit.
+ */
+const isBranchUpdate = computed(() => newerTags.value[0]?.name === tracked.value?.reference)
+
 const isConfirmingUpdate = ref(false)
 const isUpdating = ref(false)
 const updateTag = ref('')
@@ -130,7 +135,11 @@ const accept = (): void => {
         v-else-if="newerTags.length"
         class="flex items-center justify-between gap-3 rounded-md bg-elevated px-3 py-2"
       >
-        <span>
+        <span v-if="isBranchUpdate">
+          <span class="font-medium text-highlighted">{{ newerTags[0]?.name }}</span> has a newer commit,
+          <code class="font-mono">{{ newerTags[0]?.commit }}</code>
+        </span>
+        <span v-else>
           <span class="font-medium text-highlighted">{{ newerTags[0]?.name }}</span>
           is available<template v-if="newerTags.length > 1"> ({{ newerTags.length }} newer tags)</template>
         </span>
@@ -207,12 +216,13 @@ const accept = (): void => {
     <ConfirmModal
       v-model:open="isConfirmingUpdate"
       :title="`Update ${application}?`"
-      description="Pods fetches the files of the tag at the same path, checks them, stops every unit, installs them over the current files and starts the units again."
+      :description="`Pods fetches the files of ${isBranchUpdate ? `the newest commit of ${updateTag}` : 'the tag'} at the same path, checks them, stops every unit, installs them over the current files and starts the units again.`"
       confirm-label="Update"
       :processing="isUpdating"
       @confirm="update"
     >
       <UFormField
+        v-if="!isBranchUpdate"
         label="Tag"
         :error="updateError"
       >
@@ -222,9 +232,15 @@ const accept = (): void => {
           class="w-full font-mono"
         />
       </UFormField>
+      <p
+        v-if="isBranchUpdate && updateError"
+        class="text-sm text-error"
+      >
+        {{ updateError }}
+      </p>
       <UCheckbox
         v-model="removeOldFiles"
-        label="Remove files the tag no longer has"
+        :label="`Remove files the ${isBranchUpdate ? 'commit' : 'tag'} no longer has`"
         description="Only files Pods installed. Drop-ins you added on the host stay."
       />
       <UAlert
