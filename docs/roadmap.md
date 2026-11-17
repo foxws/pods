@@ -33,18 +33,67 @@ Done: lpod's `APP ondemand enable|disable|status` puts a `.socket`, a `systemd-s
 
 An optional reverse proxy per host, so hostnames reach the right container without each application routing for its neighbours. Today stry's own Caddy (FrankenPHP's `CADDY_EXTRA_CONFIG`, rendered by its `CaddySites` class) forwards `ws.example.com` to Reverb and `s3.example.com` to RustFS. With a Pods proxy, stry only serves stry, and the same works for any application, not just Laravel on FrankenPHP.
 
-1. **The proxy.** A Caddy Quadlet per host and user (`pods-proxy`, in `containers/proxy/`; see [Proxy](../README.md#proxy) for installing it by hand today), installed from the host's settings in Pods. It takes ports 80 and 443 and handles HTTPS in one place: an internal CA for local names such as `.home.arpa` (with a download for the root certificate), Let's Encrypt for public domains. The router or NAS in front then needs a single entry for the host.
-2. **Networks.** The proxy reaches containers by name (`systemd-stry-reverb:6001`), so it joins the network of every application it routes for, through a drop-in (`pods-proxy.container.d/stry.conf` with `Network=stry.network`). Adding the first route of an application adds the drop-in and restarts the proxy; later route changes only reload it.
-3. **lpod.** Done: `lpod APP routes [set --stdin|remove] --json` and `lpod proxy routes --json`. lpod keeps each application's routes in `~/.config/pods-proxy/sites/APP.Caddyfile`, joins the proxy to its networks with a `lpod-routes-APP.conf` drop-in, and reloads Caddy (or restarts the proxy when the networks change). Next: `lpod proxy install|remove --json`.
-4. **pods.yml.** Done: `routes` maps a role to an upstream (`app: systemd-stry:8000`, `websockets: systemd-stry-reverb:6001`). Pods asks for the hostname of each when installing, with a suggestion from the application name (`websockets.stry.home.arpa`), and the Routes card on the application page edits them. The hostnames the app itself needs (`APP_URL`, `VITE_REVERB_HOST`, `AWS_URL`) still come from its `.env`.
-5. **Without Pods.** Applications document a Caddyfile for your own proxy, so installing by hand keeps working.
+Done (round 1): `lpod APP routes [set --stdin|remove] --json` and `lpod proxy routes --json` keep each application's routes in `~/.config/pods-proxy/sites/APP.Caddyfile`, join the proxy to its networks with a `lpod-routes-APP.conf` drop-in, and reload Caddy (or restart the proxy when the networks change). The main route of an on-demand application goes to its socket. pods.yml `routes` maps a role to an upstream, the install page asks for a hostname for each, and the Routes card on the application page edits them. The hostnames the app itself needs (`APP_URL`, `VITE_REVERB_HOST`, `AWS_URL`) still come from its `.env`. The proxy itself is still installed by hand (see [Proxy](../README.md#proxy)).
+
+### Round 2: installing the proxy from Pods
+
+A Proxy section in the host's settings installs `pods-proxy`, and picks its ports, its certificates and how routes are written. Four modes cover the setups people run:
+
+| Mode                                                          | Global options                           | Routes are written as                                             | Suggested hostnames                                                    |
+| ------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Let's Encrypt** (a public domain the internet reaches)      | `email`                                  | a site per hostname                                               | `stry.example.com`, `ws.stry.example.com`                              |
+| **Local CA** (`.home.arpa`, `.lan`, `.test`)                  | `local_certs`                            | a site per hostname                                               | `stry.home.arpa`, `ws.stry.home.arpa`                                  |
+| **Wildcard through DNS** (a public domain on a LAN-only host) | `email`, `acme_dns PROVIDER {env.TOKEN}` | handlers inside one `*.DOMAIN` site, which `abort`s unknown names | `stry.DOMAIN`, `stry-ws.DOMAIN` (one label, so the wildcard covers it) |
+| **Plain HTTP** (another proxy in front handles HTTPS)         | `auto_https off`                         | a site per hostname, over `http://`                               | as the front proxy routes them                                         |
+
+In the wildcard mode, the main Caddyfile and an application's routes look like this:
+
+```caddy
+{
+	admin unix//config/admin.sock|0600
+	email you@example.com
+	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+}
+
+*.home.example.com {
+	tls {
+		resolvers 1.1.1.1
+	}
+
+	encode zstd gzip
+
+	import sites/*.caddy
+
+	handle {
+		abort
+	}
+}
+```
+
+```caddy
+# sites/stry.caddy, written by lpod
+@stry host stry.home.example.com stry-ws.home.example.com stry-s3.home.example.com
+handle @stry {
+	reverse_proxy host.containers.internal:8000 {
+		stream_close_delay 5m
+	}
+}
+```
+
+1. **lpod.** `lpod proxy install|remove --json` installs the `pods-proxy` Quadlet with a ports drop-in. `lpod proxy settings [set --stdin] --json` writes the main Caddyfile from the mode (email, DNS provider, wildcard domain, resolvers) and keeps the DNS token as a Podman secret (`Secret=…,type=env`). `lpod proxy certificate --json` returns the local CA's root certificate, for a download in Pods. Routes are then written as sites or as handlers (`sites/APP.caddy`), and a hostname outside the wildcard, or more than one label deep, is refused.
+2. **Through the main upstream.** A route can say `via: main` in pods.yml: it goes to the main route's upstream (the socket while on demand) instead of its own container, for applications that route their own hostnames, as stry does with `CaddySites`. Those routes wake a sleeping application too, and need no network drop-in. Routes that say `via: main` share the main route's matcher, as above. stry sets it on `ws` and `s3`.
+3. **WebSockets across reloads.** Every `reverse_proxy` lpod writes gets `stream_close_delay 5m`, since lpod reloads Caddy whenever routes change, and WebSocket connections (Reverb, Vite HMR) would drop on each reload.
+4. **The admin API** listens on a unix socket (`admin unix//config/admin.sock|0600`) instead of port 2019. lpod reloads through it (`caddy reload --address unix//config/admin.sock`), and the Quadlet's health check no longer polls `127.0.0.1:2019`.
+5. **The image.** Pods' CI publishes `ghcr.io/foxws/pods-proxy`: Caddy built with xcaddy and the DNS plugins people ask for (Cloudflare first), so `AutoUpdate=registry` keeps it current, like `ghcr.io/foxws/pods`. The Let's Encrypt and local CA modes keep `docker.io/library/caddy:2`. A setting takes your own image instead.
+6. **Ports.** HTTP and HTTPS default to 80 and 443. Rootless Podman can't bind ports below 1024 unless `net.ipv4.ip_unprivileged_port_start` allows it, so Pods says so and suggests high ports (such as 28080 and 28443) behind the host's main proxy, or a firewall redirect.
+7. **Suggestions** follow the mode: Pods suggests hostnames under the proxy's domain instead of `home.arpa`, one label deep (`APP-ROLE.DOMAIN`) in the wildcard mode. Short roles read better there, so stry's become `ws`, `s3`, `vite`, `mail` and `s3-console`.
 
 Open questions:
 
-- **Sleeping applications.** Decided for the main route: while an application is on demand, lpod sends it to the socket. For the rest: a route straight to `systemd-stry-reverb:6001` gets a 502 while an on-demand app sleeps, because its services sleep with it. The plan is to send the app's main hostname to its on-demand socket (`host.containers.internal:PORT` from the proxy container), so a request wakes it. Most traffic to Reverb or S3 comes from a page the app just served, so the app is awake then, but opening Mailpit or the RustFS console on its own wouldn't be. Options for those: let a route say `wake: true` to go through the socket, with the app forwarding it, or have Caddy start the app's socket service on a 502 and retry.
+- **Routes to sleeping services that aren't `via: main`.** These still get a 502, such as Mailpit or the RustFS console opened on their own. Caddy could start the app's socket service on a 502 and retry.
 - **The proxy itself** must not sleep, so it's always on, unlike the applications behind it.
-- **Pods' own hostname.** `install.sh --proxy --host NAME` routes Pods itself through the proxy.
-- **stry** keeps `Support\Octane\CaddySites` until the proxy exists, then drops it in the same change that adds `routes` to its `pods.yml`.
+- **Pods' own hostname.** `install.sh --proxy --host NAME` routes Pods itself through the proxy. Once the proxy is installed from Pods, that becomes a route of the `pods` application.
+- **stry** keeps `Support\Octane\CaddySites` while its `ws` and `s3` routes go `via: main`. It can drop it once every route goes to its own container.
 
 ## More of pods.yml
 
