@@ -52,7 +52,7 @@ class JournalController implements HasMiddleware
         return Inertia::render('Journal/JournalIndex', [
             'environment' => EnvironmentData::fromModel($environment),
             'since' => $window,
-            'entries' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->journal($environment, since: self::Windows[$window]))),
+            'entries' => $this->deferFromHost(fn (): array => $lpod->journal($environment, since: self::Windows[$window])),
         ]);
     }
 }

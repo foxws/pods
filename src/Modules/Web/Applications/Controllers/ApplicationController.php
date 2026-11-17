@@ -4,12 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Web\Applications\Controllers;
 
-use Domain\Applications\Actions\ListApplicationUpdates;
-use Domain\Applications\Actions\SuggestOnDemandSettings;
-use Domain\Applications\Actions\SuggestRoutes;
-use Domain\Applications\Actions\SyncInstallation;
-use Domain\Applications\DataObjects\InstallationData;
-use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Catalog\Actions\ListCatalog;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
@@ -20,6 +14,7 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Integrations\Lpod\LpodClient;
+use Modules\Web\Applications\Props\ApplicationShowProps;
 use Modules\Web\Applications\Requests\DestroyApplicationRequest;
 use Modules\Web\Environments\Concerns\ReadsFromHost;
 use Modules\Web\Environments\Concerns\WritesToHost;
@@ -43,60 +38,17 @@ class ApplicationController implements HasMiddleware
 
         return Inertia::render('Applications/ApplicationIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'applications' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->applications($environment))),
-            'host' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->host($environment))),
-            'images' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->images($environment)), 'images'),
+            'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment)),
+            'host' => $this->deferFromHost(fn () => $lpod->host($environment)),
+            'images' => $this->deferFromHost(fn (): array => $lpod->images($environment), 'images'),
         ]);
     }
 
-    public function show(
-        Environment $environment,
-        string $application,
-        LpodClient $lpod,
-        SuggestOnDemandSettings $suggestOnDemandSettings,
-        SyncInstallation $syncInstallation,
-        ListApplicationUpdates $listApplicationUpdates,
-        SuggestRoutes $suggestRoutes,
-    ): Response {
+    public function show(Environment $environment, string $application, ApplicationShowProps $props): Response
+    {
         Gate::authorize('view', $environment);
 
-        /** @var list<QuadletFileData>|null $files */
-        $files = null;
-
-        // The files, the on-demand suggestion and the installation load together, so read the files once.
-        $readFiles = function () use (&$files, $environment, $application, $lpod): array {
-            return $files ??= $lpod->files($environment, $application);
-        };
-
-        return Inertia::render('Applications/ApplicationShow', [
-            'environment' => EnvironmentData::fromModel($environment),
-            'name' => $application,
-            'application' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->application($environment, $application))),
-            'ondemand' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->onDemand($environment, $application))),
-            'ondemandSuggestion' => Inertia::defer(fn (): array => $this->fromHost(fn () => $suggestOnDemandSettings(
-                $lpod->application($environment, $application)->application,
-                $readFiles(),
-                $environment->installations()->firstWhere('application', $application)?->manifest(),
-            )), 'details'),
-            'files' => Inertia::defer(fn (): array => $this->fromHost($readFiles), 'details'),
-            'installation' => Inertia::defer(fn (): array => $this->fromHost(function () use ($environment, $application, $syncInstallation, $readFiles): ?InstallationData {
-                $installation = $environment->installations()->firstWhere('application', $application);
-
-                return $installation !== null ? InstallationData::fromModel($syncInstallation($installation, $readFiles())) : null;
-            }), 'details'),
-            'routes' => Inertia::defer(fn (): array => $this->fromHost(fn () => $suggestRoutes(
-                $application,
-                $lpod->proxyRoutes($environment),
-                $environment->installations()->firstWhere('application', $application)?->manifest(),
-            )), 'routes'),
-            'updates' => Inertia::defer(fn (): array => $this->fromHost(function () use ($environment, $application, $listApplicationUpdates): array {
-                $installation = $environment->installations()->firstWhere('application', $application);
-
-                return $installation !== null ? $listApplicationUpdates($installation) : [];
-            }), 'updates'),
-            'logs' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->logs($environment, $application)), 'details'),
-            'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment)), 'details'),
-        ]);
+        return Inertia::render('Applications/ApplicationShow', $props->for($environment, $application));
     }
 
     public function create(Environment $environment, LpodClient $lpod, ListCatalog $listCatalog): Response
@@ -105,9 +57,9 @@ class ApplicationController implements HasMiddleware
 
         return Inertia::render('Applications/ApplicationCreate', [
             'environment' => EnvironmentData::fromModel($environment),
-            'catalog' => Inertia::defer(fn (): array => $this->fromHost(fn () => $listCatalog($environment)), 'catalog'),
-            'proxy' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->proxyRoutes($environment)), 'proxy'),
-            'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment))),
+            'catalog' => $this->deferFromHost(fn () => $listCatalog($environment), 'catalog'),
+            'proxy' => $this->deferFromHost(fn () => $lpod->proxyRoutes($environment), 'proxy'),
+            'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment)),
         ]);
     }
 

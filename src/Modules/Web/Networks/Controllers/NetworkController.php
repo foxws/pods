@@ -35,8 +35,8 @@ class NetworkController implements HasMiddleware
 
         return Inertia::render('Networks/NetworkIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'networks' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->networks($environment))),
-            'containers' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->containers($environment)), 'containers'),
+            'networks' => $this->deferFromHost(fn (): array => $lpod->networks($environment)),
+            'containers' => $this->deferFromHost(fn (): array => $lpod->containers($environment), 'containers'),
         ]);
     }
 
