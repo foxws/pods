@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
 use Integrations\Ssh\HostResult;
 use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Applications\Controllers\ApplicationOnDemandController;
+use Modules\Web\Quadlets\Controllers\QuadletFetchController;
 
 beforeEach(function () {
     $this->owner = User::factory()->create()->assignRole('super-admin');
@@ -73,6 +75,7 @@ it('suggests the workers and the scheduler of a Laravel application', function (
         ->get(action([ApplicationController::class, 'show'], [$this->environment, 'stry']))
         ->assertInertia(fn ($page) => $page->loadDeferredProps('details', fn ($reload) => $reload
             ->where('files.data.0.name', 'stry.container')
+            ->where('ondemandSuggestion.data.from_manifest', false)
             ->where('ondemandSuggestion.data.laravel', true)
             ->where('ondemandSuggestion.data.containers', ['stry-horizon', 'stry-schedule', 'stry-valkey'])
             ->where('ondemandSuggestion.data.settings.app_port', 8000)
@@ -95,6 +98,82 @@ it('does not suggest a scheduler that runs schedule:work through Exec=', functio
             ->where('ondemandSuggestion.data.laravel', true)
             ->where('ondemandSuggestion.data.settings.schedule', null)));
 });
+
+it('suggests the ondemand section of the stored pods.yml over the files', function () {
+    fakeLpod()
+        ->respond('stry status --json', laravelApplicationStatus())
+        ->respond('stry files --json', laravelApplicationFiles());
+    Installation::factory()->for($this->environment)->create([
+        'application' => 'stry',
+        'manifest' => <<<'YAML'
+            ondemand:
+              port: 8000
+              app_port: 8080
+              idle_timeout: 60min
+              workers: [stry-horizon]
+              idle_check:
+                container: stry-horizon
+                user: docker
+                command: php /app/artisan app:idle
+              schedule:
+                container: stry-schedule
+                at: ["*:00", "01:00"]
+                environment:
+                  APP_COMMAND: php /app/artisan schedule:run
+            YAML,
+    ]);
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'stry']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps('details', fn ($reload) => $reload
+            ->where('ondemandSuggestion.data.from_manifest', true)
+            ->where('ondemandSuggestion.data.containers', ['stry-horizon', 'stry-schedule', 'stry-valkey'])
+            ->where('ondemandSuggestion.data.settings.port', 8000)
+            ->where('ondemandSuggestion.data.settings.app_port', 8080)
+            ->where('ondemandSuggestion.data.settings.idle_timeout', '60min')
+            ->where('ondemandSuggestion.data.settings.idle_check', ['container' => 'stry-horizon', 'user' => 'docker', 'command' => 'php /app/artisan app:idle'])
+            ->where('ondemandSuggestion.data.settings.schedule.at', ['*:00', '01:00'])));
+});
+
+it('reads a port the pods.yml leaves out from the files, and shows the workers it names', function () {
+    fakeLpod();
+    Installation::factory()->for($this->environment)->create([
+        'application' => 'immich',
+        'manifest' => "ondemand:\n  port: 2283\n  workers: [immich-ml]\n",
+    ]);
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'immich']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps('details', fn ($reload) => $reload
+            ->where('ondemandSuggestion.data.from_manifest', true)
+            ->where('ondemandSuggestion.data.laravel', true)
+            ->where('ondemandSuggestion.data.settings.app_port', 2283)
+            ->where('ondemandSuggestion.data.settings.idle_timeout', '10min')
+            ->where('ondemandSuggestion.data.settings.workers', ['immich-ml'])));
+});
+
+it('refuses a pods.yml with on-demand settings lpod would refuse', function (string $ondemand, string $error) {
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, json_encode([
+        'contract' => 1,
+        'commit' => 'a41f9c2',
+        'manifest' => "ondemand:\n{$ondemand}",
+        'files' => [],
+    ]), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://codeberg.org/foxws/quadlets.git',
+            'reference' => 'main',
+        ])
+        ->assertJsonPath('data.manifest', null)
+        ->assertJsonPath('data.manifest_error', fn (string $message): bool => str_contains($message, $error));
+})->with([
+    'a port lpod cannot add 10000 to' => ["  port: 60000\n", 'ondemand.port'],
+    'an idle timeout that is no time span' => ["  idle_timeout: ten minutes\n", 'ondemand.idle timeout'],
+    'an idle check without workers' => ["  idle_check:\n    container: app\n    command: app idle\n", 'ondemand.workers'],
+    'a scheduler variable with a $' => ["  schedule:\n    container: app-schedule\n    at: ['*:00']\n    environment:\n      APP_COMMAND: echo \$HOME\n", 'ondemand.schedule.environment.APP_COMMAND'],
+    'a scheduler variable that is no name' => ["  schedule:\n    container: app-schedule\n    at: ['*:00']\n    environment:\n      1APP: x\n", 'environment variable'],
+]);
 
 it('turns on demand on for an application', function () {
     $lpod = fakeLpod();

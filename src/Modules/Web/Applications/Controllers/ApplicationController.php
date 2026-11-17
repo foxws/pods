@@ -72,6 +72,7 @@ class ApplicationController implements HasMiddleware
             'ondemandSuggestion' => Inertia::defer(fn (): array => $this->fromHost(fn () => $suggestOnDemandSettings(
                 $lpod->application($environment, $application)->application,
                 $readFiles(),
+                $environment->installations()->firstWhere('application', $application)?->manifest(),
             )), 'details'),
             'files' => Inertia::defer(fn (): array => $this->fromHost($readFiles), 'details'),
             'installation' => Inertia::defer(fn (): array => $this->fromHost(function () use ($environment, $application, $syncInstallation, $readFiles): ?InstallationData {

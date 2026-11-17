@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Quadlets\DataObjects;
 
+use Domain\Applications\DataObjects\OnDemandSettingsData;
 use Domain\Quadlets\Exceptions\InvalidManifestException;
 use Domain\Secrets\DataObjects\SecretData;
 use Illuminate\Support\Facades\Validator;
@@ -27,6 +28,7 @@ class ManifestData extends Data
      * @param  list<ManifestSourceData>  $sources
      * @param  list<ManifestSecretData>  $secrets
      * @param  list<ManifestSetupStepData>  $after_install
+     * @param  OnDemandSettingsData|null  $ondemand  what to fill the on-demand switch in with; its keys match lpod's ondemand status
      */
     public function __construct(
         public ?string $name,
@@ -42,6 +44,7 @@ class ManifestData extends Data
         public array $sources,
         public array $secrets,
         public array $after_install,
+        public ?OnDemandSettingsData $ondemand,
     ) {}
 
     /**
@@ -112,6 +115,7 @@ class ManifestData extends Data
                 command: $step['command'],
                 inputs: self::setupInputs($step['inputs'] ?? []),
             ), array_keys($steps), $steps),
+            ondemand: is_array($manifest['ondemand'] ?? null) ? OnDemandSettingsData::fromLpod($manifest['ondemand']) : null,
         );
     }
 
@@ -172,6 +176,23 @@ class ManifestData extends Data
             'after_install.*.inputs.*.description' => ['nullable', 'string', 'max:500'],
             'after_install.*.inputs.*.type' => ['nullable', 'string', 'in:text,email,password'],
             'after_install.*.inputs.*.option' => ['nullable', 'string', 'regex:/^--[A-Za-z0-9][A-Za-z0-9_-]*$/'],
+            'ondemand' => ['nullable', 'array'],
+            'ondemand.port' => ['nullable', 'integer', 'between:1,55535'],
+            'ondemand.app_port' => ['nullable', 'integer', 'between:1,65535'],
+            'ondemand.listen' => ['nullable', 'ip'],
+            'ondemand.idle_timeout' => ['nullable', 'string', 'max:32', 'regex:'.OnDemandSettingsData::TimeSpanPattern],
+            'ondemand.workers' => ['nullable', 'array', 'list', 'max:20', 'required_with:ondemand.idle_check'],
+            'ondemand.workers.*' => ['string', 'distinct', 'regex:'.OnDemandSettingsData::ContainerPattern],
+            'ondemand.idle_check' => ['nullable', 'array'],
+            'ondemand.idle_check.container' => ['required_with:ondemand.idle_check', 'string', 'regex:'.OnDemandSettingsData::ContainerPattern],
+            'ondemand.idle_check.user' => ['nullable', 'string', 'max:64', 'regex:'.OnDemandSettingsData::UserPattern],
+            'ondemand.idle_check.command' => ['required_with:ondemand.idle_check', 'string', 'max:500', 'not_regex:/[\r\n]/'],
+            'ondemand.schedule' => ['nullable', 'array'],
+            'ondemand.schedule.container' => ['required_with:ondemand.schedule', 'string', 'regex:'.OnDemandSettingsData::ContainerPattern],
+            'ondemand.schedule.at' => ['required_with:ondemand.schedule', 'array', 'list', 'max:24'],
+            'ondemand.schedule.at.*' => ['string', 'distinct', 'regex:'.OnDemandSettingsData::ScheduleAtPattern],
+            'ondemand.schedule.environment' => ['nullable', 'array', 'max:20'],
+            'ondemand.schedule.environment.*' => ['string', 'max:500', 'not_regex:/[\r\n$]/'],
         ]);
 
         if ($validator->fails()) {
@@ -195,6 +216,12 @@ class ManifestData extends Data
 
             if ($from !== null && ($secrets[$from]['format'] ?? null) !== 'dotenv') {
                 throw InvalidManifestException::because("secret \"{$name}\" reads from \"{$from}\", which isn't a secret with format: dotenv.");
+            }
+        }
+
+        foreach (array_keys($manifest['ondemand']['schedule']['environment'] ?? []) as $key) {
+            if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', (string) $key)) {
+                throw InvalidManifestException::because("\"{$key}\" isn't a valid environment variable of the on-demand scheduler.");
             }
         }
 

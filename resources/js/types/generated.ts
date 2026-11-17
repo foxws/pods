@@ -269,6 +269,7 @@ export type ManifestData = {
   sources: ManifestSourceData[]
   secrets: ManifestSecretData[]
   after_install: ManifestSetupStepData[]
+  ondemand: OnDemandSettingsData | null
 }
 export type ManifestSecretData = {
   name: string
@@ -342,6 +343,7 @@ export type OnDemandSuggestionData = {
   laravel: boolean
   containers: string[]
   settings: OnDemandSettingsData
+  from_manifest: boolean
 }
 export type PaginatedDataCollection<TKey, TValue> = LengthAwarePaginator<TKey, TValue>
 export type PodData = {

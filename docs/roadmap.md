@@ -27,7 +27,7 @@ Open questions:
 Done: lpod's `APP ondemand enable|disable|status` puts a `.socket`, a `systemd-socket-proxyd` service and an idle timer in front of an application, and the application page has an on-demand switch for it, with the ports, the idle timeout and, for a Laravel application, its workers, idle check and scheduler suggested from its Quadlet files. A sleeping application shows as asleep. Next:
 
 1. **Wake.** Start becomes "wake" for a sleeping application: it starts the socket's service, because starting a `StopWhenUnneeded=yes` unit directly stops it again.
-2. **From pods.yml.** Once Pods stores the manifest, the suggested settings come from its `ondemand:` section (see [More of pods.yml](#more-of-podsyml)) instead of being guessed from the Quadlet files. The idle timeout stays editable, with the manifest's value filled in.
+2. **From pods.yml.** Done: the on-demand dialog is filled in from the stored manifest's `ondemand:` section when it has one, instead of from the Quadlet files, and everything in it stays editable.
 
 ## Proxy
 
@@ -51,7 +51,7 @@ Open questions:
 Pods reads the sources, the application name, the secrets and the catalog keys (label, description, author, icon, category, website, repository and notes) of a `pods.yml` today. It keeps the `pods.yml` of each application it installs from Git, with the repository, reference, path and commit, and the application page shows its label, icon and source, and the files changed outside Pods since (see [Applications and Quadlets](architecture.md#applications-and-quadlets)). Next:
 
 1. **Setup steps.** Done: `after_install` lists the commands to run once the units are up, such as `php artisan app:install` and creating the first admin, with inputs the UI asks for (a password goes on stdin, never in the arguments). The application page shows a "Finish setup" card from the stored manifest, runs each step with `lpod container NAME exec`, and remembers how it ended. This replaces what laravel-installer did.
-2. **On-demand.** `ondemand` (ports, idle timeout, idle check and the workers to stop) fills in the on-demand switch. See [On-demand applications](#on-demand-applications).
+2. **On-demand.** Done: `ondemand` (ports, idle timeout, idle check, the workers to stop and the scheduler) fills in the on-demand switch. See [On-demand applications](#on-demand-applications).
 3. **Backups.** `backups` lists the volumes to leave out (such as bind-backed ones) and a database dump command. See [Volume backups and restores](#volume-backups-and-restores).
 4. **Updates.** With the stored source, the application page can offer "Update to tag X" and reinstall from it with `--replace`.
 5. **Routes.** `routes` lists the upstreams the [proxy](#proxy) should give a hostname.

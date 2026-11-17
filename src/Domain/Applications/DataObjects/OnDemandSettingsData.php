@@ -15,6 +15,26 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 class OnDemandSettingsData extends Data
 {
     /**
+     * A container Quadlet's name, without its extension.
+     */
+    public const string ContainerPattern = '/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/';
+
+    /**
+     * A systemd time span without spaces, such as 10min or 1h30min.
+     */
+    public const string TimeSpanPattern = '/^(\d+(us|ms|s|sec|m|min|h|hr|d|w)?){1,4}$/';
+
+    /**
+     * *:MM for every hour or HH:MM for every day, in UTC.
+     */
+    public const string ScheduleAtPattern = '/^(\*|[01]\d|2[0-3]):[0-5]\d$/';
+
+    /**
+     * A user lpod's idle check runs as, such as docker or 1000:1000.
+     */
+    public const string UserPattern = '/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/';
+
+    /**
      * @param  list<string>  $workers
      */
     public function __construct(
