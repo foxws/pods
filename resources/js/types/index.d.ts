@@ -49,6 +49,7 @@ export type {
   HostStatsData,
   HostVolumeData,
   ImageData,
+  InstallationData,
   JournalEntryData,
   ManifestData,
   ManifestSecretData,

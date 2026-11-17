@@ -54,6 +54,8 @@ Installing an application writes Quadlet files on the host through lpod: from fi
 
 Pods doesn't keep a copy of the units, containers or volumes. The host is the source of truth, and anything you change with `lpod` or `podman` in a terminal shows up in Pods.
 
+For each application it installs, Pods does keep an installation (`src/Domain/Applications/Models/Installation.php`): the repository, reference, path and commit the files came from, the `pods.yml` as fetched (parsed again when read, so new manifest keys need no migration), and a sha256 checksum of each file. Syncing (`SyncInstallation`) compares those checksums with `lpod APP files --json` and keeps the files modified, added or removed outside Pods, without changing anything on the host. Drop-ins lpod writes itself (`*.d/lpod-*.conf`, such as on-demand's) don't count. The application page syncs each time it loads, and `pods:sync` syncs every environment at 01:00 UTC, when an on-demand Pods wakes its scheduler; it also forgets applications that are gone from the host. "Keep these files" on the application page accepts the files as they are, and starts tracking an application installed outside Pods. Editing a file in Pods only updates that file's checksum.
+
 ## Web layer
 
 Each page is a module in `src/Modules/Web` with an Inertia controller and a Vue page in `resources/js/pages`. Host routes are nested under `/environments/{environment}` in `routes/web.php` (pages) and `routes/actions.php` (actions), so several tabs can stay on different hosts. Slow host data is loaded with deferred props and skeletons, and status pages poll.

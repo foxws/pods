@@ -11,7 +11,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 /**
  * Quadlet files fetched from a Git repository, before they are installed, and the
  * repository's pods.yml. A pods.yml Pods can't read is reported in $manifest_error
- * instead of failing the fetch: the files can still be installed without it.
+ * instead of failing the fetch: the files can still be installed without it. The pods.yml
+ * itself ($manifest_yaml) goes back with the install, so Pods can keep it.
  */
 #[TypeScript]
 class QuadletSourceData extends Data
@@ -24,6 +25,8 @@ class QuadletSourceData extends Data
         public array $files,
         public ?ManifestData $manifest,
         public ?string $manifest_error,
+        public ?string $manifest_yaml,
+        public ?string $manifest_path,
     ) {}
 
     /**
@@ -50,6 +53,8 @@ class QuadletSourceData extends Data
             ], $payload['files'] ?? [])),
             manifest: $manifest,
             manifest_error: $manifestError,
+            manifest_yaml: $manifest !== null ? $payload['manifest'] : null,
+            manifest_path: $manifest !== null ? (string) ($payload['manifest_path'] ?? '') : null,
         );
     }
 }

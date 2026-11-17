@@ -200,6 +200,19 @@ export type ImageData = {
   auto_update: string | null
   update: string | null
 }
+export type InstallationData = {
+  repository: string | null
+  reference: string | null
+  path: string | null
+  commit: string | null
+  manifest: ManifestData | null
+  changed: boolean
+  modified: string[]
+  added: string[]
+  removed: string[]
+  installed_at: string | null
+  checked_at: string | null
+}
 export type JournalEntryData = {
   time: string
   unit: string
@@ -336,6 +349,8 @@ export type QuadletSourceData = {
   }[]
   manifest: ManifestData | null
   manifest_error: string | null
+  manifest_yaml: string | null
+  manifest_path: string | null
 }
 export type SearchResultData = {
   group: string

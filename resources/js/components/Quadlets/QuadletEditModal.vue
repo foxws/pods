@@ -50,6 +50,7 @@ const onSubmit = (close: () => void): void => {
   form.files = edited.value
   form.start = false
   form.replace = true
+  form.edit = true
 
   install(() => {
     close()

@@ -112,3 +112,27 @@ function lpodFixture(string $name): string
 {
     return file_get_contents(__DIR__."/Fixtures/lpod/contract-1/{$name}.json");
 }
+
+/**
+ * Gives the JSON of lpod APP files for these file names and contents.
+ *
+ * @param  array<string, string>  $files
+ */
+function lpodFiles(array $files): string
+{
+    return json_encode(['contract' => 1, 'files' => array_map(fn (string $name, string $content): array => [
+        'name' => $name,
+        'path' => "/home/blue/.config/containers/systemd/immich/{$name}",
+        'content' => $content,
+    ], array_keys($files), $files)]);
+}
+
+/**
+ * The names and contents of the files in the app-files fixture.
+ *
+ * @return array<string, string>
+ */
+function lpodFixtureFiles(): array
+{
+    return array_column(json_decode(lpodFixture('app-files'), true)['files'], 'content', 'name');
+}

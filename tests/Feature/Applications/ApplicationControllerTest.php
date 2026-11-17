@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
 use Integrations\Ssh\HostResult;
@@ -90,6 +91,35 @@ it('shows an application with its containers, files and journal', function () {
     $lpod->assertRan(['immich', 'status', '--json']);
 });
 
+it('shows where an installed application came from and what changed outside Pods since', function () {
+    Installation::factory()->for($this->environment)->fromGit()
+        ->withFiles(['immich.pod' => "[Pod]\nPodName=immich\n", 'immich-server.container' => lpodFixtureFiles()['immich-server.container']])
+        ->create(['application' => 'immich']);
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'immich']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps(['default', 'details'], fn ($reload) => $reload
+            ->where('installation.data.repository', 'https://github.com/foxws/quadlets')
+            ->where('installation.data.commit', 'a41f9c2')
+            ->where('installation.data.manifest.label', 'Immich')
+            ->where('installation.data.manifest.icon', 'i-lucide-image')
+            ->where('installation.data.changed', true)
+            ->where('installation.data.modified', ['immich.pod'])
+            ->where('installation.data.added', [])
+            ->where('installation.data.removed', [])));
+});
+
+it('shows no installation for an application installed outside Pods', function () {
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'immich']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps(['default', 'details'], fn ($reload) => $reload
+            ->where('installation.data', null)
+            ->where('installation.error', null)));
+});
+
 it('does not route application names that could be read as options', function () {
     $lpod = fakeLpod();
 
@@ -160,6 +190,28 @@ it('removes an application and the data it owns once confirmed', function () {
         ->assertInertiaFlash('type', 'success');
 
     $lpod->assertRan(['immich', 'remove', '--volumes', '--secrets', '--json']);
+});
+
+it('forgets the installation of a removed application', function () {
+    $installation = Installation::factory()->for($this->environment)->create(['application' => 'immich']);
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->delete(action([ApplicationController::class, 'destroy'], [$this->environment, 'immich']), ['confirmation' => 'immich'])
+        ->assertRedirect(action([ApplicationController::class, 'index'], $this->environment));
+
+    $this->assertModelMissing($installation);
+});
+
+it('keeps the installation when the application could not be removed', function () {
+    $installation = Installation::factory()->for($this->environment)->create(['application' => 'immich']);
+    fakeLpod()->respond('* remove*--json', new HostResult(1, '', 'Unit immich-pod.service is busy'));
+
+    $this->actingAs($this->owner)
+        ->delete(action([ApplicationController::class, 'destroy'], [$this->environment, 'immich']), ['confirmation' => 'immich'])
+        ->assertInertiaFlash('type', 'error');
+
+    $this->assertModelExists($installation);
 });
 
 it('does not remove an application without typing its name', function () {

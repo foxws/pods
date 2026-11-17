@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Domain\Environments\Models;
 
 use Database\Factories\EnvironmentFactory;
+use Domain\Applications\Models\Installation;
 use Foxws\Essentials\Casts\AsDateTime;
 use Foxws\Essentials\Concerns\HasUlid;
 use Illuminate\Database\Eloquent\Attributes\RouteKey;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property array{contract: int, lpod: string, podman: string, systemd: string, scope: string, user: string, hostname: string}|null $facts
@@ -58,6 +60,14 @@ class Environment extends Model
     protected static function newFactory(): EnvironmentFactory
     {
         return EnvironmentFactory::new();
+    }
+
+    /**
+     * @return HasMany<Installation, $this>
+     */
+    public function installations(): HasMany
+    {
+        return $this->hasMany(Installation::class)->chaperone();
     }
 
     public function target(): string

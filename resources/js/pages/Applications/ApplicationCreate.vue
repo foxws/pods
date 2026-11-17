@@ -5,7 +5,13 @@ import HostError from '@/components/Environments/HostError.vue'
 import QuadletCheckStatus from '@/components/Quadlets/QuadletCheckStatus.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
-import { useQuadletCheck, useQuadletInstall, type DerivedSecretInput, type SecretInput } from '@/composables/quadlets'
+import {
+  useQuadletCheck,
+  useQuadletInstall,
+  type DerivedSecretInput,
+  type InstallSourceInput,
+  type SecretInput,
+} from '@/composables/quadlets'
 import type {
   CatalogApplicationData,
   CatalogData,
@@ -54,6 +60,7 @@ const split = computed(() => splitQuadlets(received.value))
 const available = computed(() => split.value.files)
 const selected = ref<string[]>([])
 const commit = ref<string | null>(null)
+const fetched = ref<InstallSourceInput | null>(null)
 const manifest = ref<ManifestData | null>(null)
 const manifestError = ref<string | null>(null)
 
@@ -74,6 +81,8 @@ const fetchRepository = async (): Promise<void> => {
   fetcher.reference = git.reference
   fetcher.path = git.path
 
+  const request = { repository: git.repository, reference: git.reference, path: git.path.replace(/^\/+|\/+$/g, '') }
+
   try {
     const response = await fetcher.post(QuadletFetchController.url(props.environment.id))
 
@@ -84,6 +93,12 @@ const fetchRepository = async (): Promise<void> => {
     }
 
     commit.value = response.data.commit
+    fetched.value = {
+      ...request,
+      commit: response.data.commit,
+      manifest: response.data.manifest_yaml,
+      manifest_path: response.data.manifest_path,
+    }
     manifest.value = response.data.manifest
     manifestError.value = response.data.manifest_error
     chosenSource.value = activeSource.value?.name
@@ -164,6 +179,7 @@ const leaveCatalogEntry = (): void => {
   received.value = []
   selected.value = []
   commit.value = null
+  fetched.value = null
   manifest.value = null
   manifestError.value = null
   fetchError.value = null
@@ -179,6 +195,7 @@ const uploaded = ref<File[] | null>(null)
 watch(uploaded, async (list) => {
   showFiles(await Promise.all((list ?? []).map(async (file) => ({ name: file.name, content: await file.text() }))))
   commit.value = null
+  fetched.value = null
 })
 
 const written = reactive({ name: '', content: '[Container]\nImage=\n\n[Install]\nWantedBy=default.target\n' })
@@ -188,6 +205,7 @@ watch(source, () => {
   received.value = []
   selected.value = []
   commit.value = null
+  fetched.value = null
   manifest.value = null
   manifestError.value = null
 })
@@ -267,6 +285,7 @@ const submit = (): void => {
   form.files = files.value
   form.start = application.start
   form.replace = application.replace
+  form.source = fetched.value
   form.secrets = missing.value
     .filter((secret) => !isFilledIn(secret))
     .map<SecretInput>((secret) => ({ name: secret.name, driver: 'file', value: values[secret.name] ?? '' }))
