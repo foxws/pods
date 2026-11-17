@@ -35,6 +35,7 @@ class RouteData extends Data
         public string $host,
         public string $upstream,
         public bool $main,
+        public ?string $via,
         public string $target,
     ) {}
 
@@ -49,16 +50,17 @@ class RouteData extends Data
             host: (string) $payload['host'],
             upstream: (string) $payload['upstream'],
             main: (bool) ($payload['main'] ?? false),
+            via: $payload['via'] ?? null,
             target: (string) ($payload['target'] ?? $payload['upstream']),
         );
     }
 
     /**
      * Validated routes as lpod's "APP routes set" takes them, with hostnames in lowercase and one
-     * main route: the first that says so, or else the first.
+     * main route: the first that says so, or else the first. The main route can't go via itself.
      *
-     * @param  array<array-key, array{role: string, host: string, upstream: string, main?: bool}>  $routes
-     * @return list<array{role: string, host: string, upstream: string, main: bool}>
+     * @param  array<array-key, array{role: string, host: string, upstream: string, main?: bool, via?: ?string}>  $routes
+     * @return list<array{role: string, host: string, upstream: string, main: bool, via: ?string}>
      */
     public static function forLpod(array $routes): array
     {
@@ -70,6 +72,7 @@ class RouteData extends Data
             'host' => strtolower($route['host']),
             'upstream' => $route['upstream'],
             'main' => $index === ($main === false ? 0 : $main),
+            'via' => $index === ($main === false ? 0 : $main) ? null : ($route['via'] ?? null),
         ], $routes, array_keys($routes));
     }
 
@@ -86,6 +89,7 @@ class RouteData extends Data
             "{$key}.*.host" => ['required', 'string', 'distinct:ignore_case', 'regex:'.self::HostPattern],
             "{$key}.*.upstream" => ['required', 'string', 'regex:'.self::UpstreamPattern],
             "{$key}.*.main" => ['boolean'],
+            "{$key}.*.via" => ['nullable', 'string', 'in:main'],
         ];
     }
 }

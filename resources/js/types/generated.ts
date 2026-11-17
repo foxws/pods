@@ -26,6 +26,8 @@ export type ApplicationOperation = 'up' | 'down' | 'force-stop' | 'restart' | 'r
 export type ApplicationRoutesData = {
   proxy_installed: boolean
   proxy_running: boolean
+  layout: string
+  domain: string | null
   routes: RouteSuggestionData[]
 }
 export type CatalogApplicationData = {
@@ -286,6 +288,7 @@ export type ManifestRouteData = {
   upstream: string
   description: string | null
   main: boolean
+  via: string | null
 }
 export type ManifestSecretData = {
   name: string
@@ -378,6 +381,8 @@ export type PodData = {
 export type ProxyRoutesData = {
   installed: boolean
   running: boolean
+  layout: string
+  domain: string | null
   routes: RouteData[]
 }
 export type PruneResultData = {
@@ -411,6 +416,7 @@ export type RouteData = {
   host: string
   upstream: string
   main: boolean
+  via: string | null
   target: string
 }
 export type RouteSuggestionData = {
@@ -418,6 +424,7 @@ export type RouteSuggestionData = {
   description: string | null
   upstream: string
   main: boolean
+  via: string | null
   host: string | null
   suggested_host: string
   target: string | null

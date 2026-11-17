@@ -20,6 +20,7 @@ class RouteSuggestionData extends Data
         public ?string $description,
         public string $upstream,
         public bool $main,
+        public ?string $via,
         public ?string $host,
         public string $suggested_host,
         public ?string $target,

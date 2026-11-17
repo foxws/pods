@@ -14,11 +14,14 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 class ApplicationRoutesData extends Data
 {
     /**
+     * @param  string  $layout  "sites" or "handlers", see ProxyRoutesData
      * @param  list<RouteSuggestionData>  $routes
      */
     public function __construct(
         public bool $proxy_installed,
         public bool $proxy_running,
+        public string $layout,
+        public ?string $domain,
         public array $routes,
     ) {}
 }

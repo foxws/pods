@@ -133,11 +133,14 @@ class ManifestData extends Data
         $parsed = [];
 
         foreach ($routes as $role => $route) {
+            $isMain = $chosen ? ($route['main'] ?? false) === true : $parsed === [];
+
             $parsed[] = new ManifestRouteData(
                 role: $role,
                 upstream: (string) $route['upstream'],
                 description: $route['description'] ?? null,
-                main: $chosen ? ($route['main'] ?? false) === true : $parsed === [],
+                main: $isMain,
+                via: $isMain ? null : ($route['via'] ?? null),
             );
         }
 
@@ -206,6 +209,7 @@ class ManifestData extends Data
             'routes.*.upstream' => ['required', 'string', 'regex:'.RouteData::UpstreamPattern],
             'routes.*.description' => ['nullable', 'string', 'max:500'],
             'routes.*.main' => ['nullable', 'boolean'],
+            'routes.*.via' => ['nullable', 'string', 'in:main'],
             'ondemand' => ['nullable', 'array'],
             'ondemand.port' => ['nullable', 'integer', 'between:1,55535'],
             'ondemand.app_port' => ['nullable', 'integer', 'between:1,65535'],

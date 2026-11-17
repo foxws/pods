@@ -36,11 +36,11 @@ class UpdateApplicationRoutesRequest extends FormRequest
     }
 
     /**
-     * @return list<array{role: string, host: string, upstream: string, main: bool}>
+     * @return list<array{role: string, host: string, upstream: string, main: bool, via: ?string}>
      */
     public function routes(): array
     {
-        /** @var array<array-key, array{role: string, host: string, upstream: string, main?: bool}> $routes */
+        /** @var array<array-key, array{role: string, host: string, upstream: string, main?: bool, via?: ?string}> $routes */
         $routes = $this->array('routes');
 
         return RouteData::forLpod($routes);

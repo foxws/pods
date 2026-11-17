@@ -16,7 +16,7 @@ export type DerivedSecretInput = { name: string; from: string; key: string }
 /**
  * A hostname for the Pods proxy to send to an upstream of the application once it's installed.
  */
-export type RouteInput = { role: string; host: string; upstream: string; main: boolean }
+export type RouteInput = { role: string; host: string; upstream: string; main: boolean; via: string | null }
 
 /**
  * Where fetched files came from, with the pods.yml, so Pods can keep it with the installed application.

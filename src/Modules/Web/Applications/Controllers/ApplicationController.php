@@ -106,6 +106,7 @@ class ApplicationController implements HasMiddleware
         return Inertia::render('Applications/ApplicationCreate', [
             'environment' => EnvironmentData::fromModel($environment),
             'catalog' => Inertia::defer(fn (): array => $this->fromHost(fn () => $listCatalog($environment)), 'catalog'),
+            'proxy' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->proxyRoutes($environment)), 'proxy'),
             'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment))),
         ]);
     }
