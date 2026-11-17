@@ -37,7 +37,12 @@ Done (round 1): `lpod APP routes [set --stdin|remove] --json` and `lpod proxy ro
 
 Done (round 2): the Proxy section of a host's settings installs `pods-proxy` and sets its certificates, ports and image (see [Proxy](../README.md#proxy)).
 
-Done (round 3): proxy defaults (`Foundation\Settings\ProxySettings`, Settings, Proxy) pre-fill the Proxy section of a host without a proxy, and their domain is what hostnames are suggested under outside a wildcard site. The DNS token stays per host. The Proxy section keeps resolvers, ports and image under Advanced. `install.sh --proxy` routes Pods' own hostname with `lpod pods routes set`, replacing `sites/pods.Caddyfile` and the `pods.conf` drop-in.
+Done (round 3, #46): proxy defaults (`Foundation\Settings\ProxySettings`, Settings, Proxy) pre-fill the Proxy section of a host without a proxy, and their domain is what hostnames are suggested under outside a wildcard site. The DNS token stays per host. The Proxy section keeps resolvers, ports and image under Advanced. `install.sh --proxy` routes Pods' own hostname with `lpod pods routes set`, replacing `sites/pods.Caddyfile` and the `pods.conf` drop-in, so Pods' hostname is edited on the `pods` application's Routes card. Pods stays awake behind the proxy, because its on-demand socket listens on 127.0.0.1, which the proxy can't reach.
+
+Next:
+
+- **A real-host check** of rounds 2 and 3: installing the proxy in each mode from Pods, the root certificate download, and `install.sh --proxy` on a host set up by an older install.sh. So far it's only tested against `fakeLpod()` and stubbed binaries.
+- **More DNS providers** for the wildcard mode, each a `--with` line in `containers/runtimes/proxy/Containerfile`, a name in `ProxySettingsData::DnsProviders` and its token variable in lpod.
 
 ### Round 2: installing the proxy from Pods
 
@@ -96,7 +101,6 @@ Open questions:
 
 - **Routes to sleeping services that aren't `via: main`.** These still get a 502, such as Mailpit or the RustFS console opened on their own. Caddy could start the app's socket service on a 502 and retry.
 - **The proxy itself** must not sleep, so it's always on, unlike the applications behind it.
-- **Pods' own hostname.** Done: `install.sh --proxy --host NAME` sets it as the `app` route of the `pods` application, so it's edited on that application's page. Pods stays awake behind the proxy, because its on-demand socket listens on 127.0.0.1, which the proxy can't reach.
 - **stry** keeps `Support\Octane\CaddySites` while its `ws` and `s3` routes go `via: main`. It can drop it once every route goes to its own container.
 
 ## More of pods.yml
