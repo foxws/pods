@@ -23,15 +23,18 @@ class UpdateApplication
      * Installs the files of another tag of the repository an application came from, at the same path,
      * over its files. The new files are checked first, and need no secret the host lacks, so a refused
      * update leaves the application running. Running units only pick up new files when they start, so
-     * every unit stops before the install starts them again. Files on the host the tag no longer has
-     * are left in place, and returned.
+     * every unit stops before the install starts them again.
      *
-     * @return list<string> the names of the application's files that the tag doesn't have
+     * Files on the host the tag no longer has are removed when asked, before the install starts the
+     * units again, but only the ones Pods installed: a drop-in added on the host stays. The files
+     * that stay are returned too.
+     *
+     * @return array{removed: list<string>, kept: list<string>} the application's files the tag doesn't have
      *
      * @throws CannotUpdateApplicationException
      * @throws LpodException
      */
-    public function __invoke(Installation $installation, string $tag): array
+    public function __invoke(Installation $installation, string $tag, bool $removeOldFiles = true): array
     {
         $environment = $installation->environment;
         $application = $installation->application;
@@ -60,8 +63,11 @@ class UpdateApplication
         }
 
         $leftOver = array_values(array_diff($this->installedFileNames($installation), array_column($source->files, 'name')));
+        $removable = $removeOldFiles ? array_values(array_intersect($leftOver, array_keys($installation->checksums))) : [];
 
         $this->lpod->stopAndWait($environment, $application);
+
+        $removed = $removable !== [] ? $this->lpod->removeFiles($environment, $application, $removable) : [];
 
         ($this->installQuadlets)($environment, $application, $source->files, start: true, replace: true, source: [
             'repository' => $installation->repository,
@@ -72,7 +78,7 @@ class UpdateApplication
             'manifest_path' => $source->manifest_path,
         ]);
 
-        return $leftOver;
+        return ['removed' => $removed, 'kept' => array_values(array_diff($leftOver, $removed))];
     }
 
     /**

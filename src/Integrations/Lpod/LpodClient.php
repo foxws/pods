@@ -88,6 +88,21 @@ class LpodClient
     }
 
     /**
+     * Removes some of the application's files: Quadlets, whose units stop, and drop-ins next to them.
+     *
+     * @param  list<string>  $names  as files() names them
+     * @return list<string> the names lpod removed
+     */
+    public function removeFiles(Environment $environment, string $application, array $names): array
+    {
+        $payload = $this->json($environment, [$application, 'files', 'remove', ...$names, '--json'], timeout: 120);
+
+        $this->forget($environment, 'apps', "apps.{$application}", 'host', 'containers', 'pods', 'volumes', 'networks');
+
+        return array_values(array_map(strval(...), $payload['removed'] ?? []));
+    }
+
+    /**
      * @return list<JournalEntryData>
      */
     public function logs(Environment $environment, string $application, int $lines = 100): array
