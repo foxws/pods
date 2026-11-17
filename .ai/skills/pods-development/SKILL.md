@@ -84,7 +84,15 @@ lpod generates each application's routes file, with the routes kept on its `# lp
 - UI: `ProxySettingsCard.vue` on the host's settings page (deferred `proxy` prop, group `proxy`). It warns when rootless Podman can't publish the ports (`unprivileged_port_start`). The certificate button is a `UButton` with `external`, so it's a plain download, not an Inertia visit.
 - `ghcr.io/foxws/pods-proxy:main` is Caddy built with xcaddy (`containers/runtimes/proxy/Containerfile`, published by `.github/workflows/build-proxy.yml` on changes and weekly). A new DNS provider needs another `--with` line there, its name in `ProxySettingsData::DnsProviders`, and its token variable in lpod's `proxy_dns_env`.
 - `install.sh --proxy` calls `lpod proxy settings set` only while there's no Caddyfile yet, so running it again keeps settings made in Pods.
-- Still planned (docs/roadmap.md, Proxy): suggestions under the Let's Encrypt domain, and Pods' own hostname as a route of the `pods` application.
+- The fields (mode, domain, token, email, and under Advanced the DNS provider, resolvers, ports and image) are `ProxySettingsFields.vue`, shared by the host's card and the defaults form, with `ProxySettingsFormValues` from `resources/js/types/index.d.ts`.
+
+### Proxy defaults
+
+- `Foundation\Settings\ProxySettings` (spatie/laravel-settings, group `proxy`, migration in `database/settings`): mode, email, domain, DNS provider, resolvers, ports and image. Never the DNS token: that's only ever on the host. Settings, Proxy (`SettingsProxyForm.vue`, super-admin) reads and saves them through `ProxyDefaultsController` (`actions/settings/proxy`, JSON `show` like `ApplicationSettingsController`), validated by `ProxyDefaultsRequest`, which authorizes `manage-application-settings` itself so a regular user gets a 403 rather than validation errors.
+- The host settings page gets them as `proxyDefaults`, and `ProxySettingsCard.vue` starts from them while the proxy isn't installed (the domain only in the wildcard mode). An installed proxy always shows what lpod reads from its host.
+- Their domain is what `SuggestRoutes` (which gets `ProxySettings` injected) suggests under instead of `home.arpa` outside a wildcard site: `ApplicationRoutesData::$default_domain` for the Routes modal, and the create page's `defaultDomain` prop. `suggestedHost()` in PHP and `utils/routes.ts` both take it as their last argument.
+- Pods' own hostname: `install.sh --proxy --host NAME` runs `lpod pods routes set` (role `app`, `systemd-pods:8000`) and removes the older `sites/pods.Caddyfile` and `pods.conf` drop-in, so it's edited on the `pods` application's Routes card. Pods stays awake behind the proxy: its on-demand socket listens on 127.0.0.1, which the proxy container can't reach.
+- Still open (docs/roadmap.md, Proxy): waking sleeping services on routes that aren't `via: main`.
 
 ## Volume backups and restores (planned)
 

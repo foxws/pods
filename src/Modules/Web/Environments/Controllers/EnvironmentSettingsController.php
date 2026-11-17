@@ -6,6 +6,7 @@ namespace Modules\Web\Environments\Controllers;
 
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
+use Foundation\Settings\ProxySettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
@@ -30,7 +31,7 @@ class EnvironmentSettingsController implements HasMiddleware
         ];
     }
 
-    public function show(Environment $environment, LpodClient $lpod): Response
+    public function show(Environment $environment, LpodClient $lpod, ProxySettings $proxyDefaults): Response
     {
         Gate::authorize('view', $environment);
 
@@ -38,6 +39,7 @@ class EnvironmentSettingsController implements HasMiddleware
             'environment' => EnvironmentData::fromModel($environment),
             'settings' => $this->deferFromHost(fn () => $lpod->hostSettings($environment)),
             'proxy' => $this->deferFromHost(fn () => $lpod->proxySettings($environment), 'proxy'),
+            'proxyDefaults' => $proxyDefaults->toArray(),
         ]);
     }
 

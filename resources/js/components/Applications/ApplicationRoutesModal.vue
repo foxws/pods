@@ -14,6 +14,8 @@ const props = defineProps<{
   routes: RouteSuggestionData[]
   /** The proxy's wildcard domain, which hostnames stay one label under. */
   wildcard: string | null
+  /** The proxy defaults' domain, which other hostnames are suggested under. */
+  domain: string | null
 }>()
 
 type Row = {
@@ -163,7 +165,7 @@ const onSubmit = (close: () => void): void => {
             >
               <UInput
                 v-model="row.host"
-                :placeholder="suggestedHost(application, row.role, row.main, wildcard)"
+                :placeholder="suggestedHost(application, row.role, row.main, wildcard, domain)"
                 class="w-full font-mono"
               >
                 <template
@@ -175,7 +177,7 @@ const onSubmit = (close: () => void): void => {
                     color="neutral"
                     variant="link"
                     size="xs"
-                    @click="row.host = suggestedHost(application, row.role, row.main, wildcard)"
+                    @click="row.host = suggestedHost(application, row.role, row.main, wildcard, domain)"
                   />
                 </template>
               </UInput>

@@ -1,6 +1,7 @@
 <?php
 
 use Foundation\Settings\GeneralSettings;
+use Foundation\Settings\ProxySettings;
 use Spatie\LaravelSettings\SettingsCasts\DateTimeInterfaceCast;
 use Spatie\LaravelSettings\SettingsCasts\DateTimeZoneCast;
 use Spatie\LaravelSettings\SettingsRepositories\DatabaseSettingsRepository;
@@ -14,6 +15,7 @@ return [
      */
     'settings' => [
         GeneralSettings::class,
+        ProxySettings::class,
     ],
 
     /*

@@ -1,46 +1,32 @@
 <script setup lang="ts">
 import { certificate, store, update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentProxyController'
 import { show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
+import { show as settingsShow } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import HostError from '@/components/Environments/HostError.vue'
-import type { EnvironmentData, HostProperty, ProxySettingsData } from '@/types'
-import type { RadioGroupItem } from '@nuxt/ui'
+import ProxySettingsFields from '@/components/Environments/ProxySettingsFields.vue'
+import { useAuth } from '@/composables/auth'
+import type {
+  EnvironmentData,
+  HostProperty,
+  ProxyDefaults,
+  ProxyMode,
+  ProxySettingsData,
+  ProxySettingsFormValues,
+} from '@/types'
 import { useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
   proxy?: HostProperty<ProxySettingsData>
+  /** What a host without a proxy starts from (Settings, Proxy). */
+  defaults: ProxyDefaults
 }>()
 
-type Mode = 'letsencrypt' | 'local' | 'wildcard' | 'http'
+const { hasRole } = useAuth()
 
-const modes: RadioGroupItem[] = [
-  {
-    label: "Let's Encrypt",
-    value: 'letsencrypt',
-    description: 'A certificate per hostname, for a public domain the internet reaches on port 80 or 443.',
-  },
-  {
-    label: 'Local certificate authority',
-    value: 'local',
-    description:
-      'Caddy signs the certificates itself, for names such as stry.home.arpa. Trust its root certificate once.',
-  },
-  {
-    label: 'Wildcard through DNS',
-    value: 'wildcard',
-    description:
-      'One certificate for *.DOMAIN through your DNS provider, for a public domain on a host only your network reaches.',
-  },
-  {
-    label: 'Plain HTTP',
-    value: 'http',
-    description: 'Another proxy in front of this one handles HTTPS.',
-  },
-]
-
-const form = useForm({
-  mode: 'letsencrypt' as Mode,
+const form = useForm<ProxySettingsFormValues>({
+  mode: 'letsencrypt',
   email: '',
   domain: '',
   dns_provider: 'cloudflare',
@@ -53,6 +39,11 @@ const form = useForm({
 
 const data = computed(() => props.proxy?.data ?? null)
 
+/**
+ * An installed proxy shows what its host has. One that isn't starts from Pods' defaults.
+ */
+const fromDefaults = computed(() => data.value !== null && !data.value.installed)
+
 watch(
   data,
   (proxy) => {
@@ -60,35 +51,23 @@ watch(
       return
     }
 
+    const source = proxy.installed ? proxy : props.defaults
+
     form.defaults({
-      mode: (proxy.mode as Mode | null) ?? 'letsencrypt',
-      email: proxy.email ?? '',
-      domain: proxy.domain ?? '',
-      dns_provider: proxy.dns_provider ?? 'cloudflare',
+      mode: (source.mode as ProxyMode | null) ?? props.defaults.mode,
+      email: source.email ?? '',
+      domain: proxy.installed ? (proxy.domain ?? '') : source.mode === 'wildcard' ? (source.domain ?? '') : '',
+      dns_provider: source.dns_provider ?? 'cloudflare',
       dns_token: '',
-      resolvers: proxy.resolvers ?? '',
-      http_port: proxy.http_port ?? 80,
-      https_port: proxy.https_port ?? 443,
-      image: proxy.image ?? '',
+      resolvers: source.resolvers ?? '',
+      http_port: source.http_port ?? 80,
+      https_port: source.https_port ?? 443,
+      image: source.image ?? '',
     })
     form.reset()
   },
   { immediate: true },
 )
-
-const defaultImage = computed(() =>
-  form.mode === 'wildcard' ? 'ghcr.io/foxws/pods-proxy:main' : 'docker.io/library/caddy:2',
-)
-
-/**
- * Rootless Podman can't publish ports below the host's ip_unprivileged_port_start.
- */
-const blockedBelow = computed((): number | null => {
-  const start = data.value?.rootless ? data.value.unprivileged_port_start : null
-  const lowest = form.mode === 'http' ? form.http_port : Math.min(form.http_port, form.https_port)
-
-  return start !== null && start !== undefined && lowest < start ? start : null
-})
 
 const status = computed(() => {
   if (!data.value?.installed) {
@@ -99,8 +78,6 @@ const status = computed(() => {
     ? { label: 'Running', color: 'success' as const }
     : { label: 'Stopped', color: 'warning' as const }
 })
-
-const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
 
 const submit = (): void => {
   const options = {
@@ -171,6 +148,20 @@ const submit = (): void => {
       class="flex flex-col gap-4"
       @submit.prevent="submit"
     >
+      <p
+        v-if="fromDefaults"
+        class="text-sm text-muted"
+      >
+        Filled in from Pods' proxy defaults. Installing pulls the image and starts the proxy.
+        <ULink
+          v-if="hasRole('super-admin')"
+          :to="settingsShow.url('proxy')"
+          class="text-primary"
+        >
+          Change the defaults
+        </ULink>
+      </p>
+
       <UAlert
         v-if="data.installed && !data.managed && data.mode"
         color="info"
@@ -180,165 +171,11 @@ const submit = (): void => {
         description="The form starts from what lpod reads in it. Saving replaces it, and keeps yours next to it as a backup, so move any sites of your own to sites/*.Caddyfile."
       />
 
-      <UFormField
-        label="Certificates"
-        :error="form.errors.mode"
-      >
-        <URadioGroup
-          v-model="form.mode"
-          :items="modes"
-          variant="table"
-        />
-      </UFormField>
-
-      <template v-if="form.mode === 'wildcard'">
-        <USeparator />
-
-        <UFormField
-          label="Domain"
-          description="The proxy serves *.DOMAIN. Hostnames are one label under it, such as stry-ws.DOMAIN."
-          required
-          :error="form.errors.domain"
-          :class="fieldClass"
-        >
-          <UInput
-            v-model="form.domain"
-            :model-modifiers="{ trim: true }"
-            placeholder="home.example.com"
-            class="w-full font-mono sm:w-64"
-            spellcheck="false"
-          />
-        </UFormField>
-
-        <UFormField
-          label="DNS provider"
-          :error="form.errors.dns_provider"
-          :class="fieldClass"
-        >
-          <USelect
-            v-model="form.dns_provider"
-            :items="[{ label: 'Cloudflare', value: 'cloudflare' }]"
-            class="w-full sm:w-64"
-          />
-        </UFormField>
-
-        <UFormField
-          label="API token"
-          :description="
-            data.dns_token
-              ? 'The host has one. Leave this empty to keep it.'
-              : 'A token that may edit the DNS records of the domain. Kept as a Podman secret on the host, never in Pods.'
-          "
-          :required="!data.dns_token"
-          :error="form.errors.dns_token"
-          :class="fieldClass"
-        >
-          <UInput
-            v-model="form.dns_token"
-            type="password"
-            autocomplete="off"
-            :placeholder="data.dns_token ? 'Stored on the host' : ''"
-            class="w-full font-mono sm:w-64"
-          />
-        </UFormField>
-
-        <UFormField
-          label="Resolvers"
-          description="DNS servers that check the challenge record, such as 1.1.1.1, when the local ones answer for the domain themselves."
-          :error="form.errors.resolvers"
-          :class="fieldClass"
-        >
-          <UInput
-            v-model="form.resolvers"
-            placeholder="1.1.1.1"
-            class="w-full font-mono sm:w-64"
-            spellcheck="false"
-          />
-        </UFormField>
-      </template>
-
-      <template v-if="form.mode === 'letsencrypt' || form.mode === 'wildcard'">
-        <USeparator />
-
-        <UFormField
-          label="Email"
-          description="Let's Encrypt writes here about certificates that are about to expire."
-          :error="form.errors.email"
-          :class="fieldClass"
-        >
-          <UInput
-            v-model="form.email"
-            type="email"
-            :model-modifiers="{ trim: true }"
-            class="w-full sm:w-64"
-          />
-        </UFormField>
-      </template>
-
-      <USeparator />
-
-      <UFormField
-        label="Ports"
-        description="The host ports the proxy publishes for HTTP and HTTPS."
-        :error="form.errors.http_port ?? form.errors.https_port"
-        :class="fieldClass"
-      >
-        <div class="flex w-full gap-2 sm:w-64">
-          <UInput
-            v-model.number="form.http_port"
-            type="number"
-            :min="1"
-            :max="65535"
-            aria-label="HTTP port"
-            class="w-full font-mono"
-          >
-            <template #leading><span class="text-xs text-muted">HTTP</span></template>
-          </UInput>
-          <UInput
-            v-if="form.mode !== 'http'"
-            v-model.number="form.https_port"
-            type="number"
-            :min="1"
-            :max="65535"
-            aria-label="HTTPS port"
-            class="w-full font-mono"
-          >
-            <template #leading><span class="text-xs text-muted">HTTPS</span></template>
-          </UInput>
-        </div>
-      </UFormField>
-
-      <UAlert
-        v-if="blockedBelow !== null"
-        color="warning"
-        variant="subtle"
-        icon="i-lucide-triangle-alert"
-        :title="`Rootless Podman can't publish ports below ${blockedBelow} here`"
-      >
-        <template #description>
-          Pick ports such as 28080 and 28443, and let the host's main proxy forward to them. Or allow low ports on the
-          host:
-          <code class="font-mono"
-            >echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/99-lpod.conf</code
-          >
-        </template>
-      </UAlert>
-
-      <USeparator />
-
-      <UFormField
-        label="Image"
-        :description="`Leave empty for ${defaultImage}.`"
-        :error="form.errors.image"
-        :class="fieldClass"
-      >
-        <UInput
-          v-model="form.image"
-          :placeholder="defaultImage"
-          class="w-full font-mono sm:w-64"
-          spellcheck="false"
-        />
-      </UFormField>
+      <ProxySettingsFields
+        :form="form"
+        :dns-token-stored="data.dns_token"
+        :unprivileged-port-start="data.rootless ? data.unprivileged_port_start : null"
+      />
 
       <div class="flex flex-wrap items-center justify-end gap-2">
         <UButton

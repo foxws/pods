@@ -112,6 +112,7 @@ const isEditing = ref(false)
       :application="application"
       :routes="data.routes"
       :wildcard="data.domain"
+      :domain="data.default_domain"
     />
   </UCard>
 </template>

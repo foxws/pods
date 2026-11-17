@@ -25,12 +25,14 @@ use Modules\Web\Quadlets\Controllers\QuadletController;
 use Modules\Web\Quadlets\Controllers\QuadletFetchController;
 use Modules\Web\Secrets\Controllers\SecretController;
 use Modules\Web\Settings\Controllers\ApplicationSettingsController;
+use Modules\Web\Settings\Controllers\ProxyDefaultsController;
 use Modules\Web\Volumes\Controllers\VolumeController;
 use Modules\Web\Volumes\Controllers\VolumePruneController;
 
 // Settings
 Route::prefix('/settings')->name('settings.')->group(function () {
     Route::singleton('application', ApplicationSettingsController::class)->only(['show', 'update']);
+    Route::singleton('proxy', ProxyDefaultsController::class)->only(['show', 'update']);
 });
 
 // Environments

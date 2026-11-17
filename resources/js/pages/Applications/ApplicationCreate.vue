@@ -44,6 +44,8 @@ const props = defineProps<{
   catalog?: HostProperty<CatalogData>
   secrets?: HostProperty<SecretData[]>
   proxy?: HostProperty<ProxyRoutesData>
+  /** The proxy defaults' domain, which hostnames are suggested under outside a wildcard site. */
+  defaultDomain: string | null
 }>()
 
 type Source = 'catalog' | 'git' | 'upload' | 'write'
@@ -302,7 +304,7 @@ const routeError = (role: string): string | undefined => {
 
 const fillInHosts = (): void => {
   for (const route of manifestRoutes.value) {
-    hosts[route.role] = suggestedHost(application.name, route.role, route.main, wildcard.value)
+    hosts[route.role] = suggestedHost(application.name, route.role, route.main, wildcard.value, props.defaultDomain)
   }
 }
 
@@ -1002,7 +1004,7 @@ const serverErrors = computed(() =>
                   <UInput
                     v-model="hosts[route.role]"
                     :model-modifiers="{ trim: true }"
-                    :placeholder="suggestedHost(application.name, route.role, route.main, wildcard)"
+                    :placeholder="suggestedHost(application.name, route.role, route.main, wildcard, defaultDomain)"
                     class="w-full font-mono sm:w-80"
                   />
                 </UFormField>

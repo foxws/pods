@@ -20,15 +20,15 @@ it('shows a settings section', function (string $section) {
             ->where('section', $section));
 })->with(['account', 'security']);
 
-it('only shows the general section to a super-admin', function () {
+it('only shows the sections of the instance to a super-admin', function (string $section) {
     $this->actingAs(User::factory()->create())
-        ->get(action([SettingsController::class, 'show'], 'general'))
+        ->get(action([SettingsController::class, 'show'], $section))
         ->assertForbidden();
 
     $this->actingAs(User::factory()->create()->assignRole('super-admin'))
-        ->get(action([SettingsController::class, 'show'], 'general'))
+        ->get(action([SettingsController::class, 'show'], $section))
         ->assertSuccessful();
-});
+})->with(['general', 'proxy']);
 
 it('does not route unknown sections', function () {
     $this->actingAs(User::factory()->create())

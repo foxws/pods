@@ -34,7 +34,12 @@ const groups = computed<NavigationMenuItem[][]>(() => [
   ],
   [
     { label: 'Pods', type: 'label' },
-    ...(hasRole('super-admin') ? [link('General', 'i-lucide-sliders-horizontal', settingsShow.url('general'))] : []),
+    ...(hasRole('super-admin')
+      ? [
+          link('General', 'i-lucide-sliders-horizontal', settingsShow.url('general')),
+          link('Proxy', 'i-lucide-globe', settingsShow.url('proxy')),
+        ]
+      : []),
     link('Hosts', 'i-lucide-server', environmentsIndex.url()),
   ],
   ...((page.props.environments ?? []).length

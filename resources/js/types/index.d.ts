@@ -98,6 +98,38 @@ export type ApplicationSettings = {
   allow_registration: boolean
 }
 
+export type ProxyMode = 'letsencrypt' | 'local' | 'wildcard' | 'http'
+
+/**
+ * Foundation\Settings\ProxySettings: what a host's Proxy section starts from, and the domain
+ * hostnames are suggested under.
+ */
+export type ProxyDefaults = {
+  mode: ProxyMode
+  email: string | null
+  domain: string | null
+  dns_provider: string
+  resolvers: string | null
+  http_port: number
+  https_port: number
+  image: string | null
+}
+
+/**
+ * The fields of a Proxy form, as ProxySettingsFields edits them.
+ */
+export type ProxySettingsFormValues = {
+  mode: ProxyMode
+  email: string
+  domain: string
+  dns_provider: string
+  dns_token: string
+  resolvers: string
+  http_port: number
+  https_port: number
+  image: string
+}
+
 export type Passkey = {
   id: number
   name: string

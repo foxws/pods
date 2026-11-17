@@ -7,6 +7,7 @@ namespace Modules\Web\Applications\Controllers;
 use Domain\Catalog\Actions\ListCatalog;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
+use Foundation\Settings\ProxySettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
@@ -51,7 +52,7 @@ class ApplicationController implements HasMiddleware
         return Inertia::render('Applications/ApplicationShow', $props->for($environment, $application));
     }
 
-    public function create(Environment $environment, LpodClient $lpod, ListCatalog $listCatalog): Response
+    public function create(Environment $environment, LpodClient $lpod, ListCatalog $listCatalog, ProxySettings $proxySettings): Response
     {
         Gate::authorize('operate', $environment);
 
@@ -59,6 +60,7 @@ class ApplicationController implements HasMiddleware
             'environment' => EnvironmentData::fromModel($environment),
             'catalog' => $this->deferFromHost(fn () => $listCatalog($environment), 'catalog'),
             'proxy' => $this->deferFromHost(fn () => $lpod->proxyRoutes($environment), 'proxy'),
+            'defaultDomain' => $proxySettings->domain,
             'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment)),
         ]);
     }

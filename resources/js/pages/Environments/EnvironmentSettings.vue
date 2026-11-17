@@ -3,7 +3,7 @@ import { update } from '@/actions/Modules/Web/Environments/Controllers/Environme
 import HostError from '@/components/Environments/HostError.vue'
 import ProxySettingsCard from '@/components/Environments/ProxySettingsCard.vue'
 import SettingsLayout from '@/components/Settings/SettingsLayout.vue'
-import type { EnvironmentData, HostProperty, HostSettingsData, ProxySettingsData } from '@/types'
+import type { EnvironmentData, HostProperty, HostSettingsData, ProxyDefaults, ProxySettingsData } from '@/types'
 import { formatRelative } from '@/utils/format'
 import { Head, useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
@@ -12,6 +12,7 @@ const props = defineProps<{
   environment: EnvironmentData
   settings?: HostProperty<HostSettingsData>
   proxy?: HostProperty<ProxySettingsData>
+  proxyDefaults: ProxyDefaults
 }>()
 
 const form = useForm({
@@ -218,6 +219,7 @@ const submit = (): void => {
     <ProxySettingsCard
       :environment="environment"
       :proxy="proxy"
+      :defaults="proxyDefaults"
     />
   </SettingsLayout>
 </template>

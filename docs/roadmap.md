@@ -37,6 +37,8 @@ Done (round 1): `lpod APP routes [set --stdin|remove] --json` and `lpod proxy ro
 
 Done (round 2): the Proxy section of a host's settings installs `pods-proxy` and sets its certificates, ports and image (see [Proxy](../README.md#proxy)).
 
+Done (round 3): proxy defaults (`Foundation\Settings\ProxySettings`, Settings, Proxy) pre-fill the Proxy section of a host without a proxy, and their domain is what hostnames are suggested under outside a wildcard site. The DNS token stays per host. The Proxy section keeps resolvers, ports and image under Advanced. `install.sh --proxy` routes Pods' own hostname with `lpod pods routes set`, replacing `sites/pods.Caddyfile` and the `pods.conf` drop-in.
+
 ### Round 2: installing the proxy from Pods
 
 A Proxy section in the host's settings installs `pods-proxy`, and picks its ports, its certificates and how routes are written. Four modes cover the setups people run:
@@ -88,13 +90,13 @@ handle @stry {
 4. **The admin API** listens on a unix socket (`admin unix//config/admin.sock|0600`) instead of port 2019. Done: lpod reloads through it when the Caddyfile says so (`caddy reload --address unix//config/admin.sock`). The Caddyfiles lpod writes and the Quadlet's default one use it, and the health check checks the socket (or port 2019 when a Caddyfile doesn't say so).
 5. **The image.** Done: Pods' CI (`.github/workflows/build-proxy.yml`) publishes `ghcr.io/foxws/pods-proxy`: Caddy built with xcaddy and the DNS plugins people ask for (Cloudflare first), so `AutoUpdate=registry` keeps it current, like `ghcr.io/foxws/pods`. The Let's Encrypt and local CA modes keep `docker.io/library/caddy:2`. A setting takes your own image instead.
 6. **Ports.** Done: HTTP and HTTPS default to 80 and 443. Rootless Podman can't bind ports below 1024 unless `net.ipv4.ip_unprivileged_port_start` allows it, so Pods says so and suggests high ports (such as 28080 and 28443) behind the host's main proxy, or the sysctl that allows low ones.
-7. **Suggestions** follow the mode (done for the wildcard site that lpod reports; Let's Encrypt still suggests `home.arpa`): Pods suggests hostnames under the proxy's domain instead of `home.arpa`, one label deep (`APP-ROLE.DOMAIN`) in the wildcard mode. Short roles read better there, so stry's become `ws`, `s3`, `vite`, `mail` and `s3-console`.
+7. **Suggestions** follow the mode (done: the wildcard site that lpod reports, and otherwise the domain of the proxy defaults): Pods suggests hostnames under the proxy's domain instead of `home.arpa`, one label deep (`APP-ROLE.DOMAIN`) in the wildcard mode. Short roles read better there, so stry's become `ws`, `s3`, `vite`, `mail` and `s3-console`.
 
 Open questions:
 
 - **Routes to sleeping services that aren't `via: main`.** These still get a 502, such as Mailpit or the RustFS console opened on their own. Caddy could start the app's socket service on a 502 and retry.
 - **The proxy itself** must not sleep, so it's always on, unlike the applications behind it.
-- **Pods' own hostname.** `install.sh --proxy --host NAME` routes Pods itself through the proxy. Once the proxy is installed from Pods, that becomes a route of the `pods` application.
+- **Pods' own hostname.** Done: `install.sh --proxy --host NAME` sets it as the `app` route of the `pods` application, so it's edited on that application's page. Pods stays awake behind the proxy, because its on-demand socket listens on 127.0.0.1, which the proxy can't reach.
 - **stry** keeps `Support\Octane\CaddySites` while its `ws` and `s3` routes go `via: main`. It can drop it once every route goes to its own container.
 
 ## More of pods.yml

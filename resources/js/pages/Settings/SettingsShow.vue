@@ -2,11 +2,12 @@
 import SettingsAccountForm from '@/components/Settings/SettingsAccountForm.vue'
 import SettingsApplicationForm from '@/components/Settings/SettingsApplicationForm.vue'
 import SettingsLayout from '@/components/Settings/SettingsLayout.vue'
+import SettingsProxyForm from '@/components/Settings/SettingsProxyForm.vue'
 import SettingsSecurityForm from '@/components/Settings/SettingsSecurityForm.vue'
 import { Head } from '@inertiajs/vue3'
 import { computed, type Component } from 'vue'
 
-type Section = 'account' | 'security' | 'general'
+type Section = 'account' | 'security' | 'general' | 'proxy'
 
 const props = defineProps<{
   section: Section
@@ -27,6 +28,11 @@ const sections: Record<Section, { title: string; description: string; component:
     title: 'General',
     description: 'Settings of this Pods instance, shared by every user.',
     component: SettingsApplicationForm,
+  },
+  proxy: {
+    title: 'Proxy',
+    description: 'Defaults for the Pods proxy on your hosts, and the domain hostnames are suggested under.',
+    component: SettingsProxyForm,
   },
 }
 

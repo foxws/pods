@@ -15,6 +15,7 @@ class ApplicationRoutesData extends Data
 {
     /**
      * @param  string  $layout  "sites" or "handlers", see ProxyRoutesData
+     * @param  string|null  $default_domain  the proxy defaults' domain, which hostnames are suggested under outside a wildcard site
      * @param  list<RouteSuggestionData>  $routes
      */
     public function __construct(
@@ -22,6 +23,7 @@ class ApplicationRoutesData extends Data
         public bool $proxy_running,
         public string $layout,
         public ?string $domain,
+        public ?string $default_domain,
         public array $routes,
     ) {}
 }
