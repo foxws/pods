@@ -157,7 +157,7 @@ ondemand: # fills in the on-demand switch; the keys match lpod's ondemand status
         command: php /app/artisan app:idle
     schedule: # runs schedule:run only at these minutes, in UTC
         container: stry-schedule
-        at: ["*:00", "01:00"]
+        at: ['*:00', '01:00']
         environment:
             APP_COMMAND: php /app/artisan schedule:run
 ```

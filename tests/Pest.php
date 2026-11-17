@@ -97,6 +97,7 @@ function fakeLpod(): FakeHostRunner
         'quadlet install *' => $fixture('ok'),
         'quadlet fetch *' => $fixture('quadlet-fetch'),
         'quadlet catalog *' => $fixture('quadlet-catalog'),
+        'quadlet tags *' => $fixture('quadlet-tags'),
         'settings --json' => $fixture('host-settings'),
         'settings set *' => $fixture('ok'),
     ]);

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { update as acceptFiles } from '@/actions/Modules/Web/Applications/Controllers/ApplicationInstallationController'
+import { store as updateApplication } from '@/actions/Modules/Web/Applications/Controllers/ApplicationUpdateController'
 import HostError from '@/components/Environments/HostError.vue'
-import type { EnvironmentData, HostProperty, InstallationData } from '@/types'
+import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
+import type { EnvironmentData, GitTagData, HostProperty, InstallationData } from '@/types'
 import { formatRelative } from '@/utils/format'
 import { router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
@@ -10,6 +12,7 @@ const props = defineProps<{
   environment: EnvironmentData
   application: string
   installation?: HostProperty<InstallationData | null>
+  updates?: HostProperty<GitTagData[]>
 }>()
 
 const tracked = computed(() => props.installation?.data ?? null)
@@ -25,6 +28,37 @@ const changes = computed(() =>
 )
 
 const isAccepting = ref(false)
+
+const newerTags = computed(() => props.updates?.data ?? [])
+
+const isConfirmingUpdate = ref(false)
+const isUpdating = ref(false)
+const updateTag = ref('')
+const updateError = ref<string>()
+
+const tagItems = computed(() =>
+  newerTags.value.map((tag) => ({ label: `${tag.name} (${tag.commit})`, value: tag.name })),
+)
+
+const confirmUpdate = (): void => {
+  updateTag.value = newerTags.value[0]?.name ?? ''
+  updateError.value = undefined
+  isConfirmingUpdate.value = true
+}
+
+const update = (close: () => void): void => {
+  router.post(
+    updateApplication.url([props.environment.id, props.application]),
+    { tag: updateTag.value },
+    {
+      preserveScroll: true,
+      onStart: () => (isUpdating.value = true),
+      onFinish: () => (isUpdating.value = false),
+      onError: (errors) => (updateError.value = errors.tag),
+      onSuccess: () => close(),
+    },
+  )
+}
 
 const accept = (): void => {
   router.put(
@@ -86,6 +120,28 @@ const accept = (): void => {
         </template>
       </dl>
 
+      <HostError
+        v-if="updates?.error"
+        :error="updates.error"
+      />
+      <div
+        v-else-if="newerTags.length"
+        class="flex items-center justify-between gap-3 rounded-md bg-elevated px-3 py-2"
+      >
+        <span>
+          <span class="font-medium text-highlighted">{{ newerTags[0]?.name }}</span>
+          is available<template v-if="newerTags.length > 1"> ({{ newerTags.length }} newer tags)</template>
+        </span>
+        <UButton
+          label="Update"
+          icon="i-lucide-arrow-up-circle"
+          color="primary"
+          variant="soft"
+          size="xs"
+          @click="confirmUpdate"
+        />
+      </div>
+
       <UAlert
         v-if="tracked.changed"
         color="warning"
@@ -145,5 +201,33 @@ const accept = (): void => {
       v-else
       class="h-16"
     />
+
+    <ConfirmModal
+      v-model:open="isConfirmingUpdate"
+      :title="`Update ${application}?`"
+      description="Pods fetches the files of the tag at the same path, checks them, stops every unit, installs them over the current files and starts the units again."
+      confirm-label="Update"
+      :processing="isUpdating"
+      @confirm="update"
+    >
+      <UFormField
+        label="Tag"
+        :error="updateError"
+      >
+        <USelect
+          v-model="updateTag"
+          :items="tagItems"
+          class="w-full font-mono"
+        />
+      </UFormField>
+      <UAlert
+        v-if="tracked?.changed"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-file-diff"
+        title="Files changed outside Pods are replaced"
+        description="Keep a copy of your changes, or add them as a drop-in, before updating."
+      />
+    </ConfirmModal>
   </UCard>
 </template>

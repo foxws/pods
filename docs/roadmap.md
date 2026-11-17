@@ -53,7 +53,7 @@ Pods reads the sources, the application name, the secrets and the catalog keys (
 1. **Setup steps.** Done: `after_install` lists the commands to run once the units are up, such as `php artisan app:install` and creating the first admin, with inputs the UI asks for (a password goes on stdin, never in the arguments). The application page shows a "Finish setup" card from the stored manifest, runs each step with `lpod container NAME exec`, and remembers how it ended. This replaces what laravel-installer did.
 2. **On-demand.** Done: `ondemand` (ports, idle timeout, idle check, the workers to stop and the scheduler) fills in the on-demand switch. See [On-demand applications](#on-demand-applications).
 3. **Backups.** `backups` lists the volumes to leave out (such as bind-backed ones) and a database dump command. See [Volume backups and restores](#volume-backups-and-restores).
-4. **Updates.** With the stored source, the application page can offer "Update to tag X" and reinstall from it with `--replace`.
+4. **Updates.** Done: for an application installed at a tag, the Source card offers the repository's newer tags (`lpod quadlet tags`; pre-releases only after a pre-release). Updating fetches the tag at the same path, checks it, refuses when it needs a secret the host lacks, stops the units, installs with `--replace --start`, and keeps the new source. Files the tag no longer has stay on the host and are named. Next: removing those files, and updating an application installed from a branch to its newest commit.
 5. **Routes.** `routes` lists the upstreams the [proxy](#proxy) should give a hostname.
 
 ## Installing applications from a checkout
