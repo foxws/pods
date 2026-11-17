@@ -32,11 +32,11 @@ class EnvironmentOverviewController implements HasMiddleware
 
         return Inertia::render('Environments/EnvironmentOverview', [
             'environment' => EnvironmentData::fromModel($environment),
-            'host' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->host($environment))),
-            'applications' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->applications($environment))),
-            'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment)), 'secrets'),
-            'events' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->events($environment)), 'events'),
-            'images' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->images($environment)), 'secrets'),
+            'host' => $this->deferFromHost(fn () => $lpod->host($environment)),
+            'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment)),
+            'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment), 'secrets'),
+            'events' => $this->deferFromHost(fn (): array => $lpod->events($environment), 'events'),
+            'images' => $this->deferFromHost(fn (): array => $lpod->images($environment), 'secrets'),
         ]);
     }
 }

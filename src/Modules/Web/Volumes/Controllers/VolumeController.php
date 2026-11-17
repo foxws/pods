@@ -35,7 +35,7 @@ class VolumeController implements HasMiddleware
 
         return Inertia::render('Volumes/VolumeIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'volumes' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->volumes($environment))),
+            'volumes' => $this->deferFromHost(fn (): array => $lpod->volumes($environment)),
         ]);
     }
 

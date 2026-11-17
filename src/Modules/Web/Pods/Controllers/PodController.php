@@ -32,7 +32,7 @@ class PodController implements HasMiddleware
 
         return Inertia::render('Pods/PodIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'pods' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->pods($environment))),
+            'pods' => $this->deferFromHost(fn (): array => $lpod->pods($environment)),
         ]);
     }
 }
