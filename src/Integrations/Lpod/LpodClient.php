@@ -13,6 +13,7 @@ use Domain\Applications\DataObjects\OnDemandSettingsData;
 use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Catalog\DataObjects\CatalogData;
 use Domain\Containers\DataObjects\ContainerDetailData;
+use Domain\Containers\DataObjects\ContainerExecResultData;
 use Domain\Containers\DataObjects\ContainerStatsData;
 use Domain\Containers\DataObjects\HostContainerData;
 use Domain\Containers\Enums\ContainerOperation;
@@ -246,6 +247,23 @@ class LpodClient
         $payload = $this->json($environment, ['events', '--json', '--since', '24h', '--limit', (string) $limit]);
 
         return array_map(HostEventData::fromLpod(...), array_values($payload['events'] ?? []));
+    }
+
+    /**
+     * Runs a command in a running container. A failing command doesn't throw: its exit code is in the result.
+     * The input goes on the command's stdin, so a password never shows in the arguments.
+     *
+     * @param  list<string>  $command
+     */
+    public function exec(Environment $environment, string $container, array $command, ?string $input = null, ?string $user = null, ?string $workdir = null, int $timeout = 600): ContainerExecResultData
+    {
+        return ContainerExecResultData::fromLpod($this->json($environment, [
+            'container', $container, 'exec',
+            ...($input !== null ? ['--stdin'] : []),
+            ...($user !== null ? ['--user', $user] : []),
+            ...($workdir !== null ? ['--workdir', $workdir] : []),
+            '--json', '--', ...$command,
+        ], input: $input, timeout: $timeout));
     }
 
     public function operateContainer(Environment $environment, string $container, ContainerOperation $operation): void

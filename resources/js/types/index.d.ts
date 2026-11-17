@@ -7,6 +7,14 @@ export type FlashData = {
   readonly title?: string
   readonly description?: string
   readonly type?: FlashType
+  /** What a setup step printed, flashed once after it ran. */
+  readonly setup?: SetupOutput
+}
+
+export type SetupOutput = {
+  readonly step: string
+  readonly exit_code: number
+  readonly output: string
 }
 
 export type Features = {
@@ -53,6 +61,8 @@ export type {
   JournalEntryData,
   ManifestData,
   ManifestSecretData,
+  ManifestSetupInputData,
+  ManifestSetupStepData,
   ManifestSourceData,
   NetworkData,
   OnDemandData,

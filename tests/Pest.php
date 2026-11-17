@@ -77,6 +77,7 @@ function fakeLpod(): FakeHostRunner
         'container * stop --json' => $fixture('ok'),
         'container * restart --json' => $fixture('ok'),
         'container * stats --json' => $fixture('container-stats'),
+        'container * exec *' => $fixture('container-exec'),
         'containers prune --json' => $fixture('container-prune'),
         'pods --json' => $fixture('pods'),
         'events --json *' => $fixture('events'),

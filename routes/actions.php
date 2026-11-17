@@ -7,6 +7,7 @@ use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Applications\Controllers\ApplicationInstallationController;
 use Modules\Web\Applications\Controllers\ApplicationOnDemandController;
 use Modules\Web\Applications\Controllers\ApplicationOperationController;
+use Modules\Web\Applications\Controllers\ApplicationSetupController;
 use Modules\Web\Containers\Controllers\ContainerOperationController;
 use Modules\Web\Containers\Controllers\ContainerPruneController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
@@ -41,6 +42,7 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     Route::put('/applications/{application}/installation', [ApplicationInstallationController::class, 'update'])->name('applications.installation.update');
     Route::put('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'update'])->name('applications.ondemand.update');
     Route::delete('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'destroy'])->name('applications.ondemand.destroy');
+    Route::post('/applications/{application}/setup/{step}', [ApplicationSetupController::class, 'store'])->name('applications.setup.store');
     Route::post('/applications/{application}/{operation}', ApplicationOperationController::class)->name('applications.operation');
 
     // Containers
