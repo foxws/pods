@@ -126,11 +126,30 @@ secrets: # how to ask for the secrets the units use
         key: DB_PASSWORD
     stry-app-key:
         generate: true # filled in with a random value
+
+after_install: # commands to run once the units are up, from the application page
+    install:
+        label: Install stry
+        container: stry # the container's Quadlet, without .container
+        user: docker # optional, like workdir
+        command: php artisan app:install --no-interaction # split on whitespace
+    admin:
+        label: Create the first admin
+        container: stry
+        command: php artisan users:create --super-admin --password-stdin --no-interaction
+        inputs: # asked for before the step runs
+            name:
+                option: --name
+            email:
+                type: email # text (the default), email or password
+                option: --email # passed as --email=VALUE
+            password:
+                type: password # an input without an option goes on stdin
 ```
 
-Every key is optional. When you fetch a directory, Pods reads the nearest `pods.yml`: the one in that directory, or else in a directory above it. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
+Every key is optional. When you fetch a directory, Pods reads the nearest `pods.yml`: the one in that directory, or else in a directory above it. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. A step's inputs aren't stored; at most one input goes on stdin, and a password always does, so it never shows in the arguments. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
 
-[stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. Setup commands after installing (such as `php artisan app:install`), on-demand services and backup hints are planned; see the [roadmap](docs/roadmap.md).
+[stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. On-demand services from the manifest, backup hints and routes are planned; see the [roadmap](docs/roadmap.md).
 
 ### Catalog
 

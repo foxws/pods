@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read Environment $environment
  * @property array<string, string> $checksums
  * @property array{modified: list<string>, added: list<string>, removed: list<string>}|null $changes
+ * @property array<string, array{exit_code: int, ran_at: string}>|null $setup
  */
 class Installation extends Model
 {
@@ -40,6 +41,7 @@ class Installation extends Model
         'manifest_path',
         'checksums',
         'changes',
+        'setup',
         'installed_at',
         'checked_at',
     ];
@@ -49,6 +51,7 @@ class Installation extends Model
         return [
             'checksums' => 'array',
             'changes' => 'array',
+            'setup' => 'array',
             'installed_at' => AsDateTime::class,
             'checked_at' => AsDateTime::class,
             'created_at' => AsDateTime::class,
@@ -83,6 +86,19 @@ class Installation extends Model
         } catch (InvalidManifestException) {
             return null;
         }
+    }
+
+    /**
+     * Remembers how a setup step of the stored pods.yml ended, so the application page can show what's left.
+     */
+    public function recordSetupStep(string $step, int $exitCode): void
+    {
+        $this->update([
+            'setup' => [
+                ...$this->setup ?? [],
+                $step => ['exit_code' => $exitCode, 'ran_at' => now()->toIso8601String()],
+            ],
+        ]);
     }
 
     public function isChangedOutsidePods(): bool

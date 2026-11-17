@@ -70,6 +70,11 @@ export type ContainerDetailData = {
     value: string
   }[]
 }
+export type ContainerExecResultData = {
+  exit_code: number
+  stdout: string
+  stderr: string
+}
 export type ContainerMountData = {
   type: string
   source: string
@@ -210,6 +215,13 @@ export type InstallationData = {
   modified: string[]
   added: string[]
   removed: string[]
+  setup: Record<
+    string,
+    {
+      exit_code: number
+      ran_at: string
+    }
+  >
   installed_at: string | null
   checked_at: string | null
 }
@@ -256,6 +268,7 @@ export type ManifestData = {
   directory: string
   sources: ManifestSourceData[]
   secrets: ManifestSecretData[]
+  after_install: ManifestSetupStepData[]
 }
 export type ManifestSecretData = {
   name: string
@@ -264,6 +277,23 @@ export type ManifestSecretData = {
   generate: boolean
   from: string | null
   key: string | null
+}
+export type ManifestSetupInputData = {
+  name: string
+  label: string
+  description: string | null
+  type: string
+  option: string | null
+}
+export type ManifestSetupStepData = {
+  name: string
+  label: string
+  description: string | null
+  container: string
+  user: string | null
+  workdir: string | null
+  command: string
+  inputs: ManifestSetupInputData[]
 }
 export type ManifestSourceData = {
   name: string

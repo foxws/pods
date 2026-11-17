@@ -26,6 +26,7 @@ class ManifestData extends Data
     /**
      * @param  list<ManifestSourceData>  $sources
      * @param  list<ManifestSecretData>  $secrets
+     * @param  list<ManifestSetupStepData>  $after_install
      */
     public function __construct(
         public ?string $name,
@@ -40,6 +41,7 @@ class ManifestData extends Data
         public string $directory,
         public array $sources,
         public array $secrets,
+        public array $after_install,
     ) {}
 
     /**
@@ -71,6 +73,9 @@ class ManifestData extends Data
         /** @var array<string, array<string, mixed>> $secrets */
         $secrets = $manifest['secrets'] ?? [];
 
+        /** @var array<string, array<string, mixed>> $steps */
+        $steps = $manifest['after_install'] ?? [];
+
         $directory = trim($directory, '/');
 
         return new self(
@@ -97,7 +102,32 @@ class ManifestData extends Data
                 from: $secret['from'] ?? null,
                 key: $secret['key'] ?? null,
             ), array_keys($secrets), $secrets),
+            after_install: array_map(fn (string $name, array $step): ManifestSetupStepData => new ManifestSetupStepData(
+                name: $name,
+                label: $step['label'] ?? $name,
+                description: $step['description'] ?? null,
+                container: $step['container'],
+                user: $step['user'] ?? null,
+                workdir: $step['workdir'] ?? null,
+                command: $step['command'],
+                inputs: self::setupInputs($step['inputs'] ?? []),
+            ), array_keys($steps), $steps),
         );
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $inputs  checked by ensureStepIsValid()
+     * @return list<ManifestSetupInputData>
+     */
+    protected static function setupInputs(array $inputs): array
+    {
+        return array_map(fn (string $name, array $input): ManifestSetupInputData => new ManifestSetupInputData(
+            name: $name,
+            label: $input['label'] ?? $name,
+            description: $input['description'] ?? null,
+            type: $input['type'] ?? 'text',
+            option: $input['option'] ?? null,
+        ), array_keys($inputs), $inputs);
     }
 
     /**
@@ -128,6 +158,20 @@ class ManifestData extends Data
             'secrets.*.generate' => ['nullable', 'boolean'],
             'secrets.*.from' => ['nullable', 'string', 'required_with:secrets.*.key'],
             'secrets.*.key' => ['nullable', 'string', 'required_with:secrets.*.from', 'regex:/^[A-Za-z_][A-Za-z0-9_.]*$/'],
+            'after_install' => ['nullable', 'array', 'max:20'],
+            'after_install.*' => ['array'],
+            'after_install.*.label' => ['nullable', 'string', 'max:100'],
+            'after_install.*.description' => ['nullable', 'string', 'max:500'],
+            'after_install.*.container' => ['required', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/'],
+            'after_install.*.user' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/'],
+            'after_install.*.workdir' => ['nullable', 'string', 'max:255', 'regex:#^/[^\r\n]*$#'],
+            'after_install.*.command' => ['required', 'string', 'max:500', 'not_regex:/[\r\n]/'],
+            'after_install.*.inputs' => ['nullable', 'array', 'max:10'],
+            'after_install.*.inputs.*' => ['array'],
+            'after_install.*.inputs.*.label' => ['nullable', 'string', 'max:100'],
+            'after_install.*.inputs.*.description' => ['nullable', 'string', 'max:500'],
+            'after_install.*.inputs.*.type' => ['nullable', 'string', 'in:text,email,password'],
+            'after_install.*.inputs.*.option' => ['nullable', 'string', 'regex:/^--[A-Za-z0-9][A-Za-z0-9_-]*$/'],
         ]);
 
         if ($validator->fails()) {
@@ -152,6 +196,40 @@ class ManifestData extends Data
             if ($from !== null && ($secrets[$from]['format'] ?? null) !== 'dotenv') {
                 throw InvalidManifestException::because("secret \"{$name}\" reads from \"{$from}\", which isn't a secret with format: dotenv.");
             }
+        }
+
+        foreach ($manifest['after_install'] ?? [] as $name => $step) {
+            self::ensureStepIsValid((string) $name, $step['inputs'] ?? []);
+        }
+    }
+
+    /**
+     * Only one input can go on stdin, and a password always does, so it never shows in the arguments.
+     *
+     * @param  array<array-key, array<string, mixed>>  $inputs
+     *
+     * @throws InvalidManifestException
+     */
+    protected static function ensureStepIsValid(string $name, array $inputs): void
+    {
+        if (! preg_match('/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/', $name)) {
+            throw InvalidManifestException::because("\"{$name}\" isn't a valid setup step name.");
+        }
+
+        foreach ($inputs as $inputName => $input) {
+            if (! preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', (string) $inputName)) {
+                throw InvalidManifestException::because("\"{$inputName}\" isn't a valid input name of setup step \"{$name}\".");
+            }
+
+            if (($input['type'] ?? null) === 'password' && isset($input['option'])) {
+                throw InvalidManifestException::because("input \"{$inputName}\" of setup step \"{$name}\" is a password, so it goes on stdin and can't have an option.");
+            }
+        }
+
+        $onStdin = array_filter($inputs, fn (array $input): bool => ! isset($input['option']));
+
+        if (count($onStdin) > 1) {
+            throw InvalidManifestException::because("setup step \"{$name}\" has more than one input without an option, and only one can go on stdin.");
         }
     }
 }

@@ -56,6 +56,14 @@ class LpodException extends RuntimeException
         return new self("lpod {$command} failed: {$error}");
     }
 
+    /**
+     * The application has no container from that Quadlet on the host, so there's nothing to run a command in.
+     */
+    public static function containerMissing(string $application, string $quadlet): self
+    {
+        return new self("{$application} has no container from {$quadlet}.container on the host.");
+    }
+
     public static function invalidJson(string $command): self
     {
         return new self("lpod {$command} did not return valid JSON. Is lpod 4 or newer installed on the host?");

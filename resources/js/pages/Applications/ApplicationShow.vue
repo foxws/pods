@@ -2,6 +2,7 @@
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { show as containerShow } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import { destroy as disableOnDemand } from '@/actions/Modules/Web/Applications/Controllers/ApplicationOnDemandController'
+import ApplicationSetupCard from '@/components/Applications/ApplicationSetupCard.vue'
 import ApplicationSourceCard from '@/components/Applications/ApplicationSourceCard.vue'
 import ApplicationForceStopModal from '@/components/Applications/ApplicationForceStopModal.vue'
 import ApplicationOnDemandModal from '@/components/Applications/ApplicationOnDemandModal.vue'
@@ -391,6 +392,13 @@ const isRemoving = ref(false)
         </div>
 
         <div class="flex flex-col gap-4">
+          <ApplicationSetupCard
+            v-if="installation?.data && manifest?.after_install.length"
+            :environment="environment"
+            :application="name"
+            :installation="installation.data"
+          />
+
           <ApplicationSourceCard
             :environment="environment"
             :application="name"
