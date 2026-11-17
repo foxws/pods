@@ -67,7 +67,83 @@ curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -
 
 On a host shared with other users, give the proxy other ports with `--proxy-ports 28080,28443`, and add `--behind-proxy` when another proxy in front handles HTTPS. `--uninstall` removes Pods and keeps its data; add `--purge` to remove that too. `--help` lists every option.
 
-## Getting started (development)
+## Getting started
+
+Once `install.sh` is done:
+
+1. **Create the owner.** Open `http://127.0.0.1:9090` on the host (or `ssh -L 9090:127.0.0.1:9090 HOST` and open it on your own machine). Pods sends you to **Set up Pods**. Enter the setup code `install.sh` printed, then your name, email address and password. If you lost the code, `journalctl --user -u pods` shows it again.
+2. **Check the local host.** **Hosts** lists the machine Pods runs on as the local environment, already connected. Its overview shows CPU, memory, disk and any failed units.
+3. **Install an application from the catalog.** Open **Applications**, then **Install application**, and search the **Catalog** for Memos. Pick it, check the Quadlet file Pods shows you, keep **Start after installing** on, and press **Install memos**. Memos listens on `127.0.0.1:5230` on the host. Its page has its containers, its journal, and Start, Stop, Restart, and Pull and redeploy.
+4. **Add another host (optional).** Install lpod there (see [Requirements](#requirements)), and add Pods' public key to `~/.ssh/authorized_keys` of the user that owns the Quadlets (**Hosts**, **Copy public key**). Then use **Add environment** with its hostname and that user. Pods pins the host's key on first contact.
+
+Next, give an application a hostname with the [proxy](#proxy), or make your own repository installable, as below.
+
+## Your first application
+
+Any Git repository with Quadlet files can be installed from **Install application**, **Git repository**. A `pods.yml` next to them tells Pods what to call the application and which routes it has. This example runs [traefik/whoami](https://github.com/traefik/whoami), a tiny web server that answers with the request it got:
+
+```text
+hello/
+├── pods.yml
+└── quadlets/
+    ├── hello.container
+    └── hello.network
+```
+
+`quadlets/hello.network` gives the application a network of its own, which the proxy joins to reach it by name:
+
+```ini
+[Network]
+```
+
+`quadlets/hello.container`:
+
+```ini
+[Unit]
+Description=Hello
+
+[Container]
+Image=docker.io/traefik/whoami:latest
+AutoUpdate=registry
+Network=hello.network
+# For the proxy. Without it, publish a port instead: PublishPort=127.0.0.1:8080:80
+ExposeHostPort=80
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+`pods.yml`:
+
+```yaml
+version: 1
+name: hello
+label: Hello
+description: Answers with the request it got
+icon: i-lucide-hand
+
+sources:
+    production:
+        path: quadlets
+
+routes:
+    app:
+        upstream: systemd-hello:80 # Quadlet names the container systemd-hello
+        description: The web page
+```
+
+Push it, then in Pods:
+
+1. Open **Install application**, **Git repository**, enter the repository URL and **Fetch repository**. Pods reads `pods.yml`, fills in the name, and shows the two files.
+2. Under **Hostnames**, press **Suggest** for a name such as `hello.home.arpa`, or type your own. This needs the [proxy](#proxy) on that host. Without it, leave the hostname empty and use the `PublishPort=` line instead.
+3. Press **Install hello**. Open the hostname, and whoami answers. You can change the hostname later on the application's **Routes** card.
+
+The files stay plain Quadlets, so `podman quadlet install --application=hello quadlets` installs the same thing without Pods. Installed from a branch, the application's page offers its newest commit as an update. Installed from a tag, it offers newer tags. For secrets, setup steps and on-demand, see [pods.yml](#application-manifest-podsyml). [foxws/quadlets](https://github.com/foxws/quadlets) has more examples.
+
+## Development
 
 ```bash
 composer setup     # install, .env, key, migrate and seed the roles, pnpm install and build
