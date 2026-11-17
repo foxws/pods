@@ -23,7 +23,9 @@ QUADLET_DIR="${CONFIG_HOME}/containers/systemd"
 PROXY_CONFIG="${CONFIG_HOME}/pods-proxy"
 BIN_DIR="${HOME}/.local/bin"
 LOCAL_PORT=9090
+LPOD="${BIN_DIR}/lpod"
 
+IDLE=true
 PROXY=false
 HOST=""
 HTTP_PORT=80
@@ -48,6 +50,8 @@ Usage: install.sh [options]
   --proxy-ports H,S     The proxy's host ports for HTTP and HTTPS (default 80,443),
                         e.g. 28080,28443 on a host shared with other users
   --behind-proxy        Another proxy in front handles HTTPS: the Pods proxy serves plain HTTP
+  --no-idle             Keep Pods running all the time, instead of starting it on the first
+                        request and stopping it after 10 minutes without one
   --name NAME           With --email and PODS_OWNER_PASSWORD, create the owner here
   --email EMAIL         instead of on Pods' setup page
   --uninstall           Remove Pods (and with --proxy, the proxy). Keeps its data
@@ -60,6 +64,9 @@ and --email, for unattended installs.
 
 Without --proxy, Pods listens on 127.0.0.1:9090 only. Reach it on this
 machine, or through an SSH tunnel: ssh -L 9090:127.0.0.1:9090 HOST
+Like cockpit.socket, a socket listens there and starts Pods on the first
+request, and Pods stops again when nobody uses it (unless --no-idle). With
+--proxy, Pods runs all the time for now, since the proxy reaches it by name.
 EOF
 }
 
@@ -86,6 +93,7 @@ parse_arguments() {
                 shift
                 ;;
             --behind-proxy) BEHIND_PROXY=true ;;
+            --no-idle) IDLE=false ;;
             --name) OWNER_NAME="${2:-}"; shift ;;
             --email) OWNER_EMAIL="${2:-}"; shift ;;
             --uninstall) UNINSTALL=true ;;
@@ -143,7 +151,8 @@ check_requirements() {
 # checkout, is kept as it is.
 install_lpod() {
     if command -v lpod > /dev/null 2>&1 && lpod version --json 2> /dev/null | jq -e '.contract == 1' > /dev/null 2>&1; then
-        info "lpod is installed ($(lpod version --json | jq -r .lpod))."
+        LPOD="$(command -v lpod)"
+        info "lpod is installed ($("$LPOD" version --json | jq -r .lpod))."
 
         return
     fi
@@ -230,6 +239,36 @@ install_pods() {
 
         sleep 2
     done
+}
+
+# Whether Pods runs on demand now, from an earlier install.
+is_idle() {
+    "$LPOD" pods ondemand status --json 2> /dev/null | jq -e '.ondemand.enabled' > /dev/null 2>&1
+}
+
+# An on-demand Pods only starts through its socket, so run it normally while
+# installing, and let enable_idle put the socket back at the end.
+disable_idle() {
+    if is_idle; then
+        info "Running Pods normally while it's updated..."
+        "$LPOD" pods ondemand disable --json > /dev/null
+    fi
+}
+
+# Like cockpit.socket: lpod's socket listens on 127.0.0.1:9090 and starts
+# Pods on the first request, and Pods (published on 127.0.0.1:19090 then)
+# stops after 10 minutes without one. The scheduler only runs at 01:00 UTC,
+# when Pods' daily housekeeping is due (routes/console.php).
+enable_idle() {
+    info "Letting Pods sleep when nobody uses it..."
+
+    if ! "$LPOD" pods ondemand enable --json \
+        --listen 127.0.0.1 --port "$LOCAL_PORT" --app-port 8000 \
+        --schedule pods-schedule --schedule-at 01:00 \
+        --schedule-env "APP_COMMAND=php -d variables_order=EGPCS /app/artisan schedule:run" > /dev/null; then
+        warn "Pods runs all the time instead. Update lpod (lpod self-update) and run this again, or pass --no-idle."
+        IDLE=false
+    fi
 }
 
 artisan() {
@@ -320,6 +359,15 @@ EOF
 
 uninstall() {
     info "Removing Pods..."
+
+    if command -v lpod > /dev/null 2>&1; then
+        LPOD="$(command -v lpod)"
+    fi
+
+    if [ -x "$LPOD" ] && is_idle; then
+        "$LPOD" pods ondemand disable --json > /dev/null 2>&1 || true
+    fi
+
     systemctl --user stop pods.service pods-schedule.service 2> /dev/null || true
     podman quadlet rm --force --recursive pods.container > /dev/null 2>&1 || true
 
@@ -356,7 +404,13 @@ main() {
         return
     fi
 
+    # The proxy reaches Pods by container name, which can't wake it.
+    if [ "$PROXY" = true ]; then
+        IDLE=false
+    fi
+
     install_lpod
+    disable_idle
     fetch_units
     create_env_secret
     install_pods
@@ -367,6 +421,10 @@ main() {
         install_proxy
     fi
 
+    if [ "$IDLE" = true ]; then
+        enable_idle
+    fi
+
     local url="http://127.0.0.1:${LOCAL_PORT}"
 
     if [ "$PROXY" = true ]; then
@@ -374,7 +432,11 @@ main() {
     fi
 
     echo
-    info "Pods is running at ${url}"
+    if [ "$IDLE" = true ]; then
+        info "Pods starts on the first visit to ${url}, and sleeps after 10 minutes without one."
+    else
+        info "Pods is running at ${url}"
+    fi
 
     if [ "$PROXY" = true ]; then
         info "Point ${HOST} at this host first."
