@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Web\Applications\Controllers;
 
+use Domain\Applications\Actions\ListApplicationUpdates;
 use Domain\Applications\Actions\SuggestOnDemandSettings;
 use Domain\Applications\Actions\SyncInstallation;
 use Domain\Applications\DataObjects\InstallationData;
@@ -53,6 +54,7 @@ class ApplicationController implements HasMiddleware
         LpodClient $lpod,
         SuggestOnDemandSettings $suggestOnDemandSettings,
         SyncInstallation $syncInstallation,
+        ListApplicationUpdates $listApplicationUpdates,
     ): Response {
         Gate::authorize('view', $environment);
 
@@ -80,6 +82,11 @@ class ApplicationController implements HasMiddleware
 
                 return $installation !== null ? InstallationData::fromModel($syncInstallation($installation, $readFiles())) : null;
             }), 'details'),
+            'updates' => Inertia::defer(fn (): array => $this->fromHost(function () use ($environment, $application, $listApplicationUpdates): array {
+                $installation = $environment->installations()->firstWhere('application', $application);
+
+                return $installation !== null ? $listApplicationUpdates($installation) : [];
+            }), 'updates'),
             'logs' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->logs($environment, $application)), 'details'),
             'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment)), 'details'),
         ]);

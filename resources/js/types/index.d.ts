@@ -51,6 +51,7 @@ export type {
   ContainerOperation,
   ContainerStatsData,
   EnvironmentData,
+  GitTagData,
   HostContainerData,
   HostEventData,
   HostSettingsData,

@@ -21,6 +21,7 @@ import type {
   ApplicationDetailData,
   ContainerData,
   EnvironmentData,
+  GitTagData,
   HostProperty,
   InstallationData,
   JournalEntryData,
@@ -44,6 +45,7 @@ const props = defineProps<{
   ondemandSuggestion?: HostProperty<OnDemandSuggestionData>
   files?: HostProperty<QuadletFileData[]>
   installation?: HostProperty<InstallationData | null>
+  updates?: HostProperty<GitTagData[]>
   logs?: HostProperty<JournalEntryData[]>
   secrets?: HostProperty<SecretData[]>
 }>()
@@ -407,6 +409,7 @@ const isRemoving = ref(false)
             :environment="environment"
             :application="name"
             :installation="installation"
+            :updates="updates"
           />
 
           <UCard>

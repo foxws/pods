@@ -23,6 +23,7 @@ use Domain\Environments\Models\Environment;
 use Domain\Images\DataObjects\ImageData;
 use Domain\Networks\DataObjects\NetworkData;
 use Domain\Pods\DataObjects\PodData;
+use Domain\Quadlets\DataObjects\GitTagData;
 use Domain\Quadlets\DataObjects\QuadletCheckData;
 use Domain\Quadlets\DataObjects\QuadletSourceData;
 use Domain\Secrets\DataObjects\SecretData;
@@ -470,6 +471,23 @@ class LpodClient
     }
 
     /**
+     * The tags of a Git repository, newest version first. Kept for a few minutes like the catalog,
+     * because every application page installed from that repository asks.
+     *
+     * @return list<GitTagData>
+     */
+    public function tags(Environment $environment, string $repository): array
+    {
+        $payload = Cache::flexible(
+            $this->cacheKey($environment, 'tags.'.hash('xxh128', $repository)),
+            [300, 3600],
+            fn (): array => $this->json($environment, ['quadlet', 'tags', $repository, '--json'], timeout: 60),
+        );
+
+        return array_map(GitTagData::fromLpod(...), array_values($payload['tags'] ?? []));
+    }
+
+    /**
      * @param  list<array{name: string, content: string}>  $files
      */
     protected function encodeFiles(array $files): string
@@ -498,6 +516,17 @@ class LpodClient
     public function redeploy(Environment $environment, string $application): void
     {
         $this->lifecycle($environment, $application, 'redeploy');
+    }
+
+    /**
+     * Stops every unit of the application and waits for systemd, so a start right after it isn't
+     * merged into the pending stop, the way updating stops the units before installing new files.
+     */
+    public function stopAndWait(Environment $environment, string $application): void
+    {
+        $this->json($environment, [$application, 'down', '--json'], timeout: 180);
+
+        $this->forget($environment, 'apps', "apps.{$application}", "apps.{$application}.ondemand", 'pods', 'host');
     }
 
     /**

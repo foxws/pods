@@ -124,6 +124,10 @@ export type EnvironmentData = {
   hostname: string | null
   last_seen_at: string | null
 }
+export type GitTagData = {
+  name: string
+  commit: string
+}
 export type HostContainerData = {
   id: string
   name: string
