@@ -1,4 +1,11 @@
-import { describeQuadlet, isQuadletFile, renderQuadlet, secretsIn, selectedByDefault } from '@/utils/quadlet'
+import {
+  describeQuadlet,
+  isQuadletFile,
+  renderQuadlet,
+  secretsIn,
+  selectedByDefault,
+  splitQuadlets,
+} from '@/utils/quadlet'
 import { expect, test } from 'vite-plus/test'
 
 test('writes sections and skips empty values and sections', () => {
@@ -53,4 +60,73 @@ test('only ticks the yaml and env files that a unit refers to', () => {
 test('names the image of a container and the ports of a pod', () => {
   expect(describeQuadlet({ name: 'app.container', content: 'Image=nextcloud:31\n' })).toBe('nextcloud:31')
   expect(describeQuadlet({ name: 'app.pod', content: 'PublishPort=8443:443\n' })).toBe('pod · ports 8443:443')
+})
+
+test('splits a .quadlets file into its units', () => {
+  const content = [
+    '---',
+    '# FileName=web',
+    '[Unit]',
+    'Description=Web',
+    '',
+    '[Container]',
+    'Image=nginx:1',
+    'Volume=web-data.volume:/data',
+    '  ---  ',
+    '#FileName=web-data',
+    '[Volume]',
+    '---',
+    '',
+  ].join('\n')
+
+  expect(
+    splitQuadlets([
+      { name: 'web.quadlets', content },
+      { name: 'web.env', content: 'A=1\n' },
+    ]),
+  ).toEqual({
+    files: [
+      {
+        name: 'web.container',
+        content:
+          '# FileName=web\n[Unit]\nDescription=Web\n\n[Container]\nImage=nginx:1\nVolume=web-data.volume:/data\n',
+      },
+      { name: 'web-data.volume', content: '#FileName=web-data\n[Volume]\n' },
+      { name: 'web.env', content: 'A=1\n' },
+    ],
+    errors: [],
+  })
+})
+
+test('skips the sections of a .quadlets file that podman would refuse', () => {
+  const content = [
+    '[Container]\nImage=nginx:1',
+    '# FileName=data\n[Service]\nType=oneshot',
+    '# FileName=../data\n[Volume]',
+    '# FileName=cache\n[Artifact]\nArtifact=quay.io/a/b:1',
+    '# FileName=web\n[Network]',
+    '# FileName=ok\n[Network]',
+  ].join('\n---\n')
+
+  expect(
+    splitQuadlets([
+      { name: 'web.network', content: '[Network]\n' },
+      { name: 'app.quadlets', content },
+    ]),
+  ).toEqual({
+    files: [
+      { name: 'web.network', content: '[Network]\n' },
+      { name: 'ok.network', content: '# FileName=ok\n[Network]\n' },
+    ],
+    errors: [
+      'app.quadlets, section 1: missing a "# FileName=NAME" comment.',
+      'app.quadlets, section 2: no [Container], [Pod], [Volume], [Network], [Kube], [Image] or [Build] section.',
+      'app.quadlets, section 3: "../data" isn\'t a valid file name.',
+      "app.quadlets, section 4: Pods doesn't install .artifact units yet.",
+      'app.quadlets, section 5: web.network is already in the list.',
+    ],
+  })
+  expect(splitQuadlets([{ name: 'empty.quadlets', content: '---\n\n---\n' }]).errors).toEqual([
+    'empty.quadlets: has no Quadlet sections.',
+  ])
 })

@@ -99,3 +99,97 @@ export function describeQuadlet(file: QuadletFile): string {
 
   return kind ?? 'file'
 }
+
+/**
+ * The unit types a section of a .quadlets file can be, by its section header. Podman also has
+ * [Artifact], which Pods doesn't install.
+ */
+const multiQuadletKinds = ['container', 'pod', 'volume', 'network', 'kube', 'image', 'build']
+
+const multiQuadletName = /^[A-Za-z0-9][A-Za-z0-9_.@-]{0,127}$/
+
+export type SplitQuadlets = { files: QuadletFile[]; errors: string[] }
+
+/**
+ * Splits each .quadlets file (Podman 5.8+) into its units, following Podman's parseMultiQuadletFile:
+ * sections are separated by a line holding only ---, each needs a "# FileName=NAME" comment, and the
+ * first recognised [Section] header decides the extension. Other files pass through unchanged.
+ */
+export function splitQuadlets(files: QuadletFile[]): SplitQuadlets {
+  const result: SplitQuadlets = { files: [], errors: [] }
+
+  const add = (file: QuadletFile, origin: string): void => {
+    if (result.files.some((existing) => existing.name === file.name)) {
+      result.errors.push(`${origin}: ${file.name} is already in the list.`)
+
+      return
+    }
+
+    result.files.push(file)
+  }
+
+  for (const file of files) {
+    if (extensionOf(file.name) !== 'quadlets') {
+      add(file, file.name)
+
+      continue
+    }
+
+    const sections = file.content
+      .split('\n')
+      .reduce<string[][]>(
+        (sections, line) => {
+          if (line.trim() === '---') {
+            sections.push([])
+          } else {
+            sections[sections.length - 1]?.push(line)
+          }
+
+          return sections
+        },
+        [[]],
+      )
+      .map((lines) => lines.join('\n').trim())
+
+    if (sections.every((content) => content === '')) {
+      result.errors.push(`${file.name}: has no Quadlet sections.`)
+
+      continue
+    }
+
+    sections.forEach((content, index) => {
+      if (content === '') {
+        return
+      }
+
+      const origin = `${file.name}, section ${index + 1}`
+      const lines = content.split('\n').map((line) => line.trim())
+
+      const kind = lines
+        .filter((line) => line.startsWith('[') && line.endsWith(']'))
+        .map((line) => line.slice(1, -1).toLowerCase())
+        .find((section) => [...multiQuadletKinds, 'artifact'].includes(section))
+
+      const name = lines
+        .filter((line) => line.startsWith('#'))
+        .map((line) => line.slice(1).trim())
+        .find((comment) => comment.startsWith('FileName='))
+        ?.slice('FileName='.length)
+        .trim()
+
+      if (!kind) {
+        result.errors.push(`${origin}: no [Container], [Pod], [Volume], [Network], [Kube], [Image] or [Build] section.`)
+      } else if (kind === 'artifact') {
+        result.errors.push(`${origin}: Pods doesn't install .artifact units yet.`)
+      } else if (!name) {
+        result.errors.push(`${origin}: missing a "# FileName=NAME" comment.`)
+      } else if (!multiQuadletName.test(name)) {
+        result.errors.push(`${origin}: "${name}" isn't a valid file name.`)
+      } else {
+        add({ name: `${name}.${kind}`, content: `${content}\n` }, origin)
+      }
+    })
+  }
+
+  return result
+}

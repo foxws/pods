@@ -23,6 +23,7 @@ import {
   manifestFile,
   secretsIn,
   selectedByDefault,
+  splitQuadlets,
   type QuadletFile,
 } from '@/utils/quadlet'
 import { Head, useHttp } from '@inertiajs/vue3'
@@ -45,7 +46,12 @@ const sources: TabsItem[] = [
   { label: 'Write quadlet', value: 'write', icon: 'i-lucide-pencil' },
 ]
 
-const available = ref<QuadletFile[]>([])
+/**
+ * The files as uploaded or fetched. A .quadlets file among them is split into its units.
+ */
+const received = ref<QuadletFile[]>([])
+const split = computed(() => splitQuadlets(received.value))
+const available = computed(() => split.value.files)
 const selected = ref<string[]>([])
 const commit = ref<string | null>(null)
 const manifest = ref<ManifestData | null>(null)
@@ -155,7 +161,7 @@ const chooseCatalogEntry = (entry: CatalogApplicationData): void => {
 
 const leaveCatalogEntry = (): void => {
   catalogEntry.value = null
-  available.value = []
+  received.value = []
   selected.value = []
   commit.value = null
   manifest.value = null
@@ -164,8 +170,8 @@ const leaveCatalogEntry = (): void => {
 }
 
 const showFiles = (files: QuadletFile[]): void => {
-  available.value = files
-  selected.value = selectedByDefault(files)
+  received.value = files
+  selected.value = selectedByDefault(available.value)
 }
 
 const uploaded = ref<File[] | null>(null)
@@ -179,16 +185,22 @@ const written = reactive({ name: '', content: '[Container]\nImage=\n\n[Install]\
 
 watch(source, () => {
   catalogEntry.value = null
-  available.value = []
+  received.value = []
   selected.value = []
   commit.value = null
   manifest.value = null
   manifestError.value = null
 })
 
+const writtenSplit = computed(() =>
+  splitQuadlets(written.name ? [{ name: written.name, content: written.content }] : []),
+)
+
+const splitErrors = computed(() => (source.value === 'write' ? writtenSplit.value : split.value).errors)
+
 const files = computed<QuadletFile[]>(() => {
   if (source.value === 'write') {
-    return written.name ? [{ name: written.name, content: written.content }] : []
+    return writtenSplit.value.files
   }
 
   return available.value.filter((file) => selected.value.includes(file.name))
@@ -577,8 +589,8 @@ const serverErrors = computed(() =>
                 v-if="source === 'upload'"
                 multiple
                 label="Drop Quadlet files here"
-                description=".container, .pod, .volume, .network, .kube and .env files"
-                accept=".container,.pod,.volume,.network,.kube,.image,.build,.env,.yaml,.yml"
+                description=".container, .pod, .volume, .network, .kube, .quadlets and .env files"
+                accept=".container,.pod,.volume,.network,.kube,.image,.build,.quadlets,.env,.yaml,.yml"
                 class="min-h-32 w-full"
                 v-model="uploaded"
               />
@@ -589,7 +601,7 @@ const serverErrors = computed(() =>
               >
                 <UFormField
                   label="File name"
-                  description="Ends with .container, .pod, .volume, .network or .kube."
+                  description="Ends with .container, .pod, .volume, .network or .kube, or .quadlets for several units separated by ---."
                 >
                   <UInput
                     v-model="written.name"
@@ -613,6 +625,25 @@ const serverErrors = computed(() =>
                 v-if="fetchError"
                 :error="fetchError"
               />
+
+              <UAlert
+                v-if="splitErrors.length"
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-file-warning"
+                :title="splitErrors.length === 1 ? 'A Quadlet section is skipped' : 'Quadlet sections are skipped'"
+              >
+                <template #description>
+                  <ul class="list-disc ps-4">
+                    <li
+                      v-for="error in splitErrors"
+                      :key="error"
+                    >
+                      {{ error }}
+                    </li>
+                  </ul>
+                </template>
+              </UAlert>
 
               <p
                 v-if="commit"
