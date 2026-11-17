@@ -24,16 +24,10 @@ Open questions:
 
 ## On-demand applications
 
-An application that starts on its first request and sleeps when nobody uses it, like `cockpit.socket`, as a switch on its page instead of a set of files to copy. [stry](https://github.com/francoism90/stry/tree/main/containers/ondemand) ships this as plain units today: a `.socket` and a `systemd-socket-proxyd` service in front of the app, an idle timer, and Quadlet drop-ins that move the app to a local port and set `StopWhenUnneeded=yes`.
+Done: lpod's `APP ondemand enable|disable|status` puts a `.socket`, a `systemd-socket-proxyd` service and an idle timer in front of an application, and the application page has an on-demand switch for it, with the ports, the idle timeout and, for a Laravel application, its workers, idle check and scheduler suggested from its Quadlet files. A sleeping application shows as asleep. Next:
 
-1. **lpod.** `lpod quadlet install --stdin` accepts `.socket`, `.timer` and `.service` files (installed into the systemd user directory) and drop-ins (`NAME.container.d/*.conf`) next to the Quadlets, and `lpod quadlet fetch` returns the drop-in folders of a directory too. `lpod APP ondemand enable|disable --json` then enables the socket, stops the app and starts listening, or the other way round, and `lpod apps --json` reports whether an application is on demand and asleep.
-2. **Pods.** Done: the application page has an on-demand switch (lpod's `APP ondemand enable|disable|status`), with the ports, the idle timeout and, for a Laravel application only, its queue workers, an idle check and its scheduler, suggested from its Quadlet files. A sleeping application shows as asleep, and Start is disabled for it. Next: Start becomes "wake", which starts the socket's service, because starting a `StopWhenUnneeded=yes` unit directly stops it again; and the settings come from `pods.yml` once Pods stores the manifest.
-3. **Idle check.** Whether an application has work left (queued jobs, running queries) is something only the app knows. The application declares a command for it in its [`pods.yml`](../README.md#application-manifest-podsyml) (`ondemand.idle_check`, for example `php artisan app:idle` in the Horizon container), and the idle timer stops the workers once it succeeds.
-
-Open questions:
-
-- Generating the socket, proxy and idle units from labels on the app's container, so an application only declares its port and idle timeout.
-- Native socket activation (FrankenPHP or Caddy binding the socket's file descriptor) instead of `systemd-socket-proxyd`.
+1. **Wake.** Start becomes "wake" for a sleeping application: it starts the socket's service, because starting a `StopWhenUnneeded=yes` unit directly stops it again.
+2. **From pods.yml.** Once Pods stores the manifest, the suggested settings come from its `ondemand:` section (see [More of pods.yml](#more-of-podsyml)) instead of being guessed from the Quadlet files. The idle timeout stays editable, with the manifest's value filled in.
 
 ## Proxy
 
@@ -47,7 +41,7 @@ An optional reverse proxy per host, so hostnames reach the right container witho
 
 Open questions:
 
-- **Sleeping applications.** A route straight to `systemd-stry-reverb:6001` gets a 502 while an on-demand app sleeps, because its services sleep with it. Today the app's own Caddy sits behind the on-demand socket, so any hostname wakes it. Most traffic to Reverb or S3 comes from a page the app just served, so the app is awake then, but opening Mailpit or the RustFS console on its own wouldn't be. Options: send the app's main hostname through its socket (`127.0.0.1:8000`) and the others straight to their containers; let a route say `wake: true` to go through the socket, with the app forwarding it; or have Caddy start the app's socket service on a 502 and retry.
+- **Sleeping applications.** A route straight to `systemd-stry-reverb:6001` gets a 502 while an on-demand app sleeps, because its services sleep with it. The plan is to send the app's main hostname to its on-demand socket (`host.containers.internal:PORT` from the proxy container), so a request wakes it. Most traffic to Reverb or S3 comes from a page the app just served, so the app is awake then, but opening Mailpit or the RustFS console on its own wouldn't be. Options for those: let a route say `wake: true` to go through the socket, with the app forwarding it, or have Caddy start the app's socket service on a 502 and retry.
 - **The proxy itself** must not sleep, so it's always on, unlike the applications behind it.
 - **Pods' own hostname.** `install.sh --proxy --host NAME` routes Pods itself through the proxy.
 - **stry** keeps `Support\Octane\CaddySites` until the proxy exists, then drops it in the same change that adds `routes` to its `pods.yml`.
@@ -57,7 +51,7 @@ Open questions:
 Pods reads the sources, the application name, the secrets and the catalog keys (label, description, author, icon, category, website, repository and notes) of a `pods.yml` today. Next:
 
 1. **Setup steps.** `after_install` lists the commands to run once the units are up, such as `php artisan app:install` and creating the first admin, with inputs the UI asks for (a password goes on stdin, never in the arguments). lpod needs `lpod container NAME exec --stdin --json -- COMMAND`, and Pods needs to remember the manifest of an installed application (a table keyed by environment and application, with the repository, tag and commit it came from), so the application page can show a "Finish setup" panel. This replaces what laravel-installer did.
-2. **On-demand.** `ondemand` (port, idle timeout, idle check and the workers to stop) lets lpod write the socket, proxy and idle units, so an application doesn't ship them itself. See [On-demand applications](#on-demand-applications).
+2. **On-demand.** `ondemand` (ports, idle timeout, idle check and the workers to stop) fills in the on-demand switch. See [On-demand applications](#on-demand-applications).
 3. **Backups.** `backups` lists the volumes to leave out (such as bind-backed ones) and a database dump command. See [Volume backups and restores](#volume-backups-and-restores).
 4. **Updates.** With the stored source, the application page can offer "Update to tag X" and reinstall from it with `--replace`.
 5. **Routes.** `routes` lists the upstreams the [proxy](#proxy) should give a hostname.
