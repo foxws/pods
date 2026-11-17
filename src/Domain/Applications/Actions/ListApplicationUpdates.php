@@ -17,9 +17,10 @@ class ListApplicationUpdates
 
     /**
      * The tags of the repository an application was installed from that name a newer version than
-     * the tag it was installed at, newest first. An application installed from a branch (such as
-     * main), or from files that didn't come from Git, has none. Release candidates and other
-     * pre-releases are only offered to an application installed at a pre-release.
+     * the tag it was installed at, newest first. Release candidates and other pre-releases are only
+     * offered to an application installed at a pre-release. An application installed from a branch
+     * (such as main) gets that branch, at its newest commit, when that isn't the one it has. Files
+     * that didn't come from Git have none.
      *
      * @return list<GitTagData>
      *
@@ -27,10 +28,14 @@ class ListApplicationUpdates
      */
     public function __invoke(Installation $installation): array
     {
-        $current = $installation->reference !== null ? GitTagData::versionOf($installation->reference) : null;
-
-        if ($installation->repository === null || $current === null) {
+        if ($installation->repository === null || $installation->reference === null) {
             return [];
+        }
+
+        $current = GitTagData::versionOf($installation->reference);
+
+        if ($current === null) {
+            return $this->newerCommit($installation, $installation->repository, $installation->reference);
         }
 
         $allowsPrereleases = GitTagData::isPrerelease($current);
@@ -49,5 +54,24 @@ class ListApplicationUpdates
         usort($updates, fn (GitTagData $a, GitTagData $b): int => version_compare((string) $b->version(), (string) $a->version()));
 
         return $updates;
+    }
+
+    /**
+     * The branch at its newest commit, when the installed (short) commit isn't that one. A reference
+     * that is neither a version nor a branch, such as a tag named stable, has no updates.
+     *
+     * @return list<GitTagData>
+     *
+     * @throws LpodException
+     */
+    protected function newerCommit(Installation $installation, string $repository, string $branch): array
+    {
+        $head = $this->lpod->branchHead($installation->environment, $repository, $branch);
+
+        if ($head === null || (filled($installation->commit) && str_starts_with($head, $installation->commit))) {
+            return [];
+        }
+
+        return [new GitTagData(name: $branch, commit: substr($head, 0, 7))];
     }
 }

@@ -28,7 +28,8 @@ class ApplicationUpdateController implements HasMiddleware
     }
 
     /**
-     * Updates an application installed from Git to a newer tag of its repository.
+     * Updates an application installed from Git to a newer tag of its repository, or to the newest
+     * commit of the branch it was installed from. The "tag" is then that branch.
      */
     public function store(
         Request $request,
@@ -57,9 +58,12 @@ class ApplicationUpdateController implements HasMiddleware
         }
 
         $tag = $request->string('tag')->toString();
+        $commit = $installation->refresh()->commit;
 
         toast(
-            title: __(':application is at :tag', ['application' => $application, 'tag' => $tag]),
+            title: GitTagData::versionOf($tag) === null && $commit !== null
+                ? __(':application is at :branch (:commit)', ['application' => $application, 'branch' => $tag, 'commit' => $commit])
+                : __(':application is at :tag', ['application' => $application, 'tag' => $tag]),
             description: collect([
                 __('Its units are starting with the new files.'),
                 $oldFiles['removed'] !== [] ? __('Removed what :tag no longer has: :files.', ['tag' => $tag, 'files' => implode(', ', $oldFiles['removed'])]) : null,
