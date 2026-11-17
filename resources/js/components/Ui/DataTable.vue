@@ -1,5 +1,6 @@
 <script setup lang="ts" generic="T extends object">
 import type { TableColumn, TabsItem } from '@nuxt/ui'
+import { usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 
 export type DataTableFilter<T> = {
@@ -40,7 +41,10 @@ defineSlots<
 >()
 
 const filter = ref(props.filters[0]?.value ?? 'all')
-const search = ref('')
+const page = usePage()
+
+/** The search palette links here with ?search= for resources without a page of their own. */
+const search = ref(props.searchText ? (new URL(page.url, 'http://pods.local').searchParams.get('search') ?? '') : '')
 
 const rows = computed(() => props.data ?? [])
 

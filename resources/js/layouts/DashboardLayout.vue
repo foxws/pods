@@ -6,6 +6,7 @@ import { useAppearance } from '@/composables/appearance'
 import { useAuth } from '@/composables/auth'
 import { useFlash } from '@/composables/flash'
 import { useNavigation } from '@/composables/navigation'
+import { useHostSearch } from '@/composables/search'
 import { index as settingsIndex } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { usePage } from '@inertiajs/vue3'
@@ -17,6 +18,24 @@ useFlash()
 const { environment, tabBarLinks, journalLink, sidebarItems, searchGroups } = useNavigation()
 
 const isSidebarOpen = ref(false)
+
+const isSearchOpen = ref(false)
+const searchTerm = ref('')
+
+const {
+  searchGroups: hostSearchGroups,
+  loading: isSearching,
+  error: searchError,
+} = useHostSearch(environment, isSearchOpen)
+
+/**
+ * Host results only show once something is typed, so the palette opens on the page links.
+ */
+const paletteGroups = computed(() => {
+  const [navigation, ...rest] = searchGroups.value
+
+  return searchTerm.value.trim() ? [navigation, ...hostSearchGroups.value, ...rest] : searchGroups.value
+})
 
 const { logOut } = useAuth()
 
@@ -76,9 +95,19 @@ const footerItems = computed<NavigationMenuItem[]>(() => [
       </UDashboardSidebar>
 
       <UDashboardSearch
-        :groups="searchGroups"
+        v-model:open="isSearchOpen"
+        v-model:search-term="searchTerm"
+        :groups="paletteGroups"
+        :loading="isSearching"
+        placeholder="Search apps, containers, images, secrets…"
         shortcut="/"
-      />
+      >
+        <template #empty>
+          <p class="py-6 text-center text-sm text-muted">
+            {{ searchError ?? (isSearching ? 'Searching the host…' : 'Nothing found.') }}
+          </p>
+        </template>
+      </UDashboardSearch>
 
       <div class="flex min-h-0 min-w-0 flex-1 flex-col">
         <slot />

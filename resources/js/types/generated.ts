@@ -318,6 +318,12 @@ export type QuadletSourceData = {
   manifest: ManifestData | null
   manifest_error: string | null
 }
+export type SearchResultData = {
+  group: string
+  label: string
+  description: string | null
+  url: string
+}
 export type SecretData = {
   name: string
   driver: string | null
