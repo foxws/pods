@@ -247,13 +247,17 @@ const isRemoving = ref(false)
           />
           <UButton
             v-else
-            label="Start"
+            :label="isAsleep ? 'Wake' : 'Start'"
             class="justify-center"
-            icon="i-lucide-play"
+            :icon="isAsleep ? 'i-lucide-sunrise' : 'i-lucide-play'"
             color="neutral"
             variant="outline"
-            :disabled="!summary || isAsleep"
-            :title="isAsleep ? 'It starts on the next request to its socket.' : undefined"
+            :disabled="!summary"
+            :title="
+              isAsleep
+                ? 'Starts it as a request would. It sleeps again after the idle timeout without requests.'
+                : undefined
+            "
             @click="run(name, 'up')"
           />
           <UButton
