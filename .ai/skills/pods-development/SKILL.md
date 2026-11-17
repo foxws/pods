@@ -77,7 +77,7 @@ lpod generates each application's routes file, with the routes kept on its `# lp
   - a `via: main` route option for apps that route their own hostnames (stry's `ws` and `s3`);
   - `stream_close_delay 5m` on every `reverse_proxy`;
   - the admin API on `unix//config/admin.sock`;
-  - a published `ghcr.io/foxws/pods-proxy` image with DNS plugins (your own as an override);
+  - your own image as an override of `ghcr.io/foxws/pods-proxy:main`, which already exists: Caddy built with xcaddy and `caddy-dns/cloudflare` (`containers/runtimes/proxy/Containerfile`, built by `.github/workflows/build-proxy.yml` on changes and weekly). Add a DNS plugin with another `--with` line;
   - port warnings for rootless.
 
   Until then `pods-proxy` is installed by hand (README, Proxy).
