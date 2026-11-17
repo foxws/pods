@@ -1,0 +1,25 @@
+# The Pods proxy image, published by CI to ghcr.io/foxws/pods-proxy: Caddy
+# built with xcaddy and the DNS plugins a wildcard certificate needs, so the
+# proxy can prove a domain through a DNS challenge on a host the internet
+# can't reach. The other proxy modes use docker.io/library/caddy:2. Build it
+# from the repository root:
+#
+#   podman build -f containers/runtimes/proxy/Containerfile -t pods-proxy .
+#
+# Add a plugin with another --with line, such as
+# github.com/caddy-dns/porkbun, and see https://github.com/caddy-dns for more.
+ARG CADDY_VERSION=2
+
+FROM docker.io/library/caddy:${CADDY_VERSION}-builder AS builder
+
+RUN xcaddy build \
+    --with github.com/caddy-dns/cloudflare
+
+FROM docker.io/library/caddy:${CADDY_VERSION}
+
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+
+LABEL org.opencontainers.image.title="Pods proxy" \
+      org.opencontainers.image.description="Caddy with DNS plugins, for the Pods proxy" \
+      org.opencontainers.image.source="https://github.com/foxws/pods" \
+      org.opencontainers.image.licenses="MIT"
