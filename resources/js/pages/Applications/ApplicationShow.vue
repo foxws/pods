@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { show as containerShow } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
+import { destroy as disableOnDemand } from '@/actions/Modules/Web/Applications/Controllers/ApplicationOnDemandController'
 import ApplicationForceStopModal from '@/components/Applications/ApplicationForceStopModal.vue'
+import ApplicationOnDemandModal from '@/components/Applications/ApplicationOnDemandModal.vue'
 import ApplicationRemoveModal from '@/components/Applications/ApplicationRemoveModal.vue'
 import { index as secretsIndex } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
 import JournalLog from '@/components/Applications/JournalLog.vue'
@@ -9,6 +11,7 @@ import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import QuadletEditModal from '@/components/Quadlets/QuadletEditModal.vue'
 import SecretCreateModal from '@/components/Secrets/SecretCreateModal.vue'
+import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
@@ -18,13 +21,15 @@ import type {
   EnvironmentData,
   HostProperty,
   JournalEntryData,
+  OnDemandData,
+  OnDemandSuggestionData,
   QuadletFileData,
   SecretData,
 } from '@/types'
 import { containerState, shortImage } from '@/utils/containers'
 import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
 import { computed, ref } from 'vue'
 
@@ -32,6 +37,8 @@ const props = defineProps<{
   environment: EnvironmentData
   name: string
   application?: HostProperty<ApplicationDetailData>
+  ondemand?: HostProperty<OnDemandData>
+  ondemandSuggestion?: HostProperty<OnDemandSuggestionData>
   files?: HostProperty<QuadletFileData[]>
   logs?: HostProperty<JournalEntryData[]>
   secrets?: HostProperty<SecretData[]>
@@ -124,7 +131,39 @@ const subtitle = computed(() =>
     .join(' · '),
 )
 
-useHostPolling(['application', 'logs'], () => !!summary.value && isTransitioning(summary.value.status))
+useHostPolling(['application', 'ondemand', 'logs'], () => !!summary.value && isTransitioning(summary.value.status))
+
+const onDemand = computed(() => props.ondemand?.data ?? null)
+
+/**
+ * An on-demand application that isn't running sleeps until the next request reaches its socket.
+ */
+const isAsleep = computed(
+  () => !!onDemand.value?.enabled && !onDemand.value.awake && summary.value?.status !== 'running',
+)
+
+const isConfiguringOnDemand = ref(false)
+
+const isDisablingOnDemand = ref(false)
+
+const isTurningOffOnDemand = ref(false)
+
+const onToggleOnDemand = (enabled: boolean): void => {
+  if (enabled) {
+    isConfiguringOnDemand.value = true
+  } else {
+    isDisablingOnDemand.value = true
+  }
+}
+
+const onDisableOnDemand = (close: () => void): void => {
+  router.delete(disableOnDemand.url([props.environment.id, props.name]), {
+    preserveScroll: true,
+    onStart: () => (isTurningOffOnDemand.value = true),
+    onFinish: () => (isTurningOffOnDemand.value = false),
+    onSuccess: () => close(),
+  })
+}
 
 const isRunning = computed(() => summary.value?.status === 'running')
 
@@ -158,8 +197,13 @@ const isRemoving = ref(false)
         <div class="flex min-w-0 flex-col gap-1">
           <div class="flex items-center gap-3">
             <h1 class="text-2xl font-semibold text-highlighted">{{ name }}</h1>
+            <StateBadge
+              v-if="isAsleep"
+              label="Asleep"
+              color="info"
+            />
             <UnitStatusBadge
-              v-if="summary"
+              v-else-if="summary"
               :status="summary.status"
             />
           </div>
@@ -193,7 +237,8 @@ const isRemoving = ref(false)
             icon="i-lucide-play"
             color="neutral"
             variant="outline"
-            :disabled="!summary"
+            :disabled="!summary || isAsleep"
+            :title="isAsleep ? 'It starts on the next request to its socket.' : undefined"
             @click="run(name, 'up')"
           />
           <UButton
@@ -369,6 +414,78 @@ const isRemoving = ref(false)
             <USkeleton
               v-else-if="!application"
               class="h-32"
+            />
+          </UCard>
+
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between gap-2">
+                <h2 class="font-semibold text-highlighted">On demand</h2>
+                <USwitch
+                  v-if="onDemand"
+                  :model-value="onDemand.enabled"
+                  aria-label="Run on demand"
+                  :disabled="!ondemandSuggestion"
+                  @update:model-value="onToggleOnDemand"
+                />
+              </div>
+            </template>
+
+            <HostError
+              v-if="ondemand?.error"
+              :error="ondemand.error"
+            />
+            <div
+              v-else-if="onDemand?.enabled && onDemand.settings"
+              class="flex flex-col gap-3 text-sm"
+            >
+              <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+                <dt class="text-muted">Socket</dt>
+                <dd class="font-mono text-xs">
+                  {{ onDemand.settings.listen ?? '*' }}:{{ onDemand.settings.port }}
+                  <span
+                    v-if="!onDemand.listening"
+                    class="text-error"
+                    >(not listening)</span
+                  >
+                </dd>
+
+                <dt class="text-muted">Idle timeout</dt>
+                <dd class="font-mono text-xs">{{ onDemand.settings.idle_timeout }}</dd>
+
+                <template v-if="onDemand.settings.workers.length">
+                  <dt class="text-muted">Workers</dt>
+                  <dd class="font-mono text-xs break-all">{{ onDemand.settings.workers.join(', ') }}</dd>
+                </template>
+
+                <template v-if="onDemand.settings.schedule">
+                  <dt class="text-muted">Scheduler</dt>
+                  <dd class="font-mono text-xs break-all">
+                    {{ onDemand.settings.schedule.container }} at {{ onDemand.settings.schedule.at.join(', ') }} UTC
+                  </dd>
+                </template>
+              </dl>
+
+              <UButton
+                label="Edit"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                class="self-start"
+                :disabled="!ondemandSuggestion"
+                @click="isConfiguringOnDemand = true"
+              />
+            </div>
+            <p
+              v-else-if="onDemand"
+              class="text-sm text-muted"
+            >
+              Runs all the time. Turn this on to start it on its first request and let it sleep when idle.
+            </p>
+            <USkeleton
+              v-else
+              class="h-12"
             />
           </UCard>
 
@@ -596,6 +713,23 @@ const isRemoving = ref(false)
         :environment="environment"
         :applications="[summary]"
         :prefill="{ name: creatingSecret, application: name }"
+      />
+
+      <ApplicationOnDemandModal
+        v-model:open="isConfiguringOnDemand"
+        :environment="environment"
+        :application="name"
+        :suggestion="ondemandSuggestion?.data ?? null"
+        :current="onDemand?.settings ?? null"
+      />
+
+      <ConfirmModal
+        v-model:open="isDisablingOnDemand"
+        :title="`Run ${name} all the time?`"
+        description="Removes its socket and idle units, and starts it again, at boot too."
+        confirm-label="Turn off on demand"
+        :processing="isTurningOffOnDemand"
+        @confirm="onDisableOnDemand"
       />
 
       <ApplicationForceStopModal

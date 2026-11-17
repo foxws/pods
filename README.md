@@ -57,7 +57,7 @@ Pods runs on a host as rootless Podman Quadlets, for the user whose applications
 curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash
 ```
 
-It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9090`: open it on the host, or through an SSH tunnel (`ssh -L 9090:127.0.0.1:9090 HOST`).
+It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9090`: open it on the host, or through an SSH tunnel (`ssh -L 9090:127.0.0.1:9090 HOST`). Like `cockpit.socket`, a socket listens there and starts Pods on the first request, and Pods sleeps again after 10 minutes without one. Pass `--no-idle` to keep it running all the time. With `--proxy`, Pods runs all the time for now.
 
 To reach it by a hostname, add the [proxy](#proxy):
 
@@ -216,7 +216,7 @@ php artisan test --testsuite=Browser
 
 ## Roadmap
 
-Volume backups, invited users with roles per environment, streaming logs, an application catalog, and shipping Pods as socket-activated Quadlets. See [docs/roadmap.md](docs/roadmap.md).
+Volume backups, invited users with roles per environment, streaming logs, and an application catalog. See [docs/roadmap.md](docs/roadmap.md).
 
 ## License
 

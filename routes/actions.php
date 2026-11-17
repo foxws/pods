@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Web\Applications\Controllers\ApplicationController;
+use Modules\Web\Applications\Controllers\ApplicationOnDemandController;
 use Modules\Web\Applications\Controllers\ApplicationOperationController;
 use Modules\Web\Containers\Controllers\ContainerOperationController;
 use Modules\Web\Containers\Controllers\ContainerPruneController;
@@ -36,6 +37,8 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
 
     // Applications
     Route::resource('applications', ApplicationController::class)->only(['destroy']);
+    Route::put('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'update'])->name('applications.ondemand.update');
+    Route::delete('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'destroy'])->name('applications.ondemand.destroy');
     Route::post('/applications/{application}/{operation}', ApplicationOperationController::class)->name('applications.operation');
 
     // Containers

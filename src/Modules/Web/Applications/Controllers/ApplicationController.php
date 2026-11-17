@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Web\Applications\Controllers;
 
+use Domain\Applications\Actions\SuggestOnDemandSettings;
+use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
 use Illuminate\Http\RedirectResponse;
@@ -42,15 +44,28 @@ class ApplicationController implements HasMiddleware
         ]);
     }
 
-    public function show(Environment $environment, string $application, LpodClient $lpod): Response
+    public function show(Environment $environment, string $application, LpodClient $lpod, SuggestOnDemandSettings $suggestOnDemandSettings): Response
     {
         Gate::authorize('view', $environment);
+
+        /** @var list<QuadletFileData>|null $files */
+        $files = null;
+
+        // The files and the on-demand suggestion load together, so read the files once.
+        $readFiles = function () use (&$files, $environment, $application, $lpod): array {
+            return $files ??= $lpod->files($environment, $application);
+        };
 
         return Inertia::render('Applications/ApplicationShow', [
             'environment' => EnvironmentData::fromModel($environment),
             'name' => $application,
             'application' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->application($environment, $application))),
-            'files' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->files($environment, $application)), 'details'),
+            'ondemand' => Inertia::defer(fn (): array => $this->fromHost(fn () => $lpod->onDemand($environment, $application))),
+            'ondemandSuggestion' => Inertia::defer(fn (): array => $this->fromHost(fn () => $suggestOnDemandSettings(
+                $lpod->application($environment, $application)->application,
+                $readFiles(),
+            )), 'details'),
+            'files' => Inertia::defer(fn (): array => $this->fromHost($readFiles), 'details'),
             'logs' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->logs($environment, $application)), 'details'),
             'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment)), 'details'),
         ]);
