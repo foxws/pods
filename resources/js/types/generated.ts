@@ -385,6 +385,22 @@ export type ProxyRoutesData = {
   domain: string | null
   routes: RouteData[]
 }
+export type ProxySettingsData = {
+  installed: boolean
+  running: boolean
+  managed: boolean
+  mode: string | null
+  email: string | null
+  domain: string | null
+  dns_provider: string | null
+  resolvers: string | null
+  image: string | null
+  http_port: number | null
+  https_port: number | null
+  dns_token: boolean
+  rootless: boolean
+  unprivileged_port_start: number | null
+}
 export type PruneResultData = {
   removed: string[]
   reclaimed: number | null

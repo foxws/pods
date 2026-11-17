@@ -340,18 +340,32 @@ Network=pods.network
 Environment=PODS_HOST=${HOST}
 EOF
 
-    local settings="${QUADLET_DIR}/pods-proxy.container.d/install.conf"
-    {
-        echo "# Written by Pods' install.sh: the proxy's ports and scheme."
-        echo "[Container]"
-        echo "PublishPort=${HTTP_PORT}:80"
-        echo "PublishPort=${HTTPS_PORT}:443"
-        echo "PublishPort=${HTTPS_PORT}:443/udp"
+    # The proxy's ports and certificates. lpod writes them the first time;
+    # after that they're changed in the Proxy section of the host's settings
+    # in Pods, so running this again keeps them. A proxy installed by an older
+    # install.sh keeps its install.conf until those settings are saved...
+    if [ ! -f "${PROXY_CONFIG}/Caddyfile" ]; then
+        local mode=letsencrypt
 
         if [ "$BEHIND_PROXY" = true ]; then
-            echo "Environment=PROXY_SCHEME=http"
+            mode=http
         fi
-    } > "$settings"
+
+        jq -n --arg mode "$mode" --argjson http "$HTTP_PORT" --argjson https "$HTTPS_PORT" \
+            '{mode: $mode, http_port: $http, https_port: $https}' | "$LPOD" proxy settings set --stdin --json > /dev/null
+    elif [ ! -f "${QUADLET_DIR}/pods-proxy.container.d/lpod-proxy.conf" ]; then
+        {
+            echo "# Written by Pods' install.sh: the proxy's ports and scheme."
+            echo "[Container]"
+            echo "PublishPort=${HTTP_PORT}:80"
+            echo "PublishPort=${HTTPS_PORT}:443"
+            echo "PublishPort=${HTTPS_PORT}:443/udp"
+
+            if [ "$BEHIND_PROXY" = true ]; then
+                echo "Environment=PROXY_SCHEME=http"
+            fi
+        } > "${QUADLET_DIR}/pods-proxy.container.d/install.conf"
+    fi
 
     systemctl --user daemon-reload
     systemctl --user restart pods-proxy.service
@@ -377,7 +391,7 @@ uninstall() {
         info "Removing the Pods proxy..."
         systemctl --user stop pods-proxy.service 2> /dev/null || true
         podman quadlet rm --force --recursive pods-proxy.container > /dev/null 2>&1 || true
-        rm -f "${QUADLET_DIR}/pods-proxy.container.d/install.conf"
+        rm -f "${QUADLET_DIR}/pods-proxy.container.d/install.conf" "${QUADLET_DIR}/pods-proxy.container.d/lpod-proxy.conf"
     elif systemctl --user is-active --quiet pods-proxy.service 2> /dev/null; then
         systemctl --user daemon-reload
         systemctl --user restart pods-proxy.service

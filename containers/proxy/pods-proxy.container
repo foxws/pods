@@ -19,8 +19,9 @@ Volume=pods-proxy-data.volume:/data:rw,Z
 Volume=pods-proxy-config.volume:/config:rw,Z
 # The proxy listens on 80 and 443 inside the container, but publishes no
 # host ports itself: a drop-in picks them, because they differ per host.
-# install.sh --proxy writes pods-proxy.container.d/install.conf; by hand,
-# add one such as pods-proxy.container.d/ports.conf:
+# "lpod proxy settings set" (the Proxy section of a host's settings in Pods)
+# writes pods-proxy.container.d/lpod-proxy.conf with them, and with the image
+# and the DNS token. By hand, add one such as pods-proxy.container.d/ports.conf:
 #   [Container]
 #   PublishPort=80:80
 #   PublishPort=443:443
@@ -29,14 +30,16 @@ Volume=pods-proxy-config.volume:/config:rw,Z
 # 28443:443, and let the host's main proxy forward to them.
 ExposeHostPort=80
 ExposeHostPort=443
-HealthCmd=wget -q -O /dev/null http://127.0.0.1:2019/config/
+# Caddy's admin API listens on a socket in /config, or on port 2019 when the
+# Caddyfile doesn't say so.
+HealthCmd=test -S /config/admin.sock || wget -q -O /dev/null http://127.0.0.1:2019/config/
 HealthInterval=1m
 HealthTimeout=5s
 HealthRetries=3
 
 [Service]
 ExecStartPre=/usr/bin/mkdir -p %h/.config/pods-proxy/sites
-ExecStartPre=/bin/sh -c 'test -f %h/.config/pods-proxy/Caddyfile || printf "%%s\\n" "# Pods proxy. Each application adds its routes in sites/." "{" "    servers {" "        trusted_proxies static private_ranges" "    }" "}" "" "import sites/*.Caddyfile" > %h/.config/pods-proxy/Caddyfile'
+ExecStartPre=/bin/sh -c 'test -f %h/.config/pods-proxy/Caddyfile || printf "%%s\\n" "# Pods proxy. Each application adds its routes in sites/." "{" "    admin unix//config/admin.sock|0600" "    servers {" "        trusted_proxies static private_ranges" "    }" "}" "" "import sites/*.Caddyfile" > %h/.config/pods-proxy/Caddyfile'
 Restart=always
 RestartSec=5
 TimeoutStartSec=300

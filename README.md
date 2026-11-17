@@ -180,38 +180,28 @@ The Install application page lists the applications of the repositories in `conf
 
 ## Proxy
 
-`containers/proxy/` is an optional reverse proxy for a host: Caddy, as plain Quadlet files. It routes hostnames to the containers of the applications on that host, so the applications only need `ExposeHostPort=` and never clash over host ports. Install it like any application, from this repository with the directory `containers/proxy` and the name `pods-proxy`, or by hand:
+`containers/proxy/` is an optional reverse proxy for a host: Caddy, as plain Quadlet files. It routes hostnames to the containers of the applications on that host, so the applications only need `ExposeHostPort=` and never clash over host ports.
+
+Install it from the Proxy section of a host's settings in Pods. Pick how it gets certificates, and its ports:
+
+| Certificates                | For                                                                                                                                                                                | Hostnames look like                       |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Let's Encrypt               | A public domain the internet reaches on port 80 or 443                                                                                                                             | `stry.example.com`, `ws.stry.example.com` |
+| Local certificate authority | Names such as `.home.arpa`, `.lan` or `.test`. Download the root certificate from the Proxy section, and trust it once on each device                                              | `stry.home.arpa`, `ws.stry.home.arpa`     |
+| Wildcard through DNS        | A public domain on a host only your network reaches: one certificate for `*.DOMAIN` through your DNS provider (Cloudflare), whose API token is kept as a Podman secret on the host | `stry.DOMAIN`, `stry-ws.DOMAIN`           |
+| Plain HTTP                  | Another proxy in front that handles HTTPS                                                                                                                                          | as the front proxy routes them            |
+
+Pods installs `containers/proxy` from this repository as the application `pods-proxy`, and lpod writes `~/.config/pods-proxy/Caddyfile` and the drop-in `pods-proxy.container.d/lpod-proxy.conf` with the ports, the image and the DNS token (see `lpod proxy settings` in lpod's `docs/commands.md`). The wildcard mode runs `ghcr.io/foxws/pods-proxy:main`, Caddy with the Cloudflare plugin (`containers/runtimes/proxy/Containerfile`, rebuilt every week); the others run `caddy:2`, and any of them can run your own image. Saving replaces a Caddyfile you wrote yourself, and keeps yours next to it as a backup, so keep sites of your own in `~/.config/pods-proxy/sites/*.Caddyfile`. Rootless Podman can't publish ports below `net.ipv4.ip_unprivileged_port_start` (1024 by default), so Pods warns about 80 and 443 there: allow them, or use ports such as 28080 and 28443 behind the host's main proxy, which is also how each user on a shared host runs their own proxy. `install.sh --proxy` installs it too, with Let's Encrypt (or plain HTTP with `--behind-proxy`) on `--proxy-ports`, the first time only.
+
+Once the proxy is installed, Pods manages the routes: the install page asks for a hostname for each route an application's `pods.yml` names, and the Routes card on the application page adds, changes and removes them. lpod writes them to `~/.config/pods-proxy/sites/`, with a drop-in that joins the application's networks, then reloads Caddy, or restarts the proxy when it joins a new network. The main route of an on-demand application goes to its socket, so a request wakes it.
+
+To install it by hand instead:
 
 ```bash
 podman quadlet install --application=pods-proxy containers/proxy
-mkdir -p ~/.config/containers/systemd/pods-proxy.container.d
-printf '[Container]\nPublishPort=80:80\nPublishPort=443:443\nPublishPort=443:443/udp\n' > ~/.config/containers/systemd/pods-proxy.container.d/ports.conf
-systemctl --user daemon-reload
+echo '{"mode": "local", "http_port": 80, "https_port": 443}' | lpod proxy settings set --stdin --json
 systemctl --user start pods-proxy
 ```
-
-The first start writes `~/.config/pods-proxy/Caddyfile`, which loads every file in `~/.config/pods-proxy/sites/`. To route an application:
-
-1. Copy its routes to `~/.config/pods-proxy/sites/`, for example `stry.Caddyfile` from stry's `containers/proxy/`.
-2. Let the proxy join the application's network, and give it the hostnames, with a drop-in such as `~/.config/containers/systemd/pods-proxy.container.d/stry.conf`:
-
-    ```ini
-    [Container]
-    Network=stry.network
-    Environment=STRY_HOST=stry.example.com
-    ```
-
-3. Run `systemctl --user daemon-reload` and `systemctl --user restart pods-proxy`. Only route changes? `podman exec systemd-pods-proxy caddy reload --config /etc/caddy/Caddyfile` applies them without a restart.
-
-The unit publishes no host ports itself, so pick them with a drop-in, `~/.config/containers/systemd/pods-proxy.container.d/ports.conf`: `PublishPort=80:80`, `PublishPort=443:443` and `PublishPort=443:443/udp` (`install.sh --proxy` writes this for you). It gets certificates from Let's Encrypt. On a host shared with other users, each user runs their own proxy on other ports, such as `PublishPort=28080:80` and `PublishPort=28443:443`, and the host's main proxy forwards those users' hostnames to them. For local names, add `cert_issuer internal` (or `local_certs`) to the global options in the Caddyfile; Caddy's root certificate is then in the `pods-proxy-data` volume.
-
-Once the proxy is installed, Pods manages the routes: the install page asks for a hostname for each route an application's `pods.yml` names, and the Routes card on the application page adds, changes and removes them (suggesting names like `stry.home.arpa`). lpod writes `~/.config/pods-proxy/sites/APP.Caddyfile` and a drop-in that joins the application's networks, then reloads Caddy, or restarts the proxy when it joins a new network. The main route of an on-demand application goes to its socket, so a request wakes it. Applications installed this way don't need their own Caddyfile or drop-in from the steps above. With one wildcard certificate through a DNS challenge, import `sites/*.caddy` inside the wildcard site of the Caddyfile (`*.home.example.com { … import sites/*.caddy … }`): lpod then writes each application's routes as handlers in `sites/APP.caddy`, and Pods suggests hostnames one label under that domain, such as `stry-ws.home.example.com`. A DNS challenge needs Caddy with your DNS provider's plugin, which `caddy:2` doesn't have: `ghcr.io/foxws/pods-proxy:main` is Caddy with the Cloudflare plugin (`containers/runtimes/proxy/Containerfile`), rebuilt every week. Use it with a drop-in such as `pods-proxy.container.d/image.conf`, and pass the API token as a secret:
-
-````ini
-[Container]
-Image=ghcr.io/foxws/pods-proxy:main
-Secret=pods-proxy-cloudflare-token,type=env,target=CLOUDFLARE_API_TOKEN
-``` Installing the proxy itself from the settings of a host is on the [roadmap](docs/roadmap.md#proxy).
 
 ## Backups
 
@@ -221,7 +211,7 @@ Pods doesn't back up anything yet. Until it does, back up your volumes on the ho
 systemctl --user stop immich.service        # stop the application for a consistent copy
 podman volume export immich-library --output immich-library.tar
 systemctl --user start immich.service
-````
+```
 
 `podman volume export` only covers named volumes. Copy bind mounts (such as `/var/mnt/photos`) with your usual tools. Databases are safer to back up with their own dump tool.
 

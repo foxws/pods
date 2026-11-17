@@ -23,4 +23,20 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Pods Proxy
+    |--------------------------------------------------------------------------
+    |
+    | Where the Proxy section of a host's settings installs the Pods proxy
+    | from, as the application pods-proxy: Caddy, as plain Quadlet files.
+    |
+    */
+
+    'proxy' => [
+        'repository' => 'https://github.com/foxws/pods',
+        'reference' => 'main',
+        'path' => 'containers/proxy',
+    ],
+
 ];
