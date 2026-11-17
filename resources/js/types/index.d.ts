@@ -59,6 +59,7 @@ export type {
   QuadletCheckData,
   QuadletFileData,
   QuadletSourceData,
+  SearchResultData,
   SecretData,
   UnitStatus,
 } from '@/types/generated'

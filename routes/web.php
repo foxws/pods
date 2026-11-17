@@ -8,6 +8,7 @@ use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Containers\Controllers\ContainerController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
 use Modules\Web\Environments\Controllers\EnvironmentOverviewController;
+use Modules\Web\Environments\Controllers\EnvironmentSearchController;
 use Modules\Web\Environments\Controllers\EnvironmentSettingsController;
 use Modules\Web\Home\Controllers\HomeController;
 use Modules\Web\Images\Controllers\ImageController;
@@ -41,6 +42,7 @@ Route::resource('environments', EnvironmentController::class)->only(['index']);
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
     Route::get('/', EnvironmentOverviewController::class)->name('overview');
     Route::get('/journal', JournalController::class)->name('journal');
+    Route::get('/search', EnvironmentSearchController::class)->name('search');
     Route::get('/settings', [EnvironmentSettingsController::class, 'show'])->name('settings');
 
     Route::resource('applications', ApplicationController::class)->only(['index', 'create', 'show']);
