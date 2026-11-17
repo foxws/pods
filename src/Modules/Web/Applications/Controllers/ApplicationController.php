@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Modules\Web\Applications\Controllers;
 
 use Domain\Applications\Actions\SuggestOnDemandSettings;
+use Domain\Applications\Actions\SyncInstallation;
+use Domain\Applications\DataObjects\InstallationData;
 use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Catalog\Actions\ListCatalog;
 use Domain\Environments\DataObjects\EnvironmentData;
@@ -45,14 +47,19 @@ class ApplicationController implements HasMiddleware
         ]);
     }
 
-    public function show(Environment $environment, string $application, LpodClient $lpod, SuggestOnDemandSettings $suggestOnDemandSettings): Response
-    {
+    public function show(
+        Environment $environment,
+        string $application,
+        LpodClient $lpod,
+        SuggestOnDemandSettings $suggestOnDemandSettings,
+        SyncInstallation $syncInstallation,
+    ): Response {
         Gate::authorize('view', $environment);
 
         /** @var list<QuadletFileData>|null $files */
         $files = null;
 
-        // The files and the on-demand suggestion load together, so read the files once.
+        // The files, the on-demand suggestion and the installation load together, so read the files once.
         $readFiles = function () use (&$files, $environment, $application, $lpod): array {
             return $files ??= $lpod->files($environment, $application);
         };
@@ -67,6 +74,11 @@ class ApplicationController implements HasMiddleware
                 $readFiles(),
             )), 'details'),
             'files' => Inertia::defer(fn (): array => $this->fromHost($readFiles), 'details'),
+            'installation' => Inertia::defer(fn (): array => $this->fromHost(function () use ($environment, $application, $syncInstallation, $readFiles): ?InstallationData {
+                $installation = $environment->installations()->firstWhere('application', $application);
+
+                return $installation !== null ? InstallationData::fromModel($syncInstallation($installation, $readFiles())) : null;
+            }), 'details'),
             'logs' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->logs($environment, $application)), 'details'),
             'secrets' => Inertia::defer(fn (): array => $this->fromHost(fn (): array => $lpod->secrets($environment)), 'details'),
         ]);
@@ -103,6 +115,8 @@ class ApplicationController implements HasMiddleware
         if (! $removed) {
             return back();
         }
+
+        $environment->installations()->where('application', $application)->delete();
 
         return to_action([self::class, 'index'], $environment);
     }

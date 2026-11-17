@@ -41,6 +41,8 @@ class QuadletController implements HasMiddleware
                 secrets: $request->secrets(),
                 start: $start,
                 replace: $request->boolean('replace'),
+                source: $request->source(),
+                edit: $request->boolean('edit'),
             ),
             success: __(':application installed', ['application' => $application]),
             description: $start ? __('systemd is starting its units.') : __('Its units are ready to start.'),

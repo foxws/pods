@@ -14,6 +14,18 @@ export type SecretInput = { name: string; driver: 'file' | 'pass' | 'shell'; val
 export type DerivedSecretInput = { name: string; from: string; key: string }
 
 /**
+ * Where fetched files came from, with the pods.yml, so Pods can keep it with the installed application.
+ */
+export type InstallSourceInput = {
+  repository: string
+  reference: string
+  path: string
+  commit: string | null
+  manifest: string | null
+  manifest_path: string | null
+}
+
+/**
  * Installs Quadlet files on the host as one application, creating the secrets they need first.
  */
 export function useQuadletInstall(environment: MaybeRefOrGetter<EnvironmentData>) {
@@ -24,6 +36,8 @@ export function useQuadletInstall(environment: MaybeRefOrGetter<EnvironmentData>
     derived_secrets: DerivedSecretInput[]
     start: boolean
     replace: boolean
+    source: InstallSourceInput | null
+    edit: boolean
   }>({
     application: '',
     files: [],
@@ -31,6 +45,8 @@ export function useQuadletInstall(environment: MaybeRefOrGetter<EnvironmentData>
     derived_secrets: [],
     start: true,
     replace: false,
+    source: null,
+    edit: false,
   })
 
   const install = (onSuccess?: () => void): void => {

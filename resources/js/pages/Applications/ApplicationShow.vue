@@ -2,6 +2,7 @@
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { show as containerShow } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import { destroy as disableOnDemand } from '@/actions/Modules/Web/Applications/Controllers/ApplicationOnDemandController'
+import ApplicationSourceCard from '@/components/Applications/ApplicationSourceCard.vue'
 import ApplicationForceStopModal from '@/components/Applications/ApplicationForceStopModal.vue'
 import ApplicationOnDemandModal from '@/components/Applications/ApplicationOnDemandModal.vue'
 import ApplicationRemoveModal from '@/components/Applications/ApplicationRemoveModal.vue'
@@ -20,6 +21,7 @@ import type {
   ContainerData,
   EnvironmentData,
   HostProperty,
+  InstallationData,
   JournalEntryData,
   OnDemandData,
   OnDemandSuggestionData,
@@ -40,12 +42,14 @@ const props = defineProps<{
   ondemand?: HostProperty<OnDemandData>
   ondemandSuggestion?: HostProperty<OnDemandSuggestionData>
   files?: HostProperty<QuadletFileData[]>
+  installation?: HostProperty<InstallationData | null>
   logs?: HostProperty<JournalEntryData[]>
   secrets?: HostProperty<SecretData[]>
 }>()
 
 const detail = computed(() => props.application?.data ?? null)
 const summary = computed(() => detail.value?.application ?? null)
+const manifest = computed(() => props.installation?.data?.manifest ?? null)
 
 const tab = ref('overview')
 
@@ -121,7 +125,7 @@ const breadcrumb = computed<BreadcrumbItem[]>(() => [
 
 const subtitle = computed(() =>
   [
-    summary.value?.description,
+    summary.value?.description ?? manifest.value?.description,
     summary.value?.status === 'running' && summary.value.since
       ? `up ${formatRelative(summary.value.since).replace(/ ago$/, '')}`
       : null,
@@ -196,7 +200,17 @@ const isRemoving = ref(false)
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex min-w-0 flex-col gap-1">
           <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-semibold text-highlighted">{{ name }}</h1>
+            <UIcon
+              v-if="manifest?.icon"
+              :name="manifest.icon"
+              class="size-7 shrink-0 text-primary"
+            />
+            <h1 class="text-2xl font-semibold text-highlighted">{{ manifest?.label ?? name }}</h1>
+            <span
+              v-if="manifest?.label && manifest.label !== name"
+              class="font-mono text-sm text-muted"
+              >{{ name }}</span
+            >
             <StateBadge
               v-if="isAsleep"
               label="Asleep"
@@ -377,6 +391,12 @@ const isRemoving = ref(false)
         </div>
 
         <div class="flex flex-col gap-4">
+          <ApplicationSourceCard
+            :environment="environment"
+            :application="name"
+            :installation="installation"
+          />
+
           <UCard>
             <template #header>
               <h2 class="font-semibold text-highlighted">Details</h2>

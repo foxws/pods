@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Web\Quadlets\Requests;
 
+use Domain\Quadlets\DataObjects\ManifestData;
+use Domain\Quadlets\Exceptions\InvalidManifestException;
 use Dotenv\Dotenv;
 use Dotenv\Exception\InvalidFileException;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -35,6 +37,14 @@ class InstallQuadletsRequest extends QuadletFilesRequest
             'derived_secrets.*.key' => ['required', 'string', 'regex:/^[A-Za-z_][A-Za-z0-9_.]*$/'],
             'start' => ['boolean'],
             'replace' => ['boolean'],
+            'edit' => ['boolean'],
+            'source' => ['nullable', 'array', 'prohibited_if_accepted:edit'],
+            'source.repository' => ['required_with:source', 'string', 'max:2048'],
+            'source.reference' => ['required_with:source', 'string', 'max:255'],
+            'source.path' => ['nullable', 'string', 'max:1024'],
+            'source.commit' => ['nullable', 'string', 'regex:/^[0-9a-f]{4,64}$/'],
+            'source.manifest' => ['nullable', 'string', 'max:65536'],
+            'source.manifest_path' => ['nullable', 'string', 'max:1024'],
         ];
     }
 
@@ -50,6 +60,16 @@ class InstallQuadletsRequest extends QuadletFilesRequest
             function (Validator $validator): void {
                 if ($validator->errors()->isNotEmpty()) {
                     return;
+                }
+
+                $manifest = $this->input('source.manifest');
+
+                if (is_string($manifest)) {
+                    try {
+                        ManifestData::fromYaml($manifest, (string) $this->input('source.manifest_path', ''));
+                    } catch (InvalidManifestException $exception) {
+                        $validator->errors()->add('source.manifest', $exception->getMessage());
+                    }
                 }
 
                 $names = array_column($this->input('secrets', []), 'name');
@@ -103,6 +123,29 @@ class InstallQuadletsRequest extends QuadletFilesRequest
         }
 
         return $secrets;
+    }
+
+    /**
+     * Where the files were fetched from, when they came from a Git repository.
+     *
+     * @return array{repository: string, reference: string, path: string, commit: ?string, manifest: ?string, manifest_path: ?string}|null
+     */
+    public function source(): ?array
+    {
+        $source = $this->validated('source');
+
+        if (! is_array($source)) {
+            return null;
+        }
+
+        return [
+            'repository' => (string) $source['repository'],
+            'reference' => (string) $source['reference'],
+            'path' => trim((string) ($source['path'] ?? ''), '/'),
+            'commit' => $source['commit'] ?? null,
+            'manifest' => $source['manifest'] ?? null,
+            'manifest_path' => $source['manifest_path'] ?? null,
+        ];
     }
 
     /**

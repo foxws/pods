@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
 use Integrations\Ssh\HostResult;
@@ -33,6 +34,120 @@ it('installs the files as an application and starts it', function () {
 
     $lpod->assertRan(fn (array $arguments, ?string $input) => $arguments === ['quadlet', 'install', 'uptime-kuma', '--start', '--stdin', '--json']
         && json_decode($input, true) === ['files' => $this->files]);
+});
+
+it('keeps where the files came from, the pods.yml and a checksum of each file', function () {
+    $this->travelTo('2026-11-17 10:00:00');
+    fakeLpod();
+    $manifest = "version: 1\nname: uptime-kuma\nlabel: Uptime Kuma\n";
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => $this->files,
+        'source' => [
+            'repository' => 'https://github.com/foxws/quadlets',
+            'reference' => 'main',
+            'path' => '/uptime-kuma/',
+            'commit' => 'a41f9c2',
+            'manifest' => $manifest,
+            'manifest_path' => 'uptime-kuma',
+        ],
+    ])->assertSessionHasNoErrors();
+
+    expect($this->environment->installations()->sole())
+        ->application->toBe('uptime-kuma')
+        ->repository->toBe('https://github.com/foxws/quadlets')
+        ->reference->toBe('main')
+        ->path->toBe('uptime-kuma')
+        ->commit->toBe('a41f9c2')
+        ->manifest->toBe($manifest)
+        ->manifest_path->toBe('uptime-kuma')
+        ->checksums->toBe([
+            'uptime-kuma-data.volume' => hash('sha256', "[Volume]\n"),
+            'uptime-kuma.container' => hash('sha256', "[Container]\nImage=docker.io/louislam/uptime-kuma:2\n"),
+        ])
+        ->installed_at->toDateTimeString()->toBe('2026-11-17 10:00:00');
+});
+
+it('starts over when an application is installed again from pasted files', function () {
+    $installation = Installation::factory()->for($this->environment)->fromGit()
+        ->create(['application' => 'uptime-kuma', 'changes' => ['modified' => ['uptime-kuma.container'], 'added' => [], 'removed' => []]]);
+    fakeLpod();
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => $this->files,
+        'replace' => true,
+    ])->assertSessionHasNoErrors();
+
+    expect($installation->refresh())
+        ->repository->toBeNull()
+        ->manifest->toBeNull()
+        ->changes->toBeNull()
+        ->checksums->toHaveKeys(['uptime-kuma.container', 'uptime-kuma-data.volume']);
+});
+
+it('only updates the checksum of a file edited in Pods', function () {
+    $installation = Installation::factory()->for($this->environment)->fromGit()->withFiles([
+        'uptime-kuma.container' => "[Container]\nImage=docker.io/louislam/uptime-kuma:1\n",
+        'uptime-kuma-data.volume' => "[Volume]\n",
+    ])->create([
+        'application' => 'uptime-kuma',
+        'changes' => ['modified' => ['uptime-kuma.container', 'uptime-kuma-data.volume'], 'added' => [], 'removed' => []],
+    ]);
+    fakeLpod();
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => [$this->files[0]],
+        'start' => false,
+        'replace' => true,
+        'edit' => true,
+    ])->assertSessionHasNoErrors();
+
+    expect($installation->refresh())
+        ->repository->toBe('https://github.com/foxws/quadlets')
+        ->checksums->toBe([
+            'uptime-kuma-data.volume' => hash('sha256', "[Volume]\n"),
+            'uptime-kuma.container' => hash('sha256', $this->files[0]['content']),
+        ])
+        ->changes->toBe(['modified' => ['uptime-kuma-data.volume'], 'added' => [], 'removed' => []]);
+});
+
+it('does not start tracking an application by editing one of its files', function () {
+    fakeLpod();
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => [$this->files[0]],
+        'replace' => true,
+        'edit' => true,
+    ])->assertSessionHasNoErrors();
+
+    expect(Installation::query()->count())->toBe(0);
+});
+
+it('refuses a source whose pods.yml Pods cannot read', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => $this->files,
+        'source' => ['repository' => 'https://github.com/foxws/quadlets', 'reference' => 'main', 'manifest' => "version: 2\n"],
+    ])->assertSessionHasErrors('source.manifest');
+
+    $lpod->assertNothingRan();
+});
+
+it('does not track an application that could not be installed', function () {
+    fakeLpod()->respond('quadlet install *', new HostResult(1, '', 'uptime-kuma.container already exists'));
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => $this->files,
+    ])->assertInertiaFlash('type', 'error');
+
+    expect(Installation::query()->count())->toBe(0);
 });
 
 it('creates the secrets the files need before installing, with the values on stdin only', function () {
