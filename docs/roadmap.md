@@ -26,7 +26,7 @@ Open questions:
 
 Done: lpod's `APP ondemand enable|disable|status` puts a `.socket`, a `systemd-socket-proxyd` service and an idle timer in front of an application, and the application page has an on-demand switch for it, with the ports, the idle timeout and, for a Laravel application, its workers, idle check and scheduler suggested from its Quadlet files. A sleeping application shows as asleep. Next:
 
-1. **Wake.** Start becomes "wake" for a sleeping application: it starts the socket's service, because starting a `StopWhenUnneeded=yes` unit directly stops it again.
+1. **Wake.** Done: Start becomes Wake for a sleeping application. lpod's `up` (and `restart` and `redeploy` while it sleeps) starts the socket's proxy service, the way a request does, because a `StopWhenUnneeded=yes` unit started directly stops again.
 2. **From pods.yml.** Done: the on-demand dialog is filled in from the stored manifest's `ondemand:` section when it has one, instead of from the Quadlet files, and everything in it stays editable.
 
 ## Proxy
