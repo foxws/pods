@@ -60,6 +60,7 @@ function fakeLpod(): FakeHostRunner
         '* ondemand disable --json' => $fixture('ok'),
         '* status --json' => $fixture('app-status'),
         '* files --json' => $fixture('app-files'),
+        '* files remove *' => $fixture('app-files-remove'),
         '* logs --json *' => $fixture('app-logs'),
         '* up --no-block --json' => $fixture('ok'),
         '* down --no-block --json' => $fixture('ok'),

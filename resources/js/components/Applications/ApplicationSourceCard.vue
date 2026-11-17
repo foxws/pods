@@ -34,6 +34,7 @@ const newerTags = computed(() => props.updates?.data ?? [])
 const isConfirmingUpdate = ref(false)
 const isUpdating = ref(false)
 const updateTag = ref('')
+const removeOldFiles = ref(true)
 const updateError = ref<string>()
 
 const tagItems = computed(() =>
@@ -42,6 +43,7 @@ const tagItems = computed(() =>
 
 const confirmUpdate = (): void => {
   updateTag.value = newerTags.value[0]?.name ?? ''
+  removeOldFiles.value = true
   updateError.value = undefined
   isConfirmingUpdate.value = true
 }
@@ -49,7 +51,7 @@ const confirmUpdate = (): void => {
 const update = (close: () => void): void => {
   router.post(
     updateApplication.url([props.environment.id, props.application]),
-    { tag: updateTag.value },
+    { tag: updateTag.value, remove_old_files: removeOldFiles.value },
     {
       preserveScroll: true,
       onStart: () => (isUpdating.value = true),
@@ -220,6 +222,11 @@ const accept = (): void => {
           class="w-full font-mono"
         />
       </UFormField>
+      <UCheckbox
+        v-model="removeOldFiles"
+        label="Remove files the tag no longer has"
+        description="Only files Pods installed. Drop-ins you added on the host stay."
+      />
       <UAlert
         v-if="tracked?.changed"
         color="warning"

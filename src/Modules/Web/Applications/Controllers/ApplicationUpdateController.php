@@ -45,25 +45,27 @@ class ApplicationUpdateController implements HasMiddleware
             $tags = array_map(fn (GitTagData $tag): string => $tag->name, $listApplicationUpdates($installation));
 
             $request->validate(
-                ['tag' => ['required', 'string', Rule::in($tags)]],
+                ['tag' => ['required', 'string', Rule::in($tags)], 'remove_old_files' => ['boolean']],
                 ['tag.in' => __('Pick one of the newer tags of the repository.')],
             );
 
-            $leftOver = $updateApplication($installation, $request->string('tag')->toString());
+            $oldFiles = $updateApplication($installation, $request->string('tag')->toString(), $request->boolean('remove_old_files', true));
         } catch (CannotUpdateApplicationException|LpodException $exception) {
             toast(title: __(':application not updated', ['application' => $application]), description: $exception->getMessage(), type: 'error');
 
             return back();
         }
 
+        $tag = $request->string('tag')->toString();
+
         toast(
-            title: __(':application is at :tag', ['application' => $application, 'tag' => $request->string('tag')->toString()]),
-            description: $leftOver === []
-                ? __('Its units are starting with the new files. Run its setup steps again if the release needs it.')
-                : __('Its units are starting with the new files. These files aren\'t in :tag and stay on the host: :files.', [
-                    'tag' => $request->string('tag')->toString(),
-                    'files' => implode(', ', $leftOver),
-                ]),
+            title: __(':application is at :tag', ['application' => $application, 'tag' => $tag]),
+            description: collect([
+                __('Its units are starting with the new files.'),
+                $oldFiles['removed'] !== [] ? __('Removed what :tag no longer has: :files.', ['tag' => $tag, 'files' => implode(', ', $oldFiles['removed'])]) : null,
+                $oldFiles['kept'] !== [] ? __('These files aren\'t in :tag and stay on the host: :files.', ['tag' => $tag, 'files' => implode(', ', $oldFiles['kept'])]) : null,
+                __('Run its setup steps again if the release needs it.'),
+            ])->filter()->implode(' '),
         );
 
         return back();

@@ -76,7 +76,7 @@ it('stops the application, installs the files of the tag over its files and keep
         ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0'])
         ->assertRedirect()
         ->assertInertiaFlash('type', 'success')
-        ->assertInertiaFlash('description', 'Its units are starting with the new files. These files aren\'t in v3.2.0 and stay on the host: immich-ml.container.');
+        ->assertInertiaFlash('description', 'Its units are starting with the new files. These files aren\'t in v3.2.0 and stay on the host: immich-ml.container. Run its setup steps again if the release needs it.');
 
     $lpod->assertRan(['quadlet', 'fetch', 'https://github.com/foxws/quadlets', '--ref', 'v3.2.0', '--path', 'immich', '--json']);
     $lpod->assertRan(['immich', 'down', '--json']);
@@ -89,6 +89,48 @@ it('stops the application, installs the files of the tag over its files and keep
         ->path->toBe('immich')
         ->manifest->toBe("version: 1\nname: immich\nlabel: Immich\n")
         ->checksums->toHaveKeys(['immich.pod', 'immich-server.container']);
+});
+
+it('removes the files Pods installed that the tag no longer has, before starting the units again', function () {
+    $lpod = fakeLpod()
+        ->respond('quadlet fetch *', immichRelease())
+        ->respond('immich files --json', lpodFiles([
+            ...lpodFixtureFiles(),
+            'immich-ml.container' => "[Container]\n",
+            'immich-server.container.d/custom.conf' => "[Container]\n",
+        ]))
+        ->respond('immich down --json', lpodFixture('ok'))
+        ->respond('immich files remove *', json_encode(['contract' => 1, 'removed' => ['immich-ml.container']]));
+    Installation::factory()->for($this->environment)->fromGit()->withFiles([
+        ...lpodFixtureFiles(),
+        'immich-ml.container' => "[Container]\n",
+    ])->create(['application' => 'immich', 'reference' => 'v3.1.0']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0', 'remove_old_files' => true])
+        ->assertInertiaFlash('description', 'Its units are starting with the new files. Removed what v3.2.0 no longer has: immich-ml.container. These files aren\'t in v3.2.0 and stay on the host: immich-server.container.d/custom.conf. Run its setup steps again if the release needs it.');
+
+    $commands = collect($lpod->recorded())->pluck('arguments');
+    expect($commands->search(['immich', 'files', 'remove', 'immich-ml.container', '--json']))
+        ->toBeGreaterThan($commands->search(['immich', 'down', '--json']))
+        ->toBeLessThan($commands->search(['quadlet', 'install', 'immich', '--replace', '--start', '--stdin', '--json']));
+});
+
+it('keeps the files the tag no longer has when asked to', function () {
+    $lpod = fakeLpod()
+        ->respond('quadlet fetch *', immichRelease())
+        ->respond('immich files --json', lpodFiles([...lpodFixtureFiles(), 'immich-ml.container' => "[Container]\n"]))
+        ->respond('immich down --json', lpodFixture('ok'));
+    Installation::factory()->for($this->environment)->fromGit()->withFiles([
+        ...lpodFixtureFiles(),
+        'immich-ml.container' => "[Container]\n",
+    ])->create(['application' => 'immich', 'reference' => 'v3.1.0']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0', 'remove_old_files' => false])
+        ->assertInertiaFlash('type', 'success');
+
+    expect(collect($lpod->recorded())->pluck('arguments')->contains(fn (array $arguments): bool => in_array('remove', $arguments, true)))->toBeFalse();
 });
 
 it('only updates to a newer tag of the repository', function () {
