@@ -2,24 +2,24 @@
 # Installs or updates Pods on this host, as rootless Podman Quadlets for the
 # current user:
 #
-#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.1/install.sh | bash
 #
 # With a Caddy proxy in front, routing a hostname to Pods:
 #
-#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -s -- --proxy --host pods.example.com
+#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.1/install.sh | bash -s -- --proxy --host pods.example.com
 #
 # Or only prepare this host for a Pods that runs elsewhere, or as another
 # user (lpod and Pods' SSH key, no Pods):
 #
-#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA... pods'
+#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.1/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA... pods'
 #
 # Run it again to update. "--help" lists every option.
 set -euo pipefail
 
-# Pods is still in development: these follow main for now. PODS_REF becomes
-# a release tag, and LPOD_REF lpod's v4.0.0, once those are released.
-PODS_REF="${PODS_REF:-main}"
-LPOD_REF="${LPOD_REF:-main}"
+# The release this install.sh belongs to, and the lpod release it needs.
+# Set PODS_REF=main and LPOD_REF=main to follow development instead.
+PODS_REF="${PODS_REF:-v1.0.0-rc.1}"
+LPOD_REF="${LPOD_REF:-v4.0.0-rc.1}"
 
 REPOSITORY="https://github.com/foxws/pods"
 LPOD_RAW="https://raw.githubusercontent.com/foxws/lpod"
@@ -70,7 +70,7 @@ Usage: install.sh [options]
   --purge               With --uninstall, also remove Pods' data and its pods-env secret
   -h, --help            Show this help
 
-Environment: PODS_REF (default main) and LPOD_REF (default main) pick the
+Environment: PODS_REF (default v1.0.0-rc.1) and LPOD_REF (default v4.0.0-rc.1) pick the
 versions to install. PODS_OWNER_PASSWORD is the owner's password, with --name
 and --email, for unattended installs.
 
@@ -175,9 +175,8 @@ check_requirements() {
     fi
 }
 
-# lpod from main speaks contract 1, which Pods needs; its latest release
-# doesn't yet. An lpod that already speaks contract 1, such as a git
-# checkout, is kept as it is.
+# Pods needs an lpod that speaks contract 1, which lpod 4 does. One that
+# already does, such as a git checkout, is kept as it is.
 install_lpod() {
     if command -v lpod > /dev/null 2>&1 && lpod version --json 2> /dev/null | jq -e '.contract == 1' > /dev/null 2>&1; then
         LPOD="$(command -v lpod)"
