@@ -6,7 +6,6 @@ namespace Modules\Web\Applications\Controllers;
 
 use Domain\Applications\Actions\RunSetupStep;
 use Domain\Environments\Models\Environment;
-use Domain\Quadlets\DataObjects\ManifestSetupStepData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -27,8 +26,8 @@ class ApplicationSetupController implements HasMiddleware
     }
 
     /**
-     * Runs a setup step from the application's stored pods.yml (its after_install), such as
-     * migrating the database or creating the first admin, and flashes what the command printed.
+     * Runs a setup step from the application's stored pods.yml (its after_install or after_update),
+     * such as migrating the database or creating the first admin, and flashes what the command printed.
      */
     public function store(Request $request, Environment $environment, string $application, string $step, RunSetupStep $runSetupStep): RedirectResponse
     {
@@ -36,8 +35,7 @@ class ApplicationSetupController implements HasMiddleware
 
         $installation = $environment->installations()->where('application', $application)->firstOrFail();
 
-        $setupStep = collect($installation->manifest()->after_install ?? [])
-            ->first(fn (ManifestSetupStepData $candidate): bool => $candidate->name === $step);
+        $setupStep = $installation->manifest()?->setupStep($step);
 
         abort_if($setupStep === null, 404);
 

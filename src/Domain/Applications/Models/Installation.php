@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array<string, string> $checksums
  * @property array{modified: list<string>, added: list<string>, removed: list<string>}|null $changes
  * @property array<string, array{exit_code: int, ran_at: string}>|null $setup
+ * @property string|null $updated_from the reference, or a branch's commit, the last update came from
  */
 class Installation extends Model
 {
@@ -42,6 +43,7 @@ class Installation extends Model
         'checksums',
         'changes',
         'setup',
+        'updated_from',
         'installed_at',
         'checked_at',
     ];

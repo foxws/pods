@@ -30,6 +30,7 @@ class TrackInstallation
             'manifest_path' => $source['manifest_path'] ?? null,
             'checksums' => Installation::checksumsOf($files),
             'changes' => null,
+            'updated_from' => null,
             'installed_at' => now(),
             'checked_at' => now(),
         ]);

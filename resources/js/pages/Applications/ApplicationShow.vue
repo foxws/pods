@@ -402,7 +402,10 @@ const isRemoving = ref(false)
 
         <div class="flex flex-col gap-4">
           <ApplicationSetupCard
-            v-if="installation?.data && manifest?.after_install.length"
+            v-if="
+              installation?.data &&
+              (manifest?.after_install.length || (installation.data.updated_from && manifest?.after_update.length))
+            "
             :environment="environment"
             :application="name"
             :installation="installation.data"

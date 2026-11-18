@@ -23,6 +23,7 @@ return new class extends Migration
             $table->json('checksums');
             $table->json('changes')->nullable();
             $table->json('setup')->nullable();
+            $table->string('updated_from')->nullable();
             $table->timestamp('installed_at')->nullable();
             $table->timestamp('checked_at')->nullable();
             $table->timestamps();

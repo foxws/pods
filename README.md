@@ -263,6 +263,13 @@ after_install: # commands to run once the units are up, from the application pag
             password:
                 type: password # an input without an option goes on stdin
 
+after_update: # commands to run after each update, once the new units are up; names differ from after_install's
+    migrate:
+        label: Migrate the database
+        container: stry
+        user: docker
+        command: php artisan migrate --force --no-interaction
+
 routes: # upstreams the Pods proxy can give a hostname; Pods asks for the hostnames
     app:
         upstream: systemd-stry:8000 # a container and its port
@@ -287,7 +294,7 @@ ondemand: # fills in the on-demand switch; the keys match lpod's ondemand status
             APP_COMMAND: php /app/artisan schedule:run
 ```
 
-Every key is optional. When you fetch a directory, Pods reads the nearest `pods.yml`: the one in that directory, or else in a directory above it. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. A step's inputs aren't stored; at most one input goes on stdin, and a password always does, so it never shows in the arguments. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
+Every key is optional. When you fetch a directory, Pods reads the nearest `pods.yml`: the one in that directory, or else in a directory above it. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. After an update, the application page asks for the new release's `after_update` steps, which take inputs like setup steps, and only counts a step as done once it ran since that update. A step's inputs aren't stored; at most one input goes on stdin, and a password always does, so it never shows in the arguments. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
 
 [stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. Backup hints and routes are planned; see the [roadmap](docs/roadmap.md).
 

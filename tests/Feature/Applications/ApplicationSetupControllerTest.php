@@ -39,6 +39,11 @@ beforeEach(function () {
               missing:
                 container: immich-worker
                 command: "true"
+            after_update:
+              clear-cache:
+                label: Clear the cache
+                container: immich-server
+                command: immich-admin clear-cache
             YAML,
     ]);
 });
@@ -73,6 +78,17 @@ it('runs a setup step in the container of its quadlet, and remembers that it suc
     expect($this->installation->refresh()->setup)
         ->toHaveKey('migrate.exit_code', 0)
         ->toHaveKey('migrate.ran_at');
+});
+
+it('runs a step of after_update the same way', function () {
+    $lpod = fakeLpod()->respond('containers --json', setupContainers());
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationSetupController::class, 'store'], [$this->environment, 'immich', 'clear-cache']))
+        ->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(['container', 'systemd-immich-server', 'exec', '--json', '--', 'immich-admin', 'clear-cache']);
+    expect($this->installation->refresh()->setup)->toHaveKey('clear-cache.exit_code', 0);
 });
 
 it('passes an input with an option in the arguments, and a password on stdin only', function () {
@@ -176,11 +192,11 @@ it('forbids users who are not the owner', function () {
     $lpod->assertNothingRan();
 });
 
-it('refuses a pods.yml whose setup step could put a password in the arguments', function (string $inputs, string $error) {
+it('refuses a pods.yml whose setup steps could put a password in the arguments, or share a name', function (string $manifest, string $error) {
     fakeLpod()->respond('quadlet fetch *', new HostResult(0, json_encode([
         'contract' => 1,
         'commit' => 'a41f9c2',
-        'manifest' => "after_install:\n  admin:\n    container: app\n    command: app create-admin\n    inputs:\n{$inputs}",
+        'manifest' => $manifest,
         'files' => [],
     ]), ''));
 
@@ -192,6 +208,8 @@ it('refuses a pods.yml whose setup step could put a password in the arguments', 
         ->assertJsonPath('data.manifest', null)
         ->assertJsonPath('data.manifest_error', fn (string $message): bool => str_contains($message, $error));
 })->with([
-    'password with an option' => ["      password:\n        type: password\n        option: --password\n", "can't have an option"],
-    'two inputs on stdin' => ["      name: {}\n      password:\n        type: password\n", 'only one can go on stdin'],
+    'password with an option' => ["after_install:\n  admin:\n    container: app\n    command: app create-admin\n    inputs:\n      password:\n        type: password\n        option: --password\n", "can't have an option"],
+    'two inputs on stdin' => ["after_install:\n  admin:\n    container: app\n    command: app create-admin\n    inputs:\n      name: {}\n      password:\n        type: password\n", 'only one can go on stdin'],
+    'password with an option after an update' => ["after_update:\n  admin:\n    container: app\n    command: app reset-admin\n    inputs:\n      password:\n        type: password\n        option: --password\n", "can't have an option"],
+    'a name in both lists' => ["after_install:\n  migrate:\n    container: app\n    command: app migrate\nafter_update:\n  migrate:\n    container: app\n    command: app migrate\n", 'is in both after_install and after_update'],
 ]);

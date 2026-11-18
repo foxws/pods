@@ -9,6 +9,7 @@ use Domain\Applications\Actions\UpdateApplication;
 use Domain\Applications\Exceptions\CannotUpdateApplicationException;
 use Domain\Environments\Models\Environment;
 use Domain\Quadlets\DataObjects\GitTagData;
+use Domain\Quadlets\DataObjects\ManifestSetupStepData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -59,6 +60,7 @@ class ApplicationUpdateController implements HasMiddleware
 
         $tag = $request->string('tag')->toString();
         $commit = $installation->refresh()->commit;
+        $updateSteps = $installation->manifest()->after_update ?? [];
 
         toast(
             title: GitTagData::versionOf($tag) === null && $commit !== null
@@ -68,7 +70,9 @@ class ApplicationUpdateController implements HasMiddleware
                 __('Its units are starting with the new files.'),
                 $oldFiles['removed'] !== [] ? __('Removed what :tag no longer has: :files.', ['tag' => $tag, 'files' => implode(', ', $oldFiles['removed'])]) : null,
                 $oldFiles['kept'] !== [] ? __('These files aren\'t in :tag and stay on the host: :files.', ['tag' => $tag, 'files' => implode(', ', $oldFiles['kept'])]) : null,
-                __('Run its setup steps again if the release needs it.'),
+                $updateSteps !== []
+                    ? __('Finish the update on its page: :steps.', ['steps' => implode(', ', array_map(fn (ManifestSetupStepData $step): string => $step->label, $updateSteps))])
+                    : __('Run its setup steps again if the release needs it.'),
             ])->filter()->implode(' '),
         );
 
