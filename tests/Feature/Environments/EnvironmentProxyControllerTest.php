@@ -194,7 +194,7 @@ it('installs the proxy from Pods\' repository, saves its settings, then starts i
         ->assertInertiaFlash('title', 'Proxy installed');
 
     $commands = collect($lpod->recorded())->pluck('arguments');
-    $fetch = $commands->search(['quadlet', 'fetch', 'https://github.com/foxws/pods', '--ref', 'main', '--path', 'containers/proxy', '--json']);
+    $fetch = $commands->search(['quadlet', 'fetch', 'https://github.com/foxws/pods', '--ref', config('catalog.proxy.reference'), '--path', 'containers/proxy', '--json']);
     $install = $commands->search(['quadlet', 'install', 'pods-proxy', '--stdin', '--json']);
     $settings = $commands->search(['proxy', 'settings', 'set', '--stdin', '--json']);
     $start = $commands->search(['pods-proxy', 'up', '--no-block', '--json']);
@@ -207,7 +207,7 @@ it('installs the proxy from Pods\' repository, saves its settings, then starts i
         ->and($this->environment->installations()->sole())
         ->application->toBe('pods-proxy')
         ->repository->toBe('https://github.com/foxws/pods')
-        ->reference->toBe('main')
+        ->reference->toBe(config('catalog.proxy.reference'))
         ->path->toBe('containers/proxy')
         ->commit->toBe('a41f9c2');
 });
