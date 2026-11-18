@@ -22,12 +22,14 @@ PODS_REF="${PODS_REF:-v1.0.0-rc.2}"
 LPOD_REF="${LPOD_REF:-v4.0.0-rc.2}"
 
 REPOSITORY="https://github.com/foxws/pods"
+LPOD_REPOSITORY="https://github.com/foxws/lpod"
 LPOD_RAW="https://raw.githubusercontent.com/foxws/lpod"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 QUADLET_DIR="${CONFIG_HOME}/containers/systemd"
 PROXY_CONFIG="${CONFIG_HOME}/pods-proxy"
 BIN_DIR="${HOME}/.local/bin"
-LOCAL_PORT=9090
+DEFAULT_PORT=9393
+LOCAL_PORT=""
 LPOD="${BIN_DIR}/lpod"
 
 IDLE=true
@@ -62,8 +64,11 @@ Usage: install.sh [options]
   --proxy-ports H,S     The proxy's host ports for HTTP and HTTPS (default 80,443),
                         e.g. 28080,28443 on a host shared with other users
   --behind-proxy        Another proxy in front handles HTTPS: the Pods proxy serves plain HTTP
+  --port PORT           The port Pods listens on, on 127.0.0.1 (default 9393, or the one an
+                        existing install has)
   --no-idle             Keep Pods running all the time, instead of starting it on the first
-                        request and stopping it after 10 minutes without one
+                        request and stopping it after 10 minutes without one. Pods also keeps
+                        running while it has a route through the proxy
   --name NAME           With --email and PODS_OWNER_PASSWORD, create the owner here
   --email EMAIL         instead of on Pods' setup page
   --uninstall           Remove Pods (and with --proxy, the proxy). Keeps its data
@@ -74,11 +79,15 @@ Environment: PODS_REF (default v1.0.0-rc.2) and LPOD_REF (default v4.0.0-rc.2) p
 versions to install. PODS_OWNER_PASSWORD is the owner's password, with --name
 and --email, for unattended installs.
 
-Without --proxy, Pods listens on 127.0.0.1:9090 only. Reach it on this
-machine, or through an SSH tunnel: ssh -L 9090:127.0.0.1:9090 HOST
+Pods listens on 127.0.0.1:9393 (or --port) only. Reach it on this machine,
+or through an SSH tunnel: ssh -L 9393:127.0.0.1:9393 HOST
 Like cockpit.socket, a socket listens there and starts Pods on the first
 request, and Pods stops again when nobody uses it (unless --no-idle). With
---proxy, Pods runs all the time for now, since the proxy reaches it by name.
+a route through the proxy (--proxy, or one set in Pods), Pods runs all the
+time for now, since the proxy reaches it by name.
+
+lpod is installed (or upgraded, when it's older) at LPOD_REF. A git checkout
+of lpod, or a build of a branch (lpod self-update main), is kept.
 EOF
 }
 
@@ -105,6 +114,7 @@ parse_arguments() {
                 shift
                 ;;
             --behind-proxy) BEHIND_PROXY=true ;;
+            --port) LOCAL_PORT="${2:-}"; shift ;;
             --no-idle) IDLE=false ;;
             --no-pods) PODS=false ;;
             --authorized-key) AUTHORIZED_KEY="${2:-}"; shift ;;
@@ -132,6 +142,11 @@ parse_arguments() {
 
     if [ "$PROXY" = true ] && [ "$UNINSTALL" = false ] && ! [[ "$HOST" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
         fail "--proxy needs --host with the hostname Pods is reached at, e.g. --host pods.example.com"
+    fi
+
+    # The on-demand socket gives Pods this port + 10000.
+    if [ -n "$LOCAL_PORT" ] && { ! [[ "$LOCAL_PORT" =~ ^[1-9][0-9]{0,4}$ ]] || [ "$LOCAL_PORT" -lt 1024 ] || [ "$LOCAL_PORT" -gt 55535 ]; }; then
+        fail "--port takes a port number from 1024 to 55535, e.g. --port 9393"
     fi
 
     for port in "$HTTP_PORT" "$HTTPS_PORT"; do
@@ -175,22 +190,96 @@ check_requirements() {
     fi
 }
 
-# Pods needs an lpod that speaks contract 1, which lpod 4 does. One that
-# already does, such as a git checkout, is kept as it is.
-install_lpod() {
-    if command -v lpod > /dev/null 2>&1 && lpod version --json 2> /dev/null | jq -e '.contract == 1' > /dev/null 2>&1; then
-        LPOD="$(command -v lpod)"
-        info "lpod is installed ($("$LPOD" version --json | jq -r .lpod))."
+# Whether release A (such as 4.0.0-rc.1) is older than release B, where a
+# pre-release comes before the release itself.
+version_lt() {
+    local a="${1#v}" b="${2#v}"
+    local a_base="${a%%-*}" b_base="${b%%-*}"
+
+    if [ "$a" = "$b" ]; then
+        return 1
+    fi
+
+    if [ "$a_base" != "$b_base" ]; then
+        [ "$(printf '%s\n%s\n' "$a_base" "$b_base" | sort -V | head -n 1)" = "$a_base" ]
 
         return
     fi
 
-    info "Installing lpod (${LPOD_REF}) in ${BIN_DIR}..."
-    mkdir -p "$BIN_DIR"
-    # Remove first, so a symlink isn't written through.
-    rm -f "${BIN_DIR}/lpod"
-    curl -fsSL "${LPOD_RAW}/${LPOD_REF}/bin/lpod" -o "${BIN_DIR}/lpod"
-    chmod +x "${BIN_DIR}/lpod"
+    # The same release: 4.0.0-rc.2 comes before 4.0.0.
+    if [ "$a" = "$a_base" ]; then
+        return 1
+    fi
+
+    if [ "$b" = "$b_base" ]; then
+        return 0
+    fi
+
+    [ "$(printf '%s\n%s\n' "${a#*-}" "${b#*-}" | sort -V | head -n 1)" = "${a#*-}" ]
+}
+
+is_release() {
+    [[ "${1#v}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+}
+
+# Installs lpod at LPOD_REF with lpod's own installer, which verifies a
+# release against its checksums and bakes its version in (a raw bin/lpod
+# reports "dev"). A branch, such as main, comes from that branch.
+fetch_lpod() {
+    local installer
+    installer="$(mktemp)"
+
+    if is_release "$LPOD_REF"; then
+        curl -fsSL "${LPOD_REPOSITORY}/releases/download/v${LPOD_REF#v}/install.sh" -o "$installer" \
+            || { rm -f "$installer"; fail "lpod ${LPOD_REF} isn't released. Set LPOD_REF to a release or a branch."; }
+        LPOD_INSTALL_DIR="$BIN_DIR" LPOD_VERSION="$LPOD_REF" bash "$installer" < /dev/null > /dev/null
+    else
+        curl -fsSL "${LPOD_RAW}/${LPOD_REF}/install.sh" -o "$installer" \
+            || { rm -f "$installer"; fail "lpod has no branch ${LPOD_REF}. Set LPOD_REF to a release or a branch."; }
+        LPOD_INSTALL_DIR="$BIN_DIR" LPOD_BRANCH="$LPOD_REF" bash "$installer" < /dev/null > /dev/null
+    fi
+
+    rm -f "$installer"
+    LPOD="${BIN_DIR}/lpod"
+}
+
+# Pods needs an lpod that speaks contract 1, which lpod 4 does, at LPOD_REF
+# or newer. An older release, or a plain copy that reports "dev" (as earlier
+# install.sh versions installed it), is upgraded. A git checkout, or a build
+# of a branch ("dev-main"), is kept as it is.
+install_lpod() {
+    local installed=""
+
+    if command -v lpod > /dev/null 2>&1 && lpod version --json 2> /dev/null | jq -e '.contract == 1' > /dev/null 2>&1; then
+        LPOD="$(command -v lpod)"
+        installed="$("$LPOD" version --json | jq -r .lpod)"
+    fi
+
+    if [ -z "$installed" ]; then
+        info "Installing lpod (${LPOD_REF}) in ${BIN_DIR}..."
+        fetch_lpod
+
+        return
+    fi
+
+    if [ "$installed" = "dev" ] && git -C "$(dirname "$(readlink -f "$LPOD")")" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        info "lpod is a git checkout ($(dirname "$(readlink -f "$LPOD")")); keeping it."
+
+        return
+    fi
+
+    if [ "$installed" != "dev" ] && { ! is_release "$installed" || ! is_release "$LPOD_REF" || ! version_lt "$installed" "$LPOD_REF"; }; then
+        info "lpod is installed (${installed})."
+
+        return
+    fi
+
+    if [ "$LPOD" != "${BIN_DIR}/lpod" ]; then
+        warn "lpod ${installed} in ${LPOD} is older than ${LPOD_REF}. Installing ${LPOD_REF} in ${BIN_DIR}; make sure it comes first on your PATH."
+    fi
+
+    info "Updating lpod (${installed}) to ${LPOD_REF}..."
+    fetch_lpod
 }
 
 fetch_units() {
@@ -253,6 +342,8 @@ install_pods() {
     info "Pulling the Pods image..."
     podman pull --quiet "$(sed -n 's/^Image=//p' "${WORK}/containers/quadlets/production/pods.container")" > /dev/null
 
+    publish_port
+
     info "Starting Pods..."
     systemctl --user daemon-reload
     systemctl --user restart pods.service
@@ -269,6 +360,55 @@ install_pods() {
     done
 }
 
+# The port an earlier install publishes Pods on: the on-demand socket's,
+# else the last PublishPort= of its unit and drop-ins. Run it before the
+# install replaces the unit.
+installed_port() {
+    local status unit_path
+
+    status="$("$LPOD" pods ondemand status --json 2> /dev/null || true)"
+
+    if jq -e '.ondemand.enabled' > /dev/null 2>&1 <<< "$status"; then
+        jq -r '.ondemand.port' <<< "$status"
+
+        return
+    fi
+
+    unit_path="$(podman quadlet list --format json 2> /dev/null | jq -r 'first(.[] | select(.Name == "pods.container") | .Path) // empty' 2> /dev/null || true)"
+
+    if [ -z "$unit_path" ] || [ ! -f "$unit_path" ]; then
+        return
+    fi
+
+    cat "$unit_path" "${unit_path}.d"/*.conf 2> /dev/null \
+        | sed -n 's/^PublishPort=127\.0\.0\.1:\([0-9]*\):8000$/\1/p' \
+        | tail -n 1
+}
+
+# The unit publishes the default port; another one goes in a drop-in, which
+# resets PublishPort= first. lpod's on-demand drop-in sorts after it.
+publish_port() {
+    local unit_path dropin
+    unit_path="$(podman quadlet list --format json | jq -r 'first(.[] | select(.Name == "pods.container") | .Path) // empty')"
+    dropin="${unit_path}.d/install-port.conf"
+
+    if [ "$LOCAL_PORT" = "$DEFAULT_PORT" ]; then
+        rm -f "$dropin"
+        rmdir "${unit_path}.d" 2> /dev/null || true
+
+        return
+    fi
+
+    mkdir -p "${unit_path}.d"
+    printf '# Written by install.sh --port.\n[Container]\nPublishPort=\nPublishPort=127.0.0.1:%s:8000\n' "$LOCAL_PORT" > "$dropin"
+}
+
+# Whether Pods has a route through the proxy. The proxy reaches Pods by
+# name, and lpod's socket only listens on 127.0.0.1, so Pods can't sleep.
+has_routes() {
+    "$LPOD" pods routes --json 2> /dev/null | jq -e '.routes | length > 0' > /dev/null 2>&1
+}
+
 # Whether Pods runs on demand now, from an earlier install.
 is_idle() {
     "$LPOD" pods ondemand status --json 2> /dev/null | jq -e '.ondemand.enabled' > /dev/null 2>&1
@@ -283,8 +423,8 @@ disable_idle() {
     fi
 }
 
-# Like cockpit.socket: lpod's socket listens on 127.0.0.1:9090 and starts
-# Pods on the first request, and Pods (published on 127.0.0.1:19090 then)
+# Like cockpit.socket: lpod's socket listens on 127.0.0.1:PORT and starts
+# Pods on the first request, and Pods (published on 127.0.0.1:PORT+10000 then)
 # stops after 10 minutes without one. The scheduler only runs at 01:00 UTC,
 # when Pods' daily housekeeping is due (routes/console.php).
 enable_idle() {
@@ -424,6 +564,14 @@ uninstall() {
     fi
 
     systemctl --user stop pods.service pods-schedule.service 2> /dev/null || true
+
+    local unit_path
+    unit_path="$(podman quadlet list --format json 2> /dev/null | jq -r 'first(.[] | select(.Name == "pods.container") | .Path) // empty' 2> /dev/null || true)"
+
+    if [ -n "$unit_path" ]; then
+        rm -f "${unit_path}.d/install-port.conf"
+    fi
+
     podman quadlet rm --force --recursive pods.container > /dev/null 2>&1 || true
 
     if [ -x "$LPOD" ]; then
@@ -500,6 +648,19 @@ main() {
 
     if [ -n "$AUTHORIZED_KEY" ]; then
         authorize_key "$AUTHORIZED_KEY"
+    fi
+
+    if [ -z "$LOCAL_PORT" ]; then
+        LOCAL_PORT="$(installed_port)"
+        LOCAL_PORT="${LOCAL_PORT:-$DEFAULT_PORT}"
+    elif [ -n "$(installed_port)" ] && [ "$(installed_port)" != "$LOCAL_PORT" ]; then
+        warn "Pods moves from port $(installed_port) to ${LOCAL_PORT}. The APP_URL in the pods-env secret still has the old one."
+    fi
+
+    # A route set with --proxy earlier, or in Pods, needs Pods to stay up.
+    if [ "$IDLE" = true ] && has_routes; then
+        info "Pods has a route through the proxy, so it keeps running."
+        IDLE=false
     fi
 
     disable_idle

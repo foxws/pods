@@ -119,7 +119,7 @@ class SuggestOnDemandSettings
     }
 
     /**
-     * The port inside the container: ExposeHostPort=8000, or the last part of PublishPort=127.0.0.1:9090:8000.
+     * The port inside the container: ExposeHostPort=8000, or the last part of PublishPort=127.0.0.1:9393:8000.
      */
     protected function appPort(string $content): ?int
     {
