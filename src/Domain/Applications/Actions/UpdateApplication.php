@@ -17,6 +17,7 @@ class UpdateApplication
     public function __construct(
         protected LpodClient $lpod,
         protected InstallQuadlets $installQuadlets,
+        protected ApplyManifestTimers $applyManifestTimers,
     ) {}
 
     /**
@@ -31,7 +32,10 @@ class UpdateApplication
      * application page can ask for the new release's after_update steps. Installing the commit it
      * already has only replaces its files, so what it was last updated from stays.
      *
-     * @return array{removed: list<string>, kept: list<string>} the application's files the tag doesn't have
+     * The timers of the new pods.yml replace the old ones. The update is done by then, so a host that
+     * refuses them gives the reason instead of failing it.
+     *
+     * @return array{removed: list<string>, kept: list<string>, timers_error: ?string} the application's files the tag doesn't have, and why its timers weren't set up
      *
      * @throws CannotUpdateApplicationException
      * @throws LpodException
@@ -70,6 +74,7 @@ class UpdateApplication
             throw CannotUpdateApplicationException::missingSecrets($tag, $missingSecrets);
         }
 
+        $previousManifest = $installation->manifest();
         $leftOver = array_values(array_diff($this->installedFileNames($installation), array_column($source->files, 'name')));
         $removable = $removeOldFiles ? array_values(array_intersect($leftOver, array_keys($installation->checksums))) : [];
 
@@ -88,7 +93,15 @@ class UpdateApplication
 
         $installation->refresh()->update(['updated_from' => $updatedFrom]);
 
-        return ['removed' => $removed, 'kept' => array_values(array_diff($leftOver, $removed))];
+        $timersError = null;
+
+        try {
+            ($this->applyManifestTimers)($environment, $application, $installation->manifest(), $previousManifest);
+        } catch (LpodException $exception) {
+            $timersError = $exception->getMessage();
+        }
+
+        return ['removed' => $removed, 'kept' => array_values(array_diff($leftOver, $removed)), 'timers_error' => $timersError];
     }
 
     /**

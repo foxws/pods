@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Web\Quadlets\Controllers;
 
+use Domain\Applications\Actions\ApplyManifestTimers;
 use Domain\Environments\Models\Environment;
 use Domain\Quadlets\Actions\InstallQuadlets;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Gate;
+use Integrations\Lpod\Exceptions\LpodException;
 use Integrations\Lpod\LpodClient;
 use Modules\Web\Applications\Controllers\ApplicationController;
 use Modules\Web\Environments\Concerns\WritesToHost;
@@ -27,12 +29,18 @@ class QuadletController implements HasMiddleware
         ];
     }
 
-    public function store(InstallQuadletsRequest $request, Environment $environment, InstallQuadlets $installQuadlets, LpodClient $lpod): RedirectResponse
-    {
+    public function store(
+        InstallQuadletsRequest $request,
+        Environment $environment,
+        InstallQuadlets $installQuadlets,
+        ApplyManifestTimers $applyManifestTimers,
+        LpodClient $lpod,
+    ): RedirectResponse {
         Gate::authorize('operate', $environment);
 
         $application = $request->string('application')->toString();
         $start = $request->boolean('start', true);
+        $previousManifest = $environment->installations()->firstWhere('application', $application)?->manifest();
 
         $installed = $this->toHost(
             fn () => $installQuadlets(
@@ -52,6 +60,14 @@ class QuadletController implements HasMiddleware
 
         if (! $installed) {
             return back();
+        }
+
+        if (! $request->boolean('edit')) {
+            try {
+                $applyManifestTimers($environment, $application, $environment->installations()->firstWhere('application', $application)?->manifest(), $previousManifest);
+            } catch (LpodException $exception) {
+                toast(title: __(':application installed, but its timers weren\'t set up', ['application' => $application]), description: $exception->getMessage(), type: 'error');
+            }
         }
 
         $routes = $request->routes();

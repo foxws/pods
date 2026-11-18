@@ -105,6 +105,9 @@ function fakeLpod(): FakeHostRunner
         'proxy settings set --stdin --json' => $fixture('proxy-settings-saved'),
         'proxy certificate --json' => $fixture('proxy-certificate'),
         '* routes set --stdin --json' => $fixture('ok'),
+        '* timers --json' => $fixture('app-timers'),
+        '* timers set --stdin --json' => $fixture('ok'),
+        '* timers run * --json' => $fixture('ok'),
         'settings --json' => $fixture('host-settings'),
         'settings set *' => $fixture('ok'),
     ]);

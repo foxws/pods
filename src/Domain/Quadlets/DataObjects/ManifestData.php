@@ -32,6 +32,7 @@ class ManifestData extends Data
      * @param  list<ManifestSetupStepData>  $after_update  the steps to run after each update, such as migrating the database
      * @param  list<ManifestRouteData>  $routes  the upstreams the Pods proxy can give a hostname; the first is the main one unless another says main
      * @param  OnDemandSettingsData|null  $ondemand  what to fill the on-demand switch in with; its keys match lpod's ondemand status
+     * @param  list<ManifestTimerData>  $timers  the containers systemd timers start on a schedule, set up when it's installed
      */
     public function __construct(
         public ?string $name,
@@ -50,6 +51,7 @@ class ManifestData extends Data
         public array $after_update,
         public ?OnDemandSettingsData $ondemand,
         public array $routes,
+        public array $timers,
     ) {}
 
     /**
@@ -111,7 +113,25 @@ class ManifestData extends Data
             after_update: self::setupSteps($manifest['after_update'] ?? []),
             ondemand: is_array($manifest['ondemand'] ?? null) ? OnDemandSettingsData::fromLpod($manifest['ondemand']) : null,
             routes: self::routes($manifest['routes'] ?? []),
+            timers: self::timers($manifest['timers'] ?? []),
         );
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $timers  checked by ensureIsValid()
+     * @return list<ManifestTimerData>
+     */
+    protected static function timers(array $timers): array
+    {
+        return array_map(fn (string $name, array $timer): ManifestTimerData => new ManifestTimerData(
+            name: $name,
+            description: $timer['description'] ?? null,
+            container: (string) $timer['container'],
+            on_calendar: array_values(array_map(strval(...), (array) $timer['on_calendar'])),
+            persistent: $timer['persistent'] ?? null,
+            randomized_delay_sec: isset($timer['randomized_delay_sec']) ? (string) $timer['randomized_delay_sec'] : null,
+            timeout_start_sec: isset($timer['timeout_start_sec']) ? (string) $timer['timeout_start_sec'] : null,
+        ), array_keys($timers), $timers);
     }
 
     /**
@@ -246,6 +266,15 @@ class ManifestData extends Data
             'routes.*.description' => ['nullable', 'string', 'max:500'],
             'routes.*.main' => ['nullable', 'boolean'],
             'routes.*.via' => ['nullable', 'string', 'in:main'],
+            'timers' => ['nullable', 'array', 'max:20'],
+            'timers.*' => ['array'],
+            'timers.*.description' => ['nullable', 'string', 'max:500'],
+            'timers.*.container' => ['required', 'string', 'distinct', 'regex:'.OnDemandSettingsData::ContainerPattern],
+            'timers.*.on_calendar' => ['required'],
+            'timers.*.on_calendar.*' => ['string', 'max:128', 'not_regex:/[\r\n]/'],
+            'timers.*.persistent' => ['nullable', 'boolean'],
+            'timers.*.randomized_delay_sec' => ['nullable', 'string', 'max:32', 'regex:'.OnDemandSettingsData::TimeSpanPattern],
+            'timers.*.timeout_start_sec' => ['nullable', 'string', 'max:32', 'regex:/^(infinity|(\d+(us|ms|s|sec|m|min|h|hr|d|w)?){1,4})$/'],
             'ondemand' => ['nullable', 'array'],
             'ondemand.port' => ['nullable', 'integer', 'between:1,55535'],
             'ondemand.app_port' => ['nullable', 'integer', 'between:1,65535'],
@@ -300,6 +329,24 @@ class ManifestData extends Data
 
         if (count(array_filter($routes, fn (array $route): bool => ($route['main'] ?? false) === true)) > 1) {
             throw InvalidManifestException::because('only one route can be the main one.');
+        }
+
+        foreach ($manifest['timers'] ?? [] as $name => $timer) {
+            if (! preg_match(ManifestTimerData::NamePattern, (string) $name) || $name === 'idle') {
+                throw InvalidManifestException::because("\"{$name}\" isn't a valid timer name: use lowercase letters, digits, - and _ (idle is taken by on-demand).");
+            }
+
+            $calendar = $timer['on_calendar'] ?? null;
+
+            if (! is_string($calendar) && (! is_array($calendar) || ! array_is_list($calendar) || $calendar === [] || count($calendar) > 10)) {
+                throw InvalidManifestException::because("timer \"{$name}\" needs on_calendar: a calendar event such as hourly, or a list of up to 10.");
+            }
+
+            foreach ((array) $calendar as $event) {
+                if (! is_string($event) || $event === '' || strlen($event) > 128 || preg_match('/[\r\n]/', $event) === 1) {
+                    throw InvalidManifestException::because("timer \"{$name}\" has an on_calendar that isn't a calendar event.");
+                }
+            }
         }
 
         foreach (array_keys($manifest['ondemand']['schedule']['environment'] ?? []) as $key) {

@@ -53,6 +53,7 @@ See [docs/architecture.md](docs/architecture.md) for the details.
 - **Secrets**: create, update and delete, and add them to the applications that need them
 - **Journal**: the host's journal, filtered by priority and time
 - **On demand**: let an application sleep until its first request, through a systemd socket (see [On-demand applications](#on-demand-applications))
+- **Timers**: start an application's jobs on a schedule with systemd timers, from its `pods.yml`, and run them by hand
 - **Proxy**: an optional Caddy per host that gives applications hostnames and certificates (see [Proxy](#proxy))
 - **Settings per host**: `podman auto-update` (schedule and rollback) and lingering
 
@@ -298,11 +299,22 @@ ondemand: # fills in the on-demand switch; the keys match lpod's ondemand status
         at: ['*:00', '01:00']
         environment:
             APP_COMMAND: php /app/artisan schedule:run
+
+timers: # containers a systemd timer starts on a schedule; the keys are the directives they become
+    retrieve: # lpod writes APP-NAME.timer, here spotweb-retrieve.timer
+        description: Fetches new spots
+        container: spotweb-retrieve # a container Quadlet of the app that runs once and exits (Type=oneshot)
+        on_calendar: hourly # OnCalendar=, or a list of calendar events
+        persistent: true # Persistent=: catch up on a run missed while the host was off
+        randomized_delay_sec: 5min # RandomizedDelaySec=
+        timeout_start_sec: infinity # TimeoutStartSec= for the container, in a drop-in
 ```
 
 Every key is optional. When you fetch a directory, Pods reads the nearest `pods.yml`: the one in that directory, or else in a directory above it. Secret values stay in the browser until you install, and go to the host on stdin like any other secret. After an update, the application page asks for the new release's `after_update` steps, which take inputs like setup steps, and only counts a step as done once it ran since that update. A step's inputs aren't stored; at most one input goes on stdin, and a password always does, so it never shows in the arguments. A manifest Pods can't read is shown as a warning and ignored, so the files can still be installed.
 
-[stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example. Backup hints and routes are planned; see the [roadmap](docs/roadmap.md).
+Pods sets up the `timers` after installing and after each update, so they follow the release: a timer the new `pods.yml` no longer names is removed. The application page has a Timers card with each timer's schedule, next and last run, and **Run now**. A timer starts what its container `Requires=`, so it also wakes an on-demand application, which sleeps again after its idle timeout. `timers` are for jobs that live on the host; a Laravel scheduler stays in `ondemand.schedule`, since it only runs from a timer while the application is on demand.
+
+[stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example, and [Spotweb's](https://github.com/francoism90/spotweb/blob/main/pods.yml) has a timer. Backup hints are planned; see the [roadmap](docs/roadmap.md).
 
 ### Catalog
 

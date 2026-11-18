@@ -5,6 +5,7 @@ import { destroy as disableOnDemand } from '@/actions/Modules/Web/Applications/C
 import ApplicationRoutesCard from '@/components/Applications/ApplicationRoutesCard.vue'
 import ApplicationSetupCard from '@/components/Applications/ApplicationSetupCard.vue'
 import ApplicationSourceCard from '@/components/Applications/ApplicationSourceCard.vue'
+import ApplicationTimersCard from '@/components/Applications/ApplicationTimersCard.vue'
 import ApplicationForceStopModal from '@/components/Applications/ApplicationForceStopModal.vue'
 import ApplicationOnDemandModal from '@/components/Applications/ApplicationOnDemandModal.vue'
 import ApplicationRemoveModal from '@/components/Applications/ApplicationRemoveModal.vue'
@@ -31,6 +32,7 @@ import type {
   OnDemandSuggestionData,
   QuadletFileData,
   SecretData,
+  TimerData,
 } from '@/types'
 import { containerState, shortImage } from '@/utils/containers'
 import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/format'
@@ -49,6 +51,7 @@ const props = defineProps<{
   installation?: HostProperty<InstallationData | null>
   updates?: HostProperty<GitTagData[]>
   routes?: HostProperty<ApplicationRoutesData>
+  timers?: HostProperty<TimerData[]>
   logs?: HostProperty<JournalEntryData[]>
   secrets?: HostProperty<SecretData[]>
 }>()
@@ -422,6 +425,14 @@ const isRemoving = ref(false)
             :environment="environment"
             :application="name"
             :routes="routes"
+          />
+
+          <ApplicationTimersCard
+            v-if="manifest?.timers.length"
+            :environment="environment"
+            :application="name"
+            :timers="timers"
+            :manifest-timers="manifest.timers"
           />
 
           <UCard>

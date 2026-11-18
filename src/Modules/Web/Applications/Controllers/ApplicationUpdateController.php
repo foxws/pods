@@ -75,6 +75,7 @@ class ApplicationUpdateController implements HasMiddleware
                 __('Its units are starting with the new files.'),
                 $oldFiles['removed'] !== [] ? __('Removed what :tag no longer has: :files.', ['tag' => $tag, 'files' => implode(', ', $oldFiles['removed'])]) : null,
                 $oldFiles['kept'] !== [] ? __('These files aren\'t in :tag and stay on the host: :files.', ['tag' => $tag, 'files' => implode(', ', $oldFiles['kept'])]) : null,
+                $oldFiles['timers_error'] !== null ? __('Its timers weren\'t set up: :error', ['error' => $oldFiles['timers_error']]) : null,
                 $updateSteps !== []
                     ? __('Finish the update on its page: :steps.', ['steps' => implode(', ', array_map(fn (ManifestSetupStepData $step): string => $step->label, $updateSteps))])
                     : __('Run its setup steps again if the release needs it.'),

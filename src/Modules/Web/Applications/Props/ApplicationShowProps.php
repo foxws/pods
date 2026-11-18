@@ -10,6 +10,7 @@ use Domain\Applications\Actions\SuggestRoutes;
 use Domain\Applications\Actions\SyncInstallation;
 use Domain\Applications\DataObjects\InstallationData;
 use Domain\Applications\DataObjects\QuadletFileData;
+use Domain\Applications\DataObjects\TimerData;
 use Domain\Applications\Models\Installation;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
@@ -20,7 +21,7 @@ use Modules\Web\Environments\Concerns\ReadsFromHost;
 
 /**
  * The props of an application's page. Most are read from the host after the page renders,
- * in groups that load in parallel: the status first, then the details, the routes and the updates.
+ * in groups that load in parallel: the status first, then the details (with the timers), the routes and the updates.
  */
 class ApplicationShowProps implements ProvidesInertiaProperties
 {
@@ -75,6 +76,7 @@ class ApplicationShowProps implements ProvidesInertiaProperties
                 $this->lpod->proxyRoutes($this->environment),
                 $this->installation()?->manifest(),
             ), 'routes'),
+            'timers' => $this->deferFromHost(fn (): array => $this->timers(), 'details'),
             'updates' => $this->deferFromHost(fn (): array => $this->installation() !== null ? ($this->listApplicationUpdates)($this->installation()) : [], 'updates'),
             'logs' => $this->deferFromHost(fn (): array => $this->lpod->logs($this->environment, $this->application), 'details'),
             'secrets' => $this->deferFromHost(fn (): array => $this->lpod->secrets($this->environment), 'details'),
@@ -101,6 +103,22 @@ class ApplicationShowProps implements ProvidesInertiaProperties
         }
 
         return $this->installation ?: null;
+    }
+
+    /**
+     * The application's timers. Pods sets them up from its pods.yml, so only an application whose
+     * stored pods.yml names timers asks the host, which keeps the page working on a host whose
+     * lpod has no timers command.
+     *
+     * @return list<TimerData>
+     */
+    protected function timers(): array
+    {
+        if (($this->installation()?->manifest()->timers ?? []) === []) {
+            return [];
+        }
+
+        return $this->lpod->timers($this->environment, $this->application);
     }
 
     /**
