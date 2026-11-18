@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Web\Environments\Controllers;
 
 use Domain\Environments\DataObjects\EnvironmentData;
+use Domain\Environments\DataObjects\LpodVersionData;
 use Domain\Environments\Models\Environment;
 use Foundation\Settings\ProxySettings;
 use Illuminate\Http\RedirectResponse;
@@ -37,6 +38,7 @@ class EnvironmentSettingsController implements HasMiddleware
 
         return Inertia::render('Environments/EnvironmentSettings', [
             'environment' => EnvironmentData::fromModel($environment),
+            'lpod' => LpodVersionData::fromEnvironment($environment),
             'settings' => $this->deferFromHost(fn () => $lpod->hostSettings($environment)),
             'proxy' => $this->deferFromHost(fn () => $lpod->proxySettings($environment), 'proxy'),
             'proxyDefaults' => $proxyDefaults->toArray(),

@@ -268,6 +268,11 @@ export type LengthAwarePaginator<TKey, TValue> = {
 }
 export type LengthAwarePaginatorInterface<TKey, TValue> = LengthAwarePaginator<TKey, TValue>
 export type Locale = 'en-US' | 'nl-NL'
+export type LpodVersionData = {
+  installed: string | null
+  required: string
+  update_available: boolean
+}
 export type ManifestData = {
   name: string | null
   label: string | null

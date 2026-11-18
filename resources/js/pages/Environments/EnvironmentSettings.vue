@@ -1,15 +1,24 @@
 <script setup lang="ts">
 import { update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentSettingsController'
 import HostError from '@/components/Environments/HostError.vue'
+import LpodVersionCard from '@/components/Environments/LpodVersionCard.vue'
 import ProxySettingsCard from '@/components/Environments/ProxySettingsCard.vue'
 import SettingsLayout from '@/components/Settings/SettingsLayout.vue'
-import type { EnvironmentData, HostProperty, HostSettingsData, ProxyDefaults, ProxySettingsData } from '@/types'
+import type {
+  EnvironmentData,
+  HostProperty,
+  HostSettingsData,
+  LpodVersionData,
+  ProxyDefaults,
+  ProxySettingsData,
+} from '@/types'
 import { formatRelative } from '@/utils/format'
 import { Head, useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
+  lpod: LpodVersionData
   settings?: HostProperty<HostSettingsData>
   proxy?: HostProperty<ProxySettingsData>
   proxyDefaults: ProxyDefaults
@@ -215,6 +224,11 @@ const submit = (): void => {
         />
       </div>
     </form>
+
+    <LpodVersionCard
+      :environment="environment"
+      :lpod="lpod"
+    />
 
     <ProxySettingsCard
       :environment="environment"

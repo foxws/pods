@@ -55,7 +55,7 @@ See [docs/architecture.md](docs/architecture.md) for the details.
 - **On demand**: let an application sleep until its first request, through a systemd socket (see [On-demand applications](#on-demand-applications))
 - **Timers**: start an application's jobs on a schedule with systemd timers, from its `pods.yml`, and run them by hand
 - **Proxy**: an optional Caddy per host that gives applications hostnames and certificates (see [Proxy](#proxy))
-- **Settings per host**: `podman auto-update` (schedule and rollback) and lingering
+- **Settings per host**: `podman auto-update` (schedule and rollback), lingering, and updating lpod to the release Pods needs
 
 Pods targets **Podman 6+ on systemd**. Docker and Podman Compose aren't supported.
 
@@ -117,6 +117,8 @@ Once `install.sh` is done:
 2. **Check the local host.** **Hosts** lists the machine Pods runs on as the local environment, already connected. Its overview shows CPU, memory, disk and any failed units.
 3. **Install an application from the catalog.** Open **Applications**, then **Install application**, and search the **Catalog** for Memos. Pick it, check the Quadlet file Pods shows you, keep **Start after installing** on, and press **Install memos**. Memos listens on `127.0.0.1:5230` on the host. Its page has its containers, its journal, and Start, Stop, Restart, and Pull and redeploy.
 4. **Add another host (optional).** As the user that owns the Quadlets there, run `install.sh --no-pods --authorized-key '…'` with Pods' public key (**Hosts**, **Copy public key**), or install lpod (see [Requirements](#requirements)) and add the key to `~/.ssh/authorized_keys` yourself. Then use **Add environment** with its hostname and that user. Another user on the machine Pods runs on is `host.containers.internal`, with its own lingering (`sudo loginctl enable-linger USER`), and its proxy on ports such as 28080 behind the main one. Pods pins the host's key on first contact.
+
+Each Pods release needs a matching lpod. When a host has another one, its **Settings** page offers **Update to vX**, which runs `lpod self-update` over SSH as that host's user, since each user has their own lpod. Pods then checks the version the host reports.
 
 Next, give an application a hostname with the [proxy](#proxy), or make your own repository installable, as below.
 

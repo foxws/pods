@@ -51,6 +51,7 @@ function fakeLpod(): FakeHostRunner
 
     $runner = new FakeHostRunner([
         'version --json' => $fixture('version'),
+        'self-update * --json' => $fixture('version'),
         'host --json' => $fixture('host'),
         'apps --json' => $fixture('apps'),
         'secrets --json' => $fixture('secrets'),
