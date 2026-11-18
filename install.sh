@@ -380,9 +380,15 @@ installed_port() {
         return
     fi
 
-    cat "$unit_path" "${unit_path}.d"/*.conf 2> /dev/null \
-        | sed -n 's/^PublishPort=127\.0\.0\.1:\([0-9]*\):8000$/\1/p' \
-        | tail -n 1
+    # Without drop-ins the glob stays as it is, and cat fails on it, which
+    # would end install.sh under pipefail; so only existing files are read.
+    local file
+
+    for file in "$unit_path" "${unit_path}.d"/*.conf; do
+        if [ -f "$file" ]; then
+            cat "$file"
+        fi
+    done | sed -n 's/^PublishPort=127\.0\.0\.1:\([0-9]*\):8000$/\1/p' | tail -n 1
 }
 
 # The unit publishes the default port; another one goes in a drop-in, which
