@@ -9,6 +9,7 @@ use Modules\Web\Applications\Controllers\ApplicationOnDemandController;
 use Modules\Web\Applications\Controllers\ApplicationOperationController;
 use Modules\Web\Applications\Controllers\ApplicationRoutesController;
 use Modules\Web\Applications\Controllers\ApplicationSetupController;
+use Modules\Web\Applications\Controllers\ApplicationSourceController;
 use Modules\Web\Applications\Controllers\ApplicationUpdateController;
 use Modules\Web\Containers\Controllers\ContainerOperationController;
 use Modules\Web\Containers\Controllers\ContainerPruneController;
@@ -54,6 +55,7 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     Route::put('/applications/{application}/installation', [ApplicationInstallationController::class, 'update'])->name('applications.installation.update');
     Route::put('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'update'])->name('applications.ondemand.update');
     Route::delete('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'destroy'])->name('applications.ondemand.destroy');
+    Route::put('/applications/{application}/source', [ApplicationSourceController::class, 'update'])->name('applications.source.update');
     Route::put('/applications/{application}/routes', [ApplicationRoutesController::class, 'update'])->name('applications.routes.update');
     Route::post('/applications/{application}/update', [ApplicationUpdateController::class, 'store'])->name('applications.update.store');
     Route::post('/applications/{application}/setup/{step}', [ApplicationSetupController::class, 'store'])->name('applications.setup.store');

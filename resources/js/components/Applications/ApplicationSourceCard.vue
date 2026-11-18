@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { update as acceptFiles } from '@/actions/Modules/Web/Applications/Controllers/ApplicationInstallationController'
 import { store as updateApplication } from '@/actions/Modules/Web/Applications/Controllers/ApplicationUpdateController'
+import ApplicationSourceModal from '@/components/Applications/ApplicationSourceModal.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
 import type { EnvironmentData, GitTagData, HostProperty, InstallationData } from '@/types'
@@ -29,6 +30,8 @@ const changes = computed(() =>
 
 const isAccepting = ref(false)
 
+const isLinking = ref(false)
+
 const newerTags = computed(() => props.updates?.data ?? [])
 
 /**
@@ -38,6 +41,11 @@ const isBranchUpdate = computed(() => newerTags.value[0]?.name === tracked.value
 
 const isConfirmingUpdate = ref(false)
 const isUpdating = ref(false)
+
+/**
+ * Replacing installs the files of the reference the application is at, over the ones that differ from it.
+ */
+const isReplacing = ref(false)
 const updateTag = ref('')
 const removeOldFiles = ref(true)
 const updateError = ref<string>()
@@ -47,11 +55,36 @@ const tagItems = computed(() =>
 )
 
 const confirmUpdate = (): void => {
+  isReplacing.value = false
   updateTag.value = newerTags.value[0]?.name ?? ''
   removeOldFiles.value = true
   updateError.value = undefined
   isConfirmingUpdate.value = true
 }
+
+const confirmReplace = (): void => {
+  isReplacing.value = true
+  updateTag.value = tracked.value?.reference ?? ''
+  removeOldFiles.value = true
+  updateError.value = undefined
+  isConfirmingUpdate.value = true
+}
+
+const updateDescription = computed(() => {
+  if (isReplacing.value) {
+    return `Pods fetches the files of ${updateTag.value} again, checks them, stops every unit, installs them over the current files and starts the units again.`
+  }
+
+  return `Pods fetches the files of ${isBranchUpdate.value ? `the newest commit of ${updateTag.value}` : 'the tag'} at the same path, checks them, stops every unit, installs them over the current files and starts the units again.`
+})
+
+const removeOldFilesLabel = computed(() => {
+  if (isReplacing.value) {
+    return "Remove files the source doesn't have"
+  }
+
+  return `Remove files the ${isBranchUpdate.value ? 'commit' : 'tag'} no longer has`
+})
 
 const update = (close: () => void): void => {
   router.post(
@@ -118,7 +151,18 @@ const accept = (): void => {
         </template>
         <template v-else>
           <dt class="text-muted">Files</dt>
-          <dd>{{ tracked.installed_at ? 'Uploaded or written in Pods' : 'Installed outside Pods' }}</dd>
+          <dd class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {{ tracked.installed_at ? 'Uploaded or written in Pods' : 'Installed outside Pods' }}
+            <UButton
+              label="Link to Git"
+              icon="i-lucide-git-branch"
+              color="neutral"
+              variant="link"
+              size="xs"
+              class="p-0"
+              @click="isLinking = true"
+            />
+          </dd>
         </template>
 
         <template v-if="tracked.installed_at">
@@ -160,6 +204,17 @@ const accept = (): void => {
         icon="i-lucide-file-diff"
         title="Changed outside Pods"
         :actions="[
+          ...(tracked.repository && tracked.reference
+            ? [
+                {
+                  label: `Replace with ${tracked.reference}`,
+                  color: 'warning' as const,
+                  variant: 'solid' as const,
+                  size: 'xs' as const,
+                  onClick: confirmReplace,
+                },
+              ]
+            : []),
           {
             label: 'Keep these files',
             color: 'warning',
@@ -195,18 +250,28 @@ const accept = (): void => {
       class="flex flex-col gap-3 text-sm"
     >
       <p class="text-muted">
-        Installed outside Pods, so Pods doesn't know where it came from or when its files change.
+        Installed outside Pods, so Pods doesn't know where it came from or when its files change. Link it to the Git
+        repository its files came from to update it, or only track its files.
       </p>
-      <UButton
-        label="Track these files"
-        icon="i-lucide-file-check"
-        color="neutral"
-        variant="outline"
-        size="sm"
-        class="self-start"
-        :loading="isAccepting"
-        @click="accept"
-      />
+      <div class="flex flex-wrap gap-2">
+        <UButton
+          label="Link to Git"
+          icon="i-lucide-git-branch"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="isLinking = true"
+        />
+        <UButton
+          label="Track these files"
+          icon="i-lucide-file-check"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          :loading="isAccepting"
+          @click="accept"
+        />
+      </div>
     </div>
     <USkeleton
       v-else
@@ -215,14 +280,14 @@ const accept = (): void => {
 
     <ConfirmModal
       v-model:open="isConfirmingUpdate"
-      :title="`Update ${application}?`"
-      :description="`Pods fetches the files of ${isBranchUpdate ? `the newest commit of ${updateTag}` : 'the tag'} at the same path, checks them, stops every unit, installs them over the current files and starts the units again.`"
-      confirm-label="Update"
+      :title="isReplacing ? `Replace the files of ${application}?` : `Update ${application}?`"
+      :description="updateDescription"
+      :confirm-label="isReplacing ? 'Replace' : 'Update'"
       :processing="isUpdating"
       @confirm="update"
     >
       <UFormField
-        v-if="!isBranchUpdate"
+        v-if="!isBranchUpdate && !isReplacing"
         label="Tag"
         :error="updateError"
       >
@@ -233,14 +298,14 @@ const accept = (): void => {
         />
       </UFormField>
       <p
-        v-if="isBranchUpdate && updateError"
+        v-if="(isBranchUpdate || isReplacing) && updateError"
         class="text-sm text-error"
       >
         {{ updateError }}
       </p>
       <UCheckbox
         v-model="removeOldFiles"
-        :label="`Remove files the ${isBranchUpdate ? 'commit' : 'tag'} no longer has`"
+        :label="removeOldFilesLabel"
         description="Only files Pods installed. Drop-ins you added on the host stay."
       />
       <UAlert
@@ -252,5 +317,11 @@ const accept = (): void => {
         description="Keep a copy of your changes, or add them as a drop-in, before updating."
       />
     </ConfirmModal>
+
+    <ApplicationSourceModal
+      v-model:open="isLinking"
+      :environment="environment"
+      :application="application"
+    />
   </UCard>
 </template>

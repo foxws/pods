@@ -30,7 +30,8 @@ class ApplicationUpdateController implements HasMiddleware
 
     /**
      * Updates an application installed from Git to a newer tag of its repository, or to the newest
-     * commit of the branch it was installed from. The "tag" is then that branch.
+     * commit of the branch it was installed from. The "tag" is then that branch. An application with
+     * files that differ from its source can also get its own reference again, to replace them.
      */
     public function store(
         Request $request,
@@ -46,6 +47,10 @@ class ApplicationUpdateController implements HasMiddleware
         try {
             $tags = array_map(fn (GitTagData $tag): string => $tag->name, $listApplicationUpdates($installation));
 
+            if ($installation->isChangedOutsidePods() && $installation->reference !== null) {
+                $tags[] = $installation->reference;
+            }
+
             $request->validate(
                 ['tag' => ['required', 'string', Rule::in($tags)], 'remove_old_files' => ['boolean']],
                 ['tag.in' => __('Pick one of the newer tags of the repository.')],
@@ -60,7 +65,7 @@ class ApplicationUpdateController implements HasMiddleware
 
         $tag = $request->string('tag')->toString();
         $commit = $installation->refresh()->commit;
-        $updateSteps = $installation->manifest()->after_update ?? [];
+        $updateSteps = $installation->updated_from !== null ? ($installation->manifest()->after_update ?? []) : [];
 
         toast(
             title: GitTagData::versionOf($tag) === null && $commit !== null

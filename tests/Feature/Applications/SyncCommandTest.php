@@ -18,6 +18,7 @@ it('keeps an installation whose files are unchanged in sync', function () {
 
     $this->artisan('pods:sync')
         ->expectsOutputToContain('podman-01: 1 applications checked.')
+        ->doesntExpectOutputToContain('changed outside Pods')
         ->assertSuccessful();
 
     expect($installation->refresh())

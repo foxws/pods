@@ -28,7 +28,8 @@ class UpdateApplication
      * Files on the host the tag no longer has are removed when asked, before the install starts the
      * units again, but only the ones Pods installed: a drop-in added on the host stays. The files
      * that stay are returned too. The installation remembers what it was updated from, so the
-     * application page can ask for the new release's after_update steps.
+     * application page can ask for the new release's after_update steps. Installing the commit it
+     * already has only replaces its files, so what it was last updated from stays.
      *
      * @return array{removed: list<string>, kept: list<string>} the application's files the tag doesn't have
      *
@@ -40,7 +41,6 @@ class UpdateApplication
         $environment = $installation->environment;
         $application = $installation->application;
         $path = (string) $installation->path;
-        $updatedFrom = $installation->reference === $tag ? $installation->commit : $installation->reference;
 
         if ($installation->repository === null) {
             throw CannotUpdateApplicationException::notFromGit($application);
@@ -51,6 +51,12 @@ class UpdateApplication
         if ($source->files === []) {
             throw CannotUpdateApplicationException::noFiles($tag, $path);
         }
+
+        $updatedFrom = match (true) {
+            $installation->reference !== $tag => $installation->reference,
+            $installation->commit !== null && $installation->commit === $source->commit => $installation->updated_from,
+            default => $installation->commit,
+        };
 
         $check = $this->lpod->checkQuadlets($environment, $source->files);
 

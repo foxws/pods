@@ -110,6 +110,18 @@ it('shows where an installed application came from and what changed outside Pods
             ->where('installation.data.removed', [])));
 });
 
+it('shows no changes outside Pods when the files on the host are the installed ones', function () {
+    Installation::factory()->for($this->environment)->fromGit()->withFiles(lpodFixtureFiles())
+        ->create(['application' => 'immich', 'checked_at' => now()->subDay()]);
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'immich']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps(['default', 'details'], fn ($reload) => $reload
+            ->where('installation.data.changed', false)
+            ->where('installation.data.modified', [])));
+});
+
 it('shows no installation for an application installed outside Pods', function () {
     fakeLpod();
 

@@ -58,7 +58,9 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 
 ## Installations
 
-`Domain\Applications\Models\Installation` keeps, per environment and application, the Git source (repository, reference, path, commit), the raw pods.yml (parsed on read, so new keys need no migration), a sha256 checksum per file, the files changed outside Pods, and how each setup step ended (`setup`, never its inputs). `SyncInstallation` compares with `lpod APP files --json` on the application page and in `pods:sync` (daily, 01:00 UTC), ignoring lpod's own drop-ins (`*.d/lpod-*.conf`).
+`Domain\Applications\Models\Installation` keeps, per environment and application, the Git source (repository, reference, path, commit), the raw pods.yml (parsed on read, so new keys need no migration), a sha256 checksum per file, the files changed outside Pods, and how each setup step ended (`setup`, never its inputs). `SyncInstallation` compares with `lpod APP files --json` on the application page and in `pods:sync` (daily, 01:00 UTC), ignoring lpod's own drop-ins (`*.d/lpod-*.conf`). Inside the model, read the column with `getAttribute('changes')`: `$this->changes` is Eloquent's own list of attributes the last save changed.
+
+- **Adopting:** `AcceptInstalledFiles` ("Keep these files" / "Track these files") takes the host's files as they are, without a source. `LinkApplicationSource` (`PUT applications/{app}/source`, `ApplicationSourceController`, validated by `FetchQuadletsRequest`, UI `ApplicationSourceModal.vue`) fetches a repository, reference and path for an application installed outside Pods, and keeps the source with the *source's* checksums (keeping `setup` and `installed_at`), then syncs, so the files that differ show as changed outside Pods. While an installation has changes, `ApplicationUpdateController` also accepts its own reference as the tag ("Replace with REF" on the Source card); `UpdateApplication` then keeps `updated_from` when the fetched commit is the stored one, so a replace doesn't ask for `after_update` steps.
 
 ## Built features to follow
 
