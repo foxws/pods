@@ -275,3 +275,32 @@ it('forbids users who are not the owner to update', function () {
 
     $lpod->assertNothingRan();
 });
+
+it('replaces the timers with the ones of the new release', function () {
+    $lpod = fakeLpod()
+        ->respond('quadlet fetch *', immichRelease(manifest: "version: 1\nname: immich\ntimers:\n  thumbnails:\n    container: immich-server\n    on_calendar: [daily, 'Mon *-*-* 02:00']\n"))
+        ->respond('immich down --json', lpodFixture('ok'));
+    Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'v3.1.0']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0'])
+        ->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(fn (array $arguments, ?string $input) => $arguments === ['immich', 'timers', 'set', '--stdin', '--json']
+        && json_decode($input, true)['timers'][0]['on_calendar'] === ['daily', 'Mon *-*-* 02:00']);
+});
+
+it('still updates when the host refuses the timers of the new release', function () {
+    fakeLpod()
+        ->respond('quadlet fetch *', immichRelease(manifest: "version: 1\nname: immich\ntimers:\n  thumbnails:\n    container: immich-server\n    on_calendar: daily\n"))
+        ->respond('immich down --json', lpodFixture('ok'))
+        ->respond('* timers set --stdin --json', new HostResult(1, '', 'lpod immich timers has no JSON output.'));
+    $installation = Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'v3.1.0']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0'])
+        ->assertInertiaFlash('type', 'success')
+        ->assertInertiaFlash('description', 'Its units are starting with the new files. Its timers weren\'t set up: lpod immich timers set --stdin --json failed: lpod immich timers has no JSON output. Run its setup steps again if the release needs it.');
+
+    expect($installation->refresh()->reference)->toBe('v3.2.0');
+});

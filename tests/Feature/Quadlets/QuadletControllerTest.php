@@ -450,3 +450,90 @@ it('resolves the sources of an application pods.yml relative to its directory', 
         ->assertJsonPath('data.manifest.sources.0.path', 'mariadb/production')
         ->assertJsonPath('data.manifest.sources.1.path', 'mariadb/development');
 });
+
+it('sets up the timers its pods.yml names after the install', function () {
+    $lpod = fakeLpod();
+    $manifest = "version: 1\nname: spotweb\ntimers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: hourly\n    persistent: true\n    randomized_delay_sec: 5min\n    timeout_start_sec: infinity\n";
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'spotweb',
+        'files' => $this->files,
+        'source' => ['repository' => 'https://github.com/francoism90/spotweb', 'reference' => 'main', 'path' => 'containers/systemd/spotweb', 'commit' => 'a41f9c2', 'manifest' => $manifest, 'manifest_path' => ''],
+    ])->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(fn (array $arguments, ?string $input) => $arguments === ['spotweb', 'timers', 'set', '--stdin', '--json']
+        && json_decode($input, true) === ['timers' => [[
+            'name' => 'retrieve',
+            'container' => 'spotweb-retrieve',
+            'on_calendar' => ['hourly'],
+            'persistent' => true,
+            'randomized_delay_sec' => '5min',
+            'timeout_start_sec' => 'infinity',
+        ]]]);
+    expect(collect($lpod->recorded())->pluck('arguments')->search(['quadlet', 'install', 'spotweb', '--start', '--stdin', '--json']))
+        ->toBeLessThan(collect($lpod->recorded())->pluck('arguments')->search(['spotweb', 'timers', 'set', '--stdin', '--json']));
+});
+
+it('leaves timers alone when neither pods.yml names any', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => $this->files,
+    ])->assertInertiaFlash('type', 'success');
+
+    expect(collect($lpod->recorded())->pluck('arguments')->contains(fn (array $arguments): bool => ($arguments[1] ?? null) === 'timers'))->toBeFalse();
+});
+
+it('removes the timers of the previous pods.yml when the new one names none', function () {
+    $lpod = fakeLpod();
+    Installation::factory()->for($this->environment)->create([
+        'application' => 'uptime-kuma',
+        'manifest' => "version: 1\ntimers:\n  backup:\n    container: uptime-kuma\n    on_calendar: daily\n",
+    ]);
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => $this->files,
+        'replace' => true,
+    ])->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(fn (array $arguments, ?string $input) => $arguments === ['uptime-kuma', 'timers', 'set', '--stdin', '--json']
+        && json_decode($input, true) === ['timers' => []]);
+});
+
+it('says when the timers could not be set up, but keeps the install', function () {
+    fakeLpod()->respond('* timers set --stdin --json', new HostResult(1, '', 'spotweb-retrieve isn\'t a container Quadlet of spotweb.'));
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'spotweb',
+        'files' => $this->files,
+        'source' => ['repository' => 'https://github.com/francoism90/spotweb', 'reference' => 'main', 'path' => '', 'commit' => 'a41f9c2', 'manifest' => "timers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: hourly\n", 'manifest_path' => ''],
+    ])
+        ->assertRedirect(action([ApplicationController::class, 'show'], [$this->environment, 'spotweb']))
+        ->assertInertiaFlash('type', 'error')
+        ->assertInertiaFlash('title', 'spotweb installed, but its timers weren\'t set up');
+
+    expect($this->environment->installations()->sole()->application)->toBe('spotweb');
+});
+
+it('refuses a pods.yml with timers lpod could not set up', function (string $manifest, string $error) {
+    fakeLpod()->respond('quadlet fetch *', new HostResult(0, json_encode([...json_decode(lpodFixture('quadlet-fetch'), true), 'manifest' => $manifest]), ''));
+
+    $this->actingAs($this->owner)
+        ->postJson(action(QuadletFetchController::class, $this->environment), [
+            'repository' => 'https://github.com/francoism90/spotweb',
+            'reference' => 'main',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.manifest', null)
+        ->assertJsonPath('data.manifest_error', fn (string $message) => str_contains($message, $error));
+})->with([
+    'invalid name' => ["timers:\n  Retrieve:\n    container: spotweb-retrieve\n    on_calendar: hourly\n", 'isn\'t a valid timer name'],
+    'the idle check' => ["timers:\n  idle:\n    container: spotweb-retrieve\n    on_calendar: hourly\n", 'isn\'t a valid timer name'],
+    'no schedule' => ["timers:\n  retrieve:\n    container: spotweb-retrieve\n", 'timers.retrieve.on_calendar'],
+    'empty schedule list' => ["timers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: []\n", 'timers.retrieve.on_calendar'],
+    'two lines' => ["timers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: \"hourly\\nOnBootSec=1\"\n", 'isn\'t a calendar event'],
+    'one container twice' => ["timers:\n  a:\n    container: spotweb-retrieve\n    on_calendar: hourly\n  b:\n    container: spotweb-retrieve\n    on_calendar: daily\n", 'timers.a.container'],
+    'invalid timeout' => ["timers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: hourly\n    timeout_start_sec: forever\n", 'timers.retrieve.timeout_start_sec'],
+]);

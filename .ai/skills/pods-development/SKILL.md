@@ -5,7 +5,7 @@ description: >
   (applications, containers, pods, images, volumes, networks, secrets, journal, host settings, Quadlets),
   touching LpodClient, SshHostRunner, SshIdentity, FakeHostRunner or fakeLpod(), the lpod JSON contract
   or its fixtures, pods.yml (ManifestData), installations (Installation, pods:sync), setup steps,
-  on-demand, updates, proxy routes and proxy settings, environments, pods:install or pods:verify, or when planning volume backups.
+  on-demand, timers, updates, proxy routes and proxy settings, environments, pods:install or pods:verify, or when planning volume backups.
 license: MIT
 metadata:
   author: foxws
@@ -55,6 +55,7 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 - `after_install` and `after_update`: setup steps (`ManifestSetupStepData`, `ManifestData::setupStep($name)` finds one in either list; a name can't be in both): a Quadlet `container`, `user`, `workdir`, a whitespace-split `command`, and `inputs`. An input with `option` goes in as one `--option=VALUE` argument (so a value starting with `-` can't pass as a flag); at most one input has no option and goes on stdin, and a password always does.
 - `ondemand`: the keys of lpod's ondemand status, parsed with `OnDemandSettingsData::fromLpod()` and validated with its shared patterns.
 - `routes`: role → `upstream` (`CONTAINER:PORT`), `description` and `main` (`ManifestRouteData`); the first is the main one unless another says `main: true`. Hostnames are never in pods.yml.
+- `timers`: name → `description`, `container`, `on_calendar` (a string or a list, kept as a list), `persistent`, `randomized_delay_sec`, `timeout_start_sec` (`ManifestTimerData`, `forLpod()`). The keys are the systemd directives in snake_case. Names follow `ManifestTimerData::NamePattern`, and `idle` is refused (on-demand's `APP-idle.timer`). A container has at most one timer.
 
 ## Installations
 
@@ -66,6 +67,7 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 
 - **Setup steps:** `ApplicationSetupController` runs a step of `after_install` or `after_update` with `RunSetupStep`, which resolves the step's Quadlet to the Podman container name through `lpod containers`, runs `lpod container NAME exec [--stdin] --json -- …`, records the exit code, and flashes the output once (`Inertia::flash('setup', …)`). UI: `ApplicationSetupCard.vue`, which shows the `after_update` steps once the installation has an `updated_from`, and counts one as done only when it ran since `installed_at`.
 - **On-demand:** `lpod APP ondemand enable|disable|status`. The dialog is filled from the stored manifest's `ondemand:` when it has one (`OnDemandSuggestionData::from_manifest`), or else from the Quadlet files (`SuggestOnDemandSettings`). A sleeping app's Start is Wake: lpod's `up` starts `APP-ondemand.service` instead of the `StopWhenUnneeded=yes` main unit.
+- **Timers:** lpod's `APP timers [set --stdin|remove|run NAME] --json` writes `APP-NAME.timer` (`Unit=` the container's service, `[Install] WantedBy=timers.target`, settings on its `# lpod-timer:` line) and a `lpod-timer.conf` drop-in for `timeout_start_sec`. `ApplyManifestTimers` sets the stored manifest's timers after `QuadletController` installs (its own error toast; the install still counts) and inside `UpdateApplication` (a failure becomes `timers_error` in the update toast). It only asks the host when the new or the previous pods.yml names timers, and the page's `timers` prop (group `details`, `LpodClient::timers()`, cached as `apps.APP.timers`) is `[]` without asking when the stored pods.yml has none, so hosts whose lpod lacks `timers` keep working. `ApplicationTimersCard.vue` shows them with Run now (`POST applications/{app}/timers/{timer}/run`, `ApplicationTimerController`). A Laravel scheduler stays `ondemand.schedule`: it replaces `schedule:work` only while on demand, so as a timer it would run tasks twice.
 - **Updates:** `ListApplicationUpdates` offers the newer tags of the stored repository (`lpod quadlet tags`, `version_compare`, pre-releases only after a pre-release). An installation at a branch gets that branch as its one update (`GitTagData` with the branch's name and short commit) when `lpod quadlet head` (`LpodClient::branchHead()`, cached for two minutes) gives a commit the stored short one doesn't start. The update request's `tag` is then the branch, and the Source card tells a branch update by its name matching the installed reference. `UpdateApplication` fetches the tag, runs `quadlet check`, refuses missing secrets, then stops and waits, removes the files Pods installed that the tag no longer has (`lpod APP files remove`), and installs with `--replace --start`. Then it keeps the reference it came from (a branch's old commit) as `updated_from`, which a fresh install clears (`TrackInstallation`), and the toast names the new release's `after_update` steps.
 
 ## Proxy routes

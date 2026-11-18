@@ -285,6 +285,7 @@ export type ManifestData = {
   after_update: ManifestSetupStepData[]
   ondemand: OnDemandSettingsData | null
   routes: ManifestRouteData[]
+  timers: ManifestTimerData[]
 }
 export type ManifestRouteData = {
   role: string
@@ -322,6 +323,15 @@ export type ManifestSourceData = {
   name: string
   path: string
   description: string | null
+}
+export type ManifestTimerData = {
+  name: string
+  description: string | null
+  container: string
+  on_calendar: string[]
+  persistent: boolean | null
+  randomized_delay_sec: string | null
+  timeout_start_sec: string | null
 }
 export type NetworkData = {
   name: string
@@ -467,6 +477,21 @@ export type StateData = {
   label: string
   icon: string
   color: string
+}
+export type TimerData = {
+  name: string
+  unit: string
+  container: string
+  service: string
+  on_calendar: string[]
+  persistent: boolean | null
+  randomized_delay_sec: string | null
+  timeout_start_sec: string | null
+  enabled: boolean
+  running: boolean
+  next_run: string | null
+  last_run: string | null
+  last_result: string | null
 }
 export type UnitStatus = 'running' | 'activating' | 'deactivating' | 'reloading' | 'failed' | 'inactive' | 'unknown'
 export type UserData = {

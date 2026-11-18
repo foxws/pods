@@ -67,6 +67,7 @@ export type {
   ManifestSetupInputData,
   ManifestSetupStepData,
   ManifestSourceData,
+  ManifestTimerData,
   NetworkData,
   OnDemandData,
   OnDemandSettingsData,
@@ -80,6 +81,7 @@ export type {
   RouteSuggestionData,
   SearchResultData,
   SecretData,
+  TimerData,
   UnitStatus,
 } from '@/types/generated'
 

@@ -13,6 +13,7 @@ use Domain\Applications\DataObjects\OnDemandSettingsData;
 use Domain\Applications\DataObjects\ProxyRoutesData;
 use Domain\Applications\DataObjects\ProxySettingsData;
 use Domain\Applications\DataObjects\QuadletFileData;
+use Domain\Applications\DataObjects\TimerData;
 use Domain\Catalog\DataObjects\CatalogData;
 use Domain\Containers\DataObjects\ContainerDetailData;
 use Domain\Containers\DataObjects\ContainerExecResultData;
@@ -26,6 +27,7 @@ use Domain\Images\DataObjects\ImageData;
 use Domain\Networks\DataObjects\NetworkData;
 use Domain\Pods\DataObjects\PodData;
 use Domain\Quadlets\DataObjects\GitTagData;
+use Domain\Quadlets\DataObjects\ManifestTimerData;
 use Domain\Quadlets\DataObjects\QuadletCheckData;
 use Domain\Quadlets\DataObjects\QuadletSourceData;
 use Domain\Secrets\DataObjects\SecretData;
@@ -146,6 +148,42 @@ class LpodClient
         $this->json($environment, [$application, 'routes', 'set', '--stdin', '--json'], input: (string) json_encode(['routes' => $routes], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), timeout: 120);
 
         $this->forget($environment, 'proxy.routes');
+    }
+
+    /**
+     * The systemd timers that start containers of the application on a schedule.
+     *
+     * @return list<TimerData>
+     */
+    public function timers(Environment $environment, string $application): array
+    {
+        $payload = $this->cached($environment, "apps.{$application}.timers", [$application, 'timers', '--json']);
+
+        return array_map(TimerData::fromLpod(...), array_values($payload['timers'] ?? []));
+    }
+
+    /**
+     * Replaces the application's timers, and enables them. No timers removes them.
+     *
+     * @param  list<ManifestTimerData>  $timers
+     */
+    public function setTimers(Environment $environment, string $application, array $timers): void
+    {
+        $input = ['timers' => array_map(fn (ManifestTimerData $timer): array => $timer->forLpod(), $timers)];
+
+        $this->json($environment, [$application, 'timers', 'set', '--stdin', '--json'], input: (string) json_encode($input, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), timeout: 120);
+
+        $this->forget($environment, "apps.{$application}.timers");
+    }
+
+    /**
+     * Starts the container of one of the application's timers now, without waiting for it.
+     */
+    public function runTimer(Environment $environment, string $application, string $timer): void
+    {
+        $this->json($environment, [$application, 'timers', 'run', $timer, '--json']);
+
+        $this->forget($environment, "apps.{$application}.timers", 'apps', "apps.{$application}", 'host');
     }
 
     /**
