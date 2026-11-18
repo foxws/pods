@@ -234,6 +234,7 @@ export type InstallationData = {
       ran_at: string
     }
   >
+  updated_from: string | null
   installed_at: string | null
   checked_at: string | null
 }
@@ -281,6 +282,7 @@ export type ManifestData = {
   sources: ManifestSourceData[]
   secrets: ManifestSecretData[]
   after_install: ManifestSetupStepData[]
+  after_update: ManifestSetupStepData[]
   ondemand: OnDemandSettingsData | null
   routes: ManifestRouteData[]
 }

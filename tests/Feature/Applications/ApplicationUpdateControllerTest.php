@@ -19,7 +19,7 @@ beforeEach(function () {
  *
  * @param  array<string, string>  $files
  */
-function immichRelease(array $files = []): string
+function immichRelease(array $files = [], string $manifest = "version: 1\nname: immich\nlabel: Immich\n"): string
 {
     $files = $files ?: [
         'immich.pod' => "[Pod]\nPublishPort=2283:2283\n",
@@ -29,7 +29,7 @@ function immichRelease(array $files = []): string
     return json_encode([
         'contract' => 1,
         'commit' => 'c41e9a2',
-        'manifest' => "version: 1\nname: immich\nlabel: Immich\n",
+        'manifest' => $manifest,
         'manifest_path' => 'immich',
         'files' => array_map(fn (string $name, string $content): array => ['name' => $name, 'content' => $content], array_keys($files), $files),
     ]);
@@ -88,7 +88,8 @@ it('updates an application installed from a branch to its newest commit', functi
     $lpod->assertRan(['quadlet', 'fetch', 'https://github.com/foxws/quadlets', '--ref', 'main', '--path', 'immich', '--json']);
     expect($this->environment->installations()->sole())
         ->reference->toBe('main')
-        ->commit->toBe('c41e9a2');
+        ->commit->toBe('c41e9a2')
+        ->updated_from->toBe('a41f9c2');
 });
 
 it('offers no update to an application that did not come from git', function () {
@@ -129,7 +130,20 @@ it('stops the application, installs the files of the tag over its files and keep
         ->commit->toBe('c41e9a2')
         ->path->toBe('immich')
         ->manifest->toBe("version: 1\nname: immich\nlabel: Immich\n")
-        ->checksums->toHaveKeys(['immich.pod', 'immich-server.container']);
+        ->checksums->toHaveKeys(['immich.pod', 'immich-server.container'])
+        ->updated_from->toBe('v3.1.0');
+});
+
+it('asks for the after_update steps of the new release', function () {
+    fakeLpod()
+        ->respond('quadlet fetch *', immichRelease(manifest: "version: 1\nname: immich\nafter_update:\n  migrate:\n    label: Migrate the database\n    container: immich-server\n    command: npm run migrate\n"))
+        ->respond('immich down --json', lpodFixture('ok'));
+    Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'v3.1.0']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0'])
+        ->assertInertiaFlash('type', 'success')
+        ->assertInertiaFlash('description', 'Its units are starting with the new files. Finish the update on its page: Migrate the database.');
 });
 
 it('removes the files Pods installed that the tag no longer has, before starting the units again', function () {

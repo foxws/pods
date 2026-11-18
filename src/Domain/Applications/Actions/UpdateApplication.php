@@ -27,7 +27,8 @@ class UpdateApplication
      *
      * Files on the host the tag no longer has are removed when asked, before the install starts the
      * units again, but only the ones Pods installed: a drop-in added on the host stays. The files
-     * that stay are returned too.
+     * that stay are returned too. The installation remembers what it was updated from, so the
+     * application page can ask for the new release's after_update steps.
      *
      * @return array{removed: list<string>, kept: list<string>} the application's files the tag doesn't have
      *
@@ -39,6 +40,7 @@ class UpdateApplication
         $environment = $installation->environment;
         $application = $installation->application;
         $path = (string) $installation->path;
+        $updatedFrom = $installation->reference === $tag ? $installation->commit : $installation->reference;
 
         if ($installation->repository === null) {
             throw CannotUpdateApplicationException::notFromGit($application);
@@ -77,6 +79,8 @@ class UpdateApplication
             'manifest' => $source->manifest_yaml,
             'manifest_path' => $source->manifest_path,
         ]);
+
+        $installation->refresh()->update(['updated_from' => $updatedFrom]);
 
         return ['removed' => $removed, 'kept' => array_values(array_diff($leftOver, $removed))];
     }

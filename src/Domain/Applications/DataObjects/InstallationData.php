@@ -20,6 +20,7 @@ class InstallationData extends Data
      * @param  list<string>  $added
      * @param  list<string>  $removed
      * @param  array<string, array{exit_code: int, ran_at: string}>  $setup  how each setup step that ran ended
+     * @param  string|null  $updated_from  the reference, or a branch's commit, the last update came from
      */
     public function __construct(
         public ?string $repository,
@@ -32,6 +33,7 @@ class InstallationData extends Data
         public array $added,
         public array $removed,
         public array $setup,
+        public ?string $updated_from,
         public ?string $installed_at,
         public ?string $checked_at,
     ) {}
@@ -49,6 +51,7 @@ class InstallationData extends Data
             added: $installation->changes['added'] ?? [],
             removed: $installation->changes['removed'] ?? [],
             setup: $installation->setup ?? [],
+            updated_from: $installation->updated_from,
             installed_at: $installation->installed_at?->toIso8601String(),
             checked_at: $installation->checked_at?->toIso8601String(),
         );

@@ -28,7 +28,8 @@ class ManifestData extends Data
     /**
      * @param  list<ManifestSourceData>  $sources
      * @param  list<ManifestSecretData>  $secrets
-     * @param  list<ManifestSetupStepData>  $after_install
+     * @param  list<ManifestSetupStepData>  $after_install  the steps to run once after installing it
+     * @param  list<ManifestSetupStepData>  $after_update  the steps to run after each update, such as migrating the database
      * @param  list<ManifestRouteData>  $routes  the upstreams the Pods proxy can give a hostname; the first is the main one unless another says main
      * @param  OnDemandSettingsData|null  $ondemand  what to fill the on-demand switch in with; its keys match lpod's ondemand status
      */
@@ -46,6 +47,7 @@ class ManifestData extends Data
         public array $sources,
         public array $secrets,
         public array $after_install,
+        public array $after_update,
         public ?OnDemandSettingsData $ondemand,
         public array $routes,
     ) {}
@@ -79,9 +81,6 @@ class ManifestData extends Data
         /** @var array<string, array<string, mixed>> $secrets */
         $secrets = $manifest['secrets'] ?? [];
 
-        /** @var array<string, array<string, mixed>> $steps */
-        $steps = $manifest['after_install'] ?? [];
-
         $directory = trim($directory, '/');
 
         return new self(
@@ -108,16 +107,8 @@ class ManifestData extends Data
                 from: $secret['from'] ?? null,
                 key: $secret['key'] ?? null,
             ), array_keys($secrets), $secrets),
-            after_install: array_map(fn (string $name, array $step): ManifestSetupStepData => new ManifestSetupStepData(
-                name: $name,
-                label: $step['label'] ?? $name,
-                description: $step['description'] ?? null,
-                container: $step['container'],
-                user: $step['user'] ?? null,
-                workdir: $step['workdir'] ?? null,
-                command: $step['command'],
-                inputs: self::setupInputs($step['inputs'] ?? []),
-            ), array_keys($steps), $steps),
+            after_install: self::setupSteps($manifest['after_install'] ?? []),
+            after_update: self::setupSteps($manifest['after_update'] ?? []),
             ondemand: is_array($manifest['ondemand'] ?? null) ? OnDemandSettingsData::fromLpod($manifest['ondemand']) : null,
             routes: self::routes($manifest['routes'] ?? []),
         );
@@ -145,6 +136,63 @@ class ManifestData extends Data
         }
 
         return $parsed;
+    }
+
+    /**
+     * The setup step with this name, after installing or after an update.
+     */
+    public function setupStep(string $name): ?ManifestSetupStepData
+    {
+        foreach ([...$this->after_install, ...$this->after_update] as $step) {
+            if ($step->name === $name) {
+                return $step;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $steps  checked by ensureIsValid()
+     * @return list<ManifestSetupStepData>
+     */
+    protected static function setupSteps(array $steps): array
+    {
+        return array_map(fn (string $name, array $step): ManifestSetupStepData => new ManifestSetupStepData(
+            name: $name,
+            label: $step['label'] ?? $name,
+            description: $step['description'] ?? null,
+            container: $step['container'],
+            user: $step['user'] ?? null,
+            workdir: $step['workdir'] ?? null,
+            command: $step['command'],
+            inputs: self::setupInputs($step['inputs'] ?? []),
+        ), array_keys($steps), $steps);
+    }
+
+    /**
+     * Validation rules for a list of setup steps.
+     *
+     * @return array<string, list<string>>
+     */
+    protected static function setupStepRules(string $key): array
+    {
+        return [
+            $key => ['nullable', 'array', 'max:20'],
+            "{$key}.*" => ['array'],
+            "{$key}.*.label" => ['nullable', 'string', 'max:100'],
+            "{$key}.*.description" => ['nullable', 'string', 'max:500'],
+            "{$key}.*.container" => ['required', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/'],
+            "{$key}.*.user" => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/'],
+            "{$key}.*.workdir" => ['nullable', 'string', 'max:255', 'regex:#^/[^\r\n]*$#'],
+            "{$key}.*.command" => ['required', 'string', 'max:500', 'not_regex:/[\r\n]/'],
+            "{$key}.*.inputs" => ['nullable', 'array', 'max:10'],
+            "{$key}.*.inputs.*" => ['array'],
+            "{$key}.*.inputs.*.label" => ['nullable', 'string', 'max:100'],
+            "{$key}.*.inputs.*.description" => ['nullable', 'string', 'max:500'],
+            "{$key}.*.inputs.*.type" => ['nullable', 'string', 'in:text,email,password'],
+            "{$key}.*.inputs.*.option" => ['nullable', 'string', 'regex:/^--[A-Za-z0-9][A-Za-z0-9_-]*$/'],
+        ];
     }
 
     /**
@@ -190,20 +238,8 @@ class ManifestData extends Data
             'secrets.*.generate' => ['nullable', 'boolean'],
             'secrets.*.from' => ['nullable', 'string', 'required_with:secrets.*.key'],
             'secrets.*.key' => ['nullable', 'string', 'required_with:secrets.*.from', 'regex:/^[A-Za-z_][A-Za-z0-9_.]*$/'],
-            'after_install' => ['nullable', 'array', 'max:20'],
-            'after_install.*' => ['array'],
-            'after_install.*.label' => ['nullable', 'string', 'max:100'],
-            'after_install.*.description' => ['nullable', 'string', 'max:500'],
-            'after_install.*.container' => ['required', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/'],
-            'after_install.*.user' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/'],
-            'after_install.*.workdir' => ['nullable', 'string', 'max:255', 'regex:#^/[^\r\n]*$#'],
-            'after_install.*.command' => ['required', 'string', 'max:500', 'not_regex:/[\r\n]/'],
-            'after_install.*.inputs' => ['nullable', 'array', 'max:10'],
-            'after_install.*.inputs.*' => ['array'],
-            'after_install.*.inputs.*.label' => ['nullable', 'string', 'max:100'],
-            'after_install.*.inputs.*.description' => ['nullable', 'string', 'max:500'],
-            'after_install.*.inputs.*.type' => ['nullable', 'string', 'in:text,email,password'],
-            'after_install.*.inputs.*.option' => ['nullable', 'string', 'regex:/^--[A-Za-z0-9][A-Za-z0-9_-]*$/'],
+            ...self::setupStepRules('after_install'),
+            ...self::setupStepRules('after_update'),
             'routes' => ['nullable', 'array', 'max:50'],
             'routes.*' => ['array'],
             'routes.*.upstream' => ['required', 'string', 'regex:'.RouteData::UpstreamPattern],
@@ -272,7 +308,13 @@ class ManifestData extends Data
             }
         }
 
-        foreach ($manifest['after_install'] ?? [] as $name => $step) {
+        $sharedNames = array_intersect(array_keys($manifest['after_install'] ?? []), array_keys($manifest['after_update'] ?? []));
+
+        if ($sharedNames !== []) {
+            throw InvalidManifestException::because('setup step "'.reset($sharedNames).'" is in both after_install and after_update: give each step its own name.');
+        }
+
+        foreach ([...$manifest['after_install'] ?? [], ...$manifest['after_update'] ?? []] as $name => $step) {
             self::ensureStepIsValid((string) $name, $step['inputs'] ?? []);
         }
     }
