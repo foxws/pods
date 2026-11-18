@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('manifest_path')->nullable();
             $table->json('checksums');
             $table->json('changes')->nullable();
+            $table->json('setup')->nullable();
             $table->timestamp('installed_at')->nullable();
             $table->timestamp('checked_at')->nullable();
             $table->timestamps();
