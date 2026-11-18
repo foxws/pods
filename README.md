@@ -9,6 +9,23 @@ A self-hosted web UI for [Podman Quadlet](https://docs.podman.io/en/latest/markd
 > [!WARNING]
 > **Pods is still in development.** Expect breaking changes, incomplete features and rough edges. The lpod JSON contract, the database schema and the routes can change between commits, and some lpod commands have not been tested on a real Podman host yet. Don't point Pods at a host you can't afford to lose, and **back up your volumes yourself** (see [Backups](#backups)). Pods doesn't do that yet.
 
+## Why Pods
+
+- **Your applications are plain Quadlet files.** A `.container`, `.volume` or `.network` file is a systemd unit that Podman ships with. Pods installs them, starts them and shows what they're doing, but it never adds a format of its own on top. Delete Pods and every application keeps running, managed by systemd as before. You can always edit, install or debug them with `podman quadlet`, `systemctl` and `journalctl`.
+- **systemd does the work.** Starting at boot, restarting on failure, logs, timers, dependencies and `podman auto-update` all come from systemd and Podman. Pods adds no daemon or agent of its own on the host. [lpod](https://github.com/foxws/lpod) is a shell script that Pods runs over SSH.
+- **Nothing has to keep running.** Applications can sleep until a request comes in, through systemd socket activation (see [On-demand applications](#on-demand-applications)). Pods itself does the same: it's a container that starts when you open it and stops when you leave.
+- **One UI for several hosts.** Every host is an SSH target, the one Pods runs on too.
+
+### Compared with
+
+|                                               | What it is                                                                                 | How Pods differs                                                                                                                                                                                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Cockpit](https://cockpit-project.org)        | A web console for a whole Linux server, with a Podman page for containers, pods and images | Pods is only about the applications on a host, and treats them as groups of Quadlet units: install from Git, routes, secrets, setup steps and updates. It runs fine next to Cockpit, and sleeps through a socket the same way `cockpit.socket` does. |
+| [lerd](https://lerd.sh)                       | A local Laravel development environment for Linux on rootless Podman                       | lerd is for developing on your own machine. Pods runs applications on your servers and homelab. An application you develop with lerd can ship Quadlet files and a `pods.yml` to be installed with Pods.                                              |
+| [Laravel Sail](https://laravel.com/docs/sail) | A Docker Compose development environment for one Laravel project                           | Sail is for development, with Docker and Compose. Pods is for running applications, with Podman and systemd, and isn't tied to Laravel.                                                                                                              |
+| [Laravel Cloud](https://cloud.laravel.com)    | Managed hosting for Laravel applications                                                   | Laravel Cloud runs and scales your application for you. Pods runs any containerized application on hardware you own, and you're responsible for the host.                                                                                            |
+| [Portainer](https://www.portainer.io)         | A container UI for Docker, Swarm and Kubernetes, built around Compose stacks               | Pods doesn't support Docker or Compose. Its applications are systemd units, so they behave like the rest of the host.                                                                                                                                |
+
 ## How it works
 
 ```text
@@ -35,15 +52,17 @@ See [docs/architecture.md](docs/architecture.md) for the details.
 - **Volumes** and **networks**: list, remove and prune
 - **Secrets**: create, update and delete, and add them to the applications that need them
 - **Journal**: the host's journal, filtered by priority and time
+- **On demand**: let an application sleep until its first request, through a systemd socket (see [On-demand applications](#on-demand-applications))
+- **Proxy**: an optional Caddy per host that gives applications hostnames and certificates (see [Proxy](#proxy))
 - **Settings per host**: `podman auto-update` (schedule and rollback) and lingering
 
-Pods targets **Podman 6+** with a current systemd. Docker and Podman Compose aren't supported.
+Pods targets **Podman 6+ on systemd**. Docker and Podman Compose aren't supported.
 
 ## Requirements
 
 On each host:
 
-- Podman 6 or newer and systemd
+- Podman 6 or newer, running under systemd. Quadlet is part of Podman, so there's nothing else to install for it. Most major distributions package Podman 6 in their current releases; check with `podman --version`
 - [lpod](https://github.com/foxws/lpod) 4 in the user's `PATH` (Pods also looks in `~/.local/bin`), with `jq` installed, and `git` for installing and updating applications from Git repositories and the catalog
 - An SSH server, and lingering for rootless users (`loginctl enable-linger`) so their systemd user manager runs without a login
 
@@ -57,7 +76,23 @@ Pods runs on a host as rootless Podman Quadlets, for the user whose applications
 curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash
 ```
 
-It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9090`: open it on the host, or through an SSH tunnel (`ssh -L 9090:127.0.0.1:9090 HOST`). Like `cockpit.socket`, a socket listens there and starts Pods on the first request, and Pods sleeps again after 10 minutes without one. Pass `--no-idle` to keep it running all the time. With `--proxy`, Pods runs all the time for now.
+It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9090`: open it on the host, or through an SSH tunnel (`ssh -L 9090:127.0.0.1:9090 HOST`).
+
+### Pods only runs while you use it
+
+Pods is a container like any of your applications, not a service your host depends on. Your applications are systemd units, so they keep running, restarting and updating whether Pods is up or not.
+
+By default, `install.sh` doesn't keep Pods running. Like `cockpit.socket`, a systemd socket (`pods-ondemand.socket`) listens on `127.0.0.1:9090` and starts Pods on the first request. Pods stops again after 10 minutes without one, and its scheduler only wakes for a moment at 01:00 UTC for the daily housekeeping. You can also start and stop it yourself:
+
+```bash
+lpod pods down                                # stop Pods now; the next request starts it again
+systemctl --user stop pods-ondemand.socket    # keep it off, even when something connects
+systemctl --user start pods-ondemand.socket   # let the next request start it again
+```
+
+Pass `--no-idle` to keep Pods running all the time, and start and stop it as `pods.service` instead. With `--proxy`, Pods runs all the time for now, because its socket only listens on `127.0.0.1`, which the proxy container can't reach.
+
+### A hostname for Pods
 
 To reach it by a hostname, add the [proxy](#proxy):
 
@@ -80,7 +115,13 @@ Next, give an application a hostname with the [proxy](#proxy), or make your own 
 
 ## Your first application
 
-Any Git repository with Quadlet files can be installed from **Install application**, **Git repository**. A `pods.yml` next to them tells Pods what to call the application and which routes it has. This example runs [traefik/whoami](https://github.com/traefik/whoami), a tiny web server that answers with the request it got:
+An application is a group of plain Quadlet files. Pods shows every application Podman knows about (`podman quadlet list`), however it got there:
+
+- **From a Git repository** with Quadlet files, through **Install application**, **Git repository**. This is the only way that stores where the files came from, so Pods can offer updates and setup steps. A `pods.yml` is optional.
+- **From Quadlet files you paste** on the same page.
+- **From a terminal**, with `podman quadlet install` or `lpod quadlet install`. Pods shows these too, with their containers, logs and Start and Stop, but without a source to update from.
+
+A `pods.yml` next to the files tells Pods what to call the application and which routes it has. This example runs [traefik/whoami](https://github.com/traefik/whoami), a tiny web server that answers with the request it got:
 
 ```text
 hello/
@@ -280,6 +321,24 @@ podman quadlet install --application=pods-proxy containers/proxy
 echo '{"mode": "local", "http_port": 80, "https_port": 443}' | lpod proxy settings set --stdin --json
 systemctl --user start pods-proxy
 ```
+
+## On-demand applications
+
+An application you don't use all day doesn't have to run all day. Turn on **On demand** on its page, and it sleeps until a request comes in. This is systemd socket activation, the way `cockpit.socket` works, so it needs no daemon of Pods' own and keeps working when Pods itself is off. lpod writes the units:
+
+| Unit                                 | What it does                                                                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `APP-ondemand.socket`                | Listens on the application's port, and starts the service below on the first connection                                                                      |
+| `APP-ondemand.service`               | `systemd-socket-proxyd`: starts the application, forwards the connection to it, and exits after the idle timeout (10 minutes by default) without one         |
+| A drop-in for the main unit          | Keeps it from starting at boot, and lets systemd stop it once the proxy is gone (`StopWhenUnneeded=yes`)                                                     |
+| `APP-idle.timer`, `APP-idle.service` | Optional: once the application is asleep and an idle command finds no work left, stops its workers (such as a queue worker), so their services can sleep too |
+| A timer for the scheduler            | Optional: runs a scheduler container only at the minutes a task is due, instead of every minute                                                              |
+
+The first request after a sleep waits for the application to start, so it's best for applications that start in a few seconds. **Start** becomes **Wake** while an application sleeps, and **Stop** puts it to sleep. Pods suggests the ports, workers and scheduler from the Quadlet files, or from the `ondemand:` section of its [`pods.yml`](#application-manifest-podsyml), and everything stays editable.
+
+**Behind the proxy**, the main route of an on-demand application goes to its socket, so opening its hostname wakes it. Routes with `via: main` go the same way. Other routes, such as an admin UI on a container of its own, get an error while the application sleeps, until it's woken another way. The proxy itself always runs.
+
+The same units work without Pods, from a terminal: `lpod APP ondemand enable --port PORT --app-port PORT` (see `lpod APP ondemand` in lpod's `docs/commands.md`).
 
 ## Backups
 

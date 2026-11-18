@@ -204,6 +204,11 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
           <template v-if="isWildcard">
             <UFormField
               label="DNS provider"
+              :description="
+                defaults
+                  ? 'Its API token is entered per host, in the host\'s Proxy settings, and kept only on that host.'
+                  : undefined
+              "
               :error="form.errors.dns_provider"
               :class="fieldClass"
             >
