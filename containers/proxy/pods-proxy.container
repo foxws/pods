@@ -2,8 +2,8 @@
 Description=Pods proxy (Caddy)
 # Routes hostnames to the containers of the applications on this host. It
 # reaches them by container name, so it joins each application's network
-# through a drop-in, for example pods-proxy.container.d/stry.conf with
-# Network=stry.network, and loads the application's routes from
+# through a drop-in, for example pods-proxy.container.d/hello.conf with
+# Network=hello.network, and loads the application's routes from
 # ~/.config/pods-proxy/sites/*.Caddyfile. Applications themselves only use
 # ExposeHostPort= and keep working without the proxy.
 StartLimitIntervalSec=300

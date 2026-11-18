@@ -16,7 +16,7 @@ The plan is to export volumes from the UI and import them again, without keeping
 
 Open questions:
 
-- **Bind-backed volumes.** Some volumes only point at a folder on the host: a `.volume` unit with `Type=none`, `Options=bind` and `Device=`, such as stry's `stry-videos` for a media library. `podman volume export` archives the whole folder for those, and an import would overwrite it. lpod should report them (from the volume's driver options), and Pods should leave them out of "export every volume" and refuse to import into them.
+- **Bind-backed volumes.** Some volumes only point at a folder on the host: a `.volume` unit with `Type=none`, `Options=bind` and `Device=`, such as a `media.volume` for a media library. `podman volume export` archives the whole folder for those, and an import would overwrite it. lpod should report them (from the volume's driver options), and Pods should leave them out of "export every volume" and refuse to import into them.
 - **Plain bind mounts** (such as `Volume=/var/mnt/photos:/photos`) aren't Podman volumes, so `podman volume export` doesn't cover them. They may need a separate `tar` path, or stay out of scope.
 - **Databases** are safer to back up with their own dump tool. A per-application hook, such as a `Label=` with a dump and a restore command, could handle that.
 - **Where the archives go:** the Pods data volume, or an S3-compatible disk.
@@ -31,7 +31,7 @@ Done: lpod's `APP ondemand enable|disable|status` puts a `.socket`, a `systemd-s
 
 ## Proxy
 
-An optional reverse proxy per host, so hostnames reach the right container without each application routing for its neighbours. Today stry's own Caddy (FrankenPHP's `CADDY_EXTRA_CONFIG`, rendered by its `CaddySites` class) forwards `ws.example.com` to Reverb and `s3.example.com` to RustFS. With a Pods proxy, stry only serves stry, and the same works for any application, not just Laravel on FrankenPHP.
+An optional reverse proxy per host, so hostnames reach the right container without each application routing for its neighbours. Without one, a Laravel application on FrankenPHP routes for its neighbours itself: its own Caddy (`CADDY_EXTRA_CONFIG`) forwards `ws.example.com` to Reverb and `s3.example.com` to RustFS. With a Pods proxy, each application only serves itself, and the same works for any application, not just Laravel on FrankenPHP.
 
 Done (round 1): `lpod APP routes [set --stdin|remove] --json` and `lpod proxy routes --json` keep each application's routes in `~/.config/pods-proxy/sites/APP.Caddyfile`, join the proxy to its networks with a `lpod-routes-APP.conf` drop-in, and reload Caddy (or restart the proxy when the networks change). The main route of an on-demand application goes to its socket. pods.yml `routes` maps a role to an upstream, the install page asks for a hostname for each, and the Routes card on the application page edits them. The hostnames the app itself needs (`APP_URL`, `VITE_REVERB_HOST`, `AWS_URL`) still come from its `.env`.
 
@@ -48,12 +48,12 @@ Next:
 
 A Proxy section in the host's settings installs `pods-proxy`, and picks its ports, its certificates and how routes are written. Four modes cover the setups people run:
 
-| Mode                                                          | Global options                           | Routes are written as                                             | Suggested hostnames                                                    |
-| ------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **Let's Encrypt** (a public domain the internet reaches)      | `email`                                  | a site per hostname                                               | `stry.example.com`, `ws.stry.example.com`                              |
-| **Local CA** (`.home.arpa`, `.lan`, `.test`)                  | `local_certs`                            | a site per hostname                                               | `stry.home.arpa`, `ws.stry.home.arpa`                                  |
-| **Wildcard through DNS** (a public domain on a LAN-only host) | `email`, `acme_dns PROVIDER {env.TOKEN}` | handlers inside one `*.DOMAIN` site, which `abort`s unknown names | `stry.DOMAIN`, `stry-ws.DOMAIN` (one label, so the wildcard covers it) |
-| **Plain HTTP** (another proxy in front handles HTTPS)         | `auto_https off`                         | a site per hostname, over `http://`                               | as the front proxy routes them                                         |
+| Mode                                                          | Global options                           | Routes are written as                                             | Suggested hostnames                                                      |
+| ------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Let's Encrypt** (a public domain the internet reaches)      | `email`                                  | a site per hostname                                               | `hello.example.com`, `ws.hello.example.com`                              |
+| **Local CA** (`.home.arpa`, `.lan`, `.test`)                  | `local_certs`                            | a site per hostname                                               | `hello.home.arpa`, `ws.hello.home.arpa`                                  |
+| **Wildcard through DNS** (a public domain on a LAN-only host) | `email`, `acme_dns PROVIDER {env.TOKEN}` | handlers inside one `*.DOMAIN` site, which `abort`s unknown names | `hello.DOMAIN`, `hello-ws.DOMAIN` (one label, so the wildcard covers it) |
+| **Plain HTTP** (another proxy in front handles HTTPS)         | `auto_https off`                         | a site per hostname, over `http://`                               | as the front proxy routes them                                           |
 
 In the wildcard mode, the main Caddyfile and an application's routes look like this:
 
@@ -80,9 +80,9 @@ In the wildcard mode, the main Caddyfile and an application's routes look like t
 ```
 
 ```caddy
-# sites/stry.caddy, written by lpod
-@stry host stry.home.example.com stry-ws.home.example.com stry-s3.home.example.com
-handle @stry {
+# sites/hello.caddy, written by lpod
+@hello host hello.home.example.com hello-ws.home.example.com hello-s3.home.example.com
+handle @hello {
 	reverse_proxy host.containers.internal:8000 {
 		stream_close_delay 5m
 	}
@@ -90,18 +90,17 @@ handle @stry {
 ```
 
 1. **lpod.** Done: lpod reads the proxy's Caddyfile, and writes routes as handlers (`sites/APP.caddy`) when it imports `sites/*.caddy` inside a wildcard site, refusing hostnames outside it or more than one label deep. Done: `lpod proxy settings [set --stdin] --json` writes the main Caddyfile from the mode (email, DNS provider, wildcard domain, resolvers) with the ports, image and DNS token in a `lpod-proxy.conf` drop-in, keeps the token as a Podman secret (`Secret=…,type=env`), and rewrites every application's routes for the layout. A hand-written Caddyfile is read into the form, and kept as a backup when it's replaced. `lpod proxy certificate --json` returns the local CA's root certificate, which the Proxy section offers as a download. There's no `lpod proxy install|remove`: Pods installs `containers/proxy` from its own repository as the application `pods-proxy` (`lpod quadlet install`), which keeps its source like any application's, and it's removed like one.
-2. **Through the main upstream.** Done: a route can say `via: main` in pods.yml: it goes to the main route's upstream (the socket while on demand) instead of its own container, for applications that route their own hostnames, as stry does with `CaddySites`. Those routes wake a sleeping application too, and need no network drop-in. Routes that say `via: main` share the main route's matcher, as above. stry sets it on `ws` and `s3`.
+2. **Through the main upstream.** Done: a route can say `via: main` in pods.yml: it goes to the main route's upstream (the socket while on demand) instead of its own container, for applications that route their own hostnames, such as a Laravel application whose own Caddy forwards to Reverb. Those routes wake a sleeping application too, and need no network drop-in. Routes that say `via: main` share the main route's matcher, as above. hello sets it on `ws` and `s3`.
 3. **WebSockets across reloads.** Done: every `reverse_proxy` lpod writes gets `stream_close_delay 5m`, since lpod reloads Caddy whenever routes change, and WebSocket connections (Reverb, Vite HMR) would drop on each reload.
 4. **The admin API** listens on a unix socket (`admin unix//config/admin.sock|0600`) instead of port 2019. Done: lpod reloads through it when the Caddyfile says so (`caddy reload --address unix//config/admin.sock`). The Caddyfiles lpod writes and the Quadlet's default one use it, and the health check checks the socket (or port 2019 when a Caddyfile doesn't say so).
 5. **The image.** Done: Pods' CI (`.github/workflows/build-proxy.yml`) publishes `ghcr.io/foxws/pods-proxy`: Caddy built with xcaddy and the DNS plugins people ask for (Cloudflare first), so `AutoUpdate=registry` keeps it current, like `ghcr.io/foxws/pods`. The Let's Encrypt and local CA modes keep `docker.io/library/caddy:2`. A setting takes your own image instead.
 6. **Ports.** Done: HTTP and HTTPS default to 80 and 443. Rootless Podman can't bind ports below 1024 unless `net.ipv4.ip_unprivileged_port_start` allows it, so Pods says so and suggests high ports (such as 28080 and 28443) behind the host's main proxy, or the sysctl that allows low ones.
-7. **Suggestions** follow the mode (done: the wildcard site that lpod reports, and otherwise the domain of the proxy defaults): Pods suggests hostnames under the proxy's domain instead of `home.arpa`, one label deep (`APP-ROLE.DOMAIN`) in the wildcard mode. Short roles read better there, so stry's become `ws`, `s3`, `vite`, `mail` and `s3-console`.
+7. **Suggestions** follow the mode (done: the wildcard site that lpod reports, and otherwise the domain of the proxy defaults): Pods suggests hostnames under the proxy's domain instead of `home.arpa`, one label deep (`APP-ROLE.DOMAIN`) in the wildcard mode. Short roles read better there, such as `ws`, `s3`, `vite`, `mail` and `s3-console`.
 
 Open questions:
 
 - **Routes to sleeping services that aren't `via: main`.** These still get a 502, such as Mailpit or the RustFS console opened on their own. Caddy could start the app's socket service on a 502 and retry.
 - **The proxy itself** must not sleep, so it's always on, unlike the applications behind it.
-- **stry** keeps `Support\Octane\CaddySites` while its `ws` and `s3` routes go `via: main`. It can drop it once every route goes to its own container.
 
 ## More of pods.yml
 
@@ -116,7 +115,7 @@ Pods reads the sources, the application name, the secrets and the catalog keys (
 
 ## Installing applications from a checkout
 
-Pods installs Quadlets from Git. Development setups, such as stry's `containers/quadlets/development`, build their image from a checkout on the host and mount it into the containers. `lpod quadlet fetch` should read a directory on the host as well as a Git repository, so Pods can install those, and show the build's progress while the first start builds the image.
+Pods installs Quadlets from Git. Development setups, such as a Laravel application's `containers/quadlets/development`, build their image from a checkout on the host and mount it into the containers. `lpod quadlet fetch` should read a directory on the host as well as a Git repository, so Pods can install those, and show the build's progress while the first start builds the image.
 
 ## Later
 

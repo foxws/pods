@@ -24,9 +24,9 @@ class SuggestRoutes
     /**
      * The routes an application has, followed by the ones its pods.yml names that it doesn't
      * have yet. Each gets a suggested hostname: the application's name for the main route
-     * (stry.home.arpa), and the role in front of it for the others (ws.stry.home.arpa), under the
+     * (hello.home.arpa), and the role in front of it for the others (ws.hello.home.arpa), under the
      * domain of the proxy defaults when they have one. Behind a wildcard site, names stay one label
-     * under its domain (stry-ws.home.example.com).
+     * under its domain (hello-ws.home.example.com).
      */
     public function __invoke(string $application, ProxyRoutesData $proxy, ?ManifestData $manifest = null): ApplicationRoutesData
     {

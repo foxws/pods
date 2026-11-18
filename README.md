@@ -228,14 +228,14 @@ A repository can tell Pods how to install it with a `pods.yml` in its root, or i
 
 ```yaml
 version: 1 # Pods ignores manifests of a version it doesn't know
-name: stry # the default application name
-label: stry # shown in the catalog, like the keys below
+name: hello # the default application name
+label: hello # shown in the catalog, like the keys below
 description: Self-hosted video library
-author: francoism90
+author: Example
 icon: i-lucide-film # a Lucide icon
 category: Media
-website: https://github.com/francoism90/stry
-repository: https://github.com/francoism90/stry # its source code
+website: https://hello.example.com
+repository: https://github.com/example/hello # its source code
 notes: Shown before installing.
 
 sources: # Quadlet directories to choose from, relative to this pods.yml
@@ -244,24 +244,24 @@ sources: # Quadlet directories to choose from, relative to this pods.yml
         description: The published image
 
 secrets: # how to ask for the secrets the units use
-    stry-env:
+    hello-env:
         description: Your .env file
         format: dotenv # a text area; other secrets can read keys from it
-    stry-pgsql-password:
-        from: stry-env # filled in from DB_PASSWORD in the .env above
+    hello-pgsql-password:
+        from: hello-env # filled in from DB_PASSWORD in the .env above
         key: DB_PASSWORD
-    stry-app-key:
+    hello-app-key:
         generate: true # filled in with a random value
 
 after_install: # commands to run once the units are up, from the application page
     install:
-        label: Install stry
-        container: stry # the container's Quadlet, without .container
+        label: Install hello
+        container: hello # the container's Quadlet, without .container
         user: docker # optional, like workdir
         command: php artisan app:install --no-interaction # split on whitespace
     admin:
         label: Create the first admin
-        container: stry
+        container: hello
         command: php artisan users:create --super-admin --password-stdin --no-interaction
         inputs: # asked for before the step runs
             name:
@@ -275,40 +275,40 @@ after_install: # commands to run once the units are up, from the application pag
 after_update: # commands to run after each update, once the new units are up; names differ from after_install's
     migrate:
         label: Migrate the database
-        container: stry
+        container: hello
         user: docker
         command: php artisan migrate --force --no-interaction
 
 routes: # upstreams the Pods proxy can give a hostname; Pods asks for the hostnames
     app:
-        upstream: systemd-stry:8000 # a container and its port
+        upstream: systemd-hello:8000 # a container and its port
         description: The web app # the first route is the main one, unless another says main: true
     ws:
-        upstream: systemd-stry-reverb:6001
+        upstream: systemd-hello-reverb:6001
         via: main # optional: go where the main route goes, for an app that routes its own hostnames
 
 ondemand: # fills in the on-demand switch; the keys match lpod's ondemand status
     port: 8000 # the socket on the host
     app_port: 8000 # inside the app container, read from its unit when left out
     idle_timeout: 10min
-    workers: [stry-horizon] # keep running until the idle check says there's no work
+    workers: [hello-horizon] # keep running until the idle check says there's no work
     idle_check:
-        container: stry-horizon
+        container: hello-horizon
         user: docker
         command: php /app/artisan app:idle
     schedule: # runs schedule:run only at these minutes, in UTC
-        container: stry-schedule
+        container: hello-schedule
         at: ['*:00', '01:00']
         environment:
             APP_COMMAND: php /app/artisan schedule:run
 
 timers: # containers a systemd timer starts on a schedule; the keys are the directives they become
-    retrieve: # lpod writes APP-NAME.timer, here spotweb-retrieve.timer
-        description: Fetches new spots
-        container: spotweb-retrieve # a container Quadlet of the app that runs once and exits (Type=oneshot)
-        on_calendar: hourly # OnCalendar=, or a list of calendar events
+    backup: # lpod writes APP-NAME.timer, here hello-backup.timer
+        description: Backs up the database
+        container: hello-backup # a container Quadlet of the app that runs once and exits (Type=oneshot)
+        on_calendar: daily # OnCalendar=, or a list of calendar events
         persistent: true # Persistent=: catch up on a run missed while the host was off
-        randomized_delay_sec: 5min # RandomizedDelaySec=
+        randomized_delay_sec: 30min # RandomizedDelaySec=
         timeout_start_sec: infinity # TimeoutStartSec= for the container, in a drop-in
 ```
 
@@ -316,7 +316,7 @@ Every key is optional. When you fetch a directory, Pods reads the nearest `pods.
 
 Pods sets up the `timers` after installing and after each update, so they follow the release: a timer the new `pods.yml` no longer names is removed. The application page has a Timers card with each timer's schedule, next and last run, and **Run now**. A timer starts what its container `Requires=`, so it also wakes an on-demand application, which sleeps again after its idle timeout. `timers` are for jobs that live on the host; a Laravel scheduler stays in `ondemand.schedule`, since it only runs from a timer while the application is on demand.
 
-[stry's pods.yml](https://github.com/francoism90/stry/blob/main/pods.yml) is a complete example, and [Spotweb's](https://github.com/francoism90/spotweb/blob/main/pods.yml) has a timer. Backup hints are planned; see the [roadmap](docs/roadmap.md).
+The applications in [foxws/quadlets](https://github.com/foxws/quadlets) each have a `pods.yml` to start from. Backup hints are planned; see the [roadmap](docs/roadmap.md).
 
 ### Catalog
 
@@ -328,16 +328,16 @@ The Install application page lists the applications of the repositories in `conf
 
 Install it from the Proxy section of a host's settings in Pods. Pick how it gets certificates, and its ports:
 
-| Certificates                | For                                                                                                                                                                                | Hostnames look like                       |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Let's Encrypt               | A public domain the internet reaches on port 80 or 443                                                                                                                             | `stry.example.com`, `ws.stry.example.com` |
-| Local certificate authority | Names such as `.home.arpa`, `.lan` or `.test`. Download the root certificate from the Proxy section, and trust it once on each device                                              | `stry.home.arpa`, `ws.stry.home.arpa`     |
-| Wildcard through DNS        | A public domain on a host only your network reaches: one certificate for `*.DOMAIN` through your DNS provider (Cloudflare), whose API token is kept as a Podman secret on the host | `stry.DOMAIN`, `stry-ws.DOMAIN`           |
-| Plain HTTP                  | Another proxy in front that handles HTTPS                                                                                                                                          | as the front proxy routes them            |
+| Certificates                | For                                                                                                                                                                                | Hostnames look like                         |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Let's Encrypt               | A public domain the internet reaches on port 80 or 443                                                                                                                             | `hello.example.com`, `ws.hello.example.com` |
+| Local certificate authority | Names such as `.home.arpa`, `.lan` or `.test`. Download the root certificate from the Proxy section, and trust it once on each device                                              | `hello.home.arpa`, `ws.hello.home.arpa`     |
+| Wildcard through DNS        | A public domain on a host only your network reaches: one certificate for `*.DOMAIN` through your DNS provider (Cloudflare), whose API token is kept as a Podman secret on the host | `hello.DOMAIN`, `hello-ws.DOMAIN`           |
+| Plain HTTP                  | Another proxy in front that handles HTTPS                                                                                                                                          | as the front proxy routes them              |
 
 Pods installs `containers/proxy` from this repository as the application `pods-proxy`, and lpod writes `~/.config/pods-proxy/Caddyfile` and the drop-in `pods-proxy.container.d/lpod-proxy.conf` with the ports, the image and the DNS token (see `lpod proxy settings` in lpod's `docs/commands.md`). The wildcard mode runs `ghcr.io/foxws/pods-proxy:main`, Caddy with the Cloudflare plugin (`containers/runtimes/proxy/Containerfile`, rebuilt every week); the others run `caddy:2`, and any of them can run your own image. Saving replaces a Caddyfile you wrote yourself, and keeps yours next to it as a backup, so keep sites of your own in `~/.config/pods-proxy/sites/*.Caddyfile`. Rootless Podman can't publish ports below `net.ipv4.ip_unprivileged_port_start` (1024 by default), so Pods warns about 80 and 443 there: allow them, or use ports such as 28080 and 28443 behind the host's main proxy, which is also how each user on a shared host runs their own proxy. `install.sh --proxy` installs it too, with Let's Encrypt (or plain HTTP with `--behind-proxy`) on `--proxy-ports`, the first time only, and routes `--host` to Pods as a route of the application `pods`, which you edit on its page like any other.
 
-**Proxy defaults.** Under Settings, Proxy, the owner sets what a host's Proxy section starts from before its proxy is installed (the mode, email, ports, image), so installing it on another host is one click. The domain there is the one Pods suggests hostnames under (`stry.example.com`, `ws.stry.example.com`) instead of `home.arpa`, except behind a wildcard site, whose own domain wins. Hosts with a proxy keep their own settings, and the DNS token is never part of the defaults: it's asked for per host, and only kept there.
+**Proxy defaults.** Under Settings, Proxy, the owner sets what a host's Proxy section starts from before its proxy is installed (the mode, email, ports, image), so installing it on another host is one click. The domain there is the one Pods suggests hostnames under (`hello.example.com`, `ws.hello.example.com`) instead of `home.arpa`, except behind a wildcard site, whose own domain wins. Hosts with a proxy keep their own settings, and the DNS token is never part of the defaults: it's asked for per host, and only kept there.
 
 Once the proxy is installed, Pods manages the routes: the install page asks for a hostname for each route an application's `pods.yml` names, and the Routes card on the application page adds, changes and removes them. lpod writes them to `~/.config/pods-proxy/sites/`, with a drop-in that joins the application's networks, then reloads Caddy, or restarts the proxy when it joins a new network. The main route of an on-demand application goes to its socket, so a request wakes it.
 

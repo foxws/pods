@@ -24,7 +24,7 @@ const modes: RadioGroupItem[] = [
     label: 'Local certificate authority',
     value: 'local',
     description:
-      'Caddy signs the certificates itself, for names such as stry.home.arpa. Trust its root certificate once.',
+      'Caddy signs the certificates itself, for names such as hello.home.arpa. Trust its root certificate once.',
   },
   {
     label: 'Wildcard through DNS',
@@ -109,8 +109,8 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
         label="Domain"
         :description="
           isWildcard
-            ? 'The proxy serves *.DOMAIN. Hostnames are one label under it, such as stry-ws.DOMAIN.'
-            : 'Hostnames are suggested under it, such as stry.DOMAIN and ws.stry.DOMAIN. Empty for home.arpa.'
+            ? 'The proxy serves *.DOMAIN. Hostnames are one label under it, such as hello-ws.DOMAIN.'
+            : 'Hostnames are suggested under it, such as hello.DOMAIN and ws.hello.DOMAIN. Empty for home.arpa.'
         "
         :required="isWildcard && !defaults"
         :error="form.errors.domain"

@@ -33,35 +33,35 @@ function routesSentTo(FakeHostRunner $lpod, string $application): ?array
 it('shows the routes of an application, then the ones its pods.yml names with a suggested hostname', function () {
     fakeLpod();
     Installation::factory()->for($this->environment)->create([
-        'application' => 'stry',
+        'application' => 'hello',
         'manifest' => <<<'YAML'
             routes:
               app:
-                upstream: systemd-stry:8000
+                upstream: systemd-hello:8000
                 description: The web app
               websockets:
-                upstream: systemd-stry-reverb:6001
+                upstream: systemd-hello-reverb:6001
               s3:
-                upstream: systemd-stry-rustfs:9000
+                upstream: systemd-hello-rustfs:9000
                 description: Object storage
                 via: main
               mail:
-                upstream: systemd-stry-mailpit:8025
+                upstream: systemd-hello-mailpit:8025
                 description: Mailpit
             YAML,
     ]);
 
     $this->actingAs($this->owner)
-        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'stry']))
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'hello']))
         ->assertInertia(fn ($page) => $page->loadDeferredProps('routes', fn ($reload) => $reload
             ->where('routes.data.proxy_installed', true)
             ->where('routes.data.proxy_running', true)
             ->where('routes.data.layout', 'sites')
             ->where('routes.data.routes', fn ($routes): bool => collect($routes)->map(fn ($route): array => collect($route)->only(['role', 'host', 'suggested_host', 'target', 'main', 'via', 'from_manifest', 'description'])->all())->all() === [
-                ['role' => 'app', 'description' => 'The web app', 'main' => true, 'via' => null, 'host' => 'stry.home.arpa', 'suggested_host' => 'stry.home.arpa', 'target' => 'host.containers.internal:8000', 'from_manifest' => true],
-                ['role' => 'websockets', 'description' => null, 'main' => false, 'via' => null, 'host' => 'ws.stry.home.arpa', 'suggested_host' => 'websockets.stry.home.arpa', 'target' => 'systemd-stry-reverb:6001', 'from_manifest' => true],
-                ['role' => 's3', 'description' => 'Object storage', 'main' => false, 'via' => 'main', 'host' => 's3.stry.home.arpa', 'suggested_host' => 's3.stry.home.arpa', 'target' => 'host.containers.internal:8000', 'from_manifest' => true],
-                ['role' => 'mail', 'description' => 'Mailpit', 'main' => false, 'via' => null, 'host' => null, 'suggested_host' => 'mail.stry.home.arpa', 'target' => null, 'from_manifest' => true],
+                ['role' => 'app', 'description' => 'The web app', 'main' => true, 'via' => null, 'host' => 'hello.home.arpa', 'suggested_host' => 'hello.home.arpa', 'target' => 'host.containers.internal:8000', 'from_manifest' => true],
+                ['role' => 'websockets', 'description' => null, 'main' => false, 'via' => null, 'host' => 'ws.hello.home.arpa', 'suggested_host' => 'websockets.hello.home.arpa', 'target' => 'systemd-hello-reverb:6001', 'from_manifest' => true],
+                ['role' => 's3', 'description' => 'Object storage', 'main' => false, 'via' => 'main', 'host' => 's3.hello.home.arpa', 'suggested_host' => 's3.hello.home.arpa', 'target' => 'host.containers.internal:8000', 'from_manifest' => true],
+                ['role' => 'mail', 'description' => 'Mailpit', 'main' => false, 'via' => null, 'host' => null, 'suggested_host' => 'mail.hello.home.arpa', 'target' => null, 'from_manifest' => true],
             ])));
 });
 
@@ -79,19 +79,19 @@ it('saves the routes with lowercase hostnames and one main route', function (arr
     $lpod = fakeLpod();
 
     $this->actingAs($this->owner)
-        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'stry']), ['routes' => $routes])
+        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'hello']), ['routes' => $routes])
         ->assertRedirect()
         ->assertInertiaFlash('type', 'success');
 
-    expect(routesSentTo($lpod, 'stry'))->toBe($sent);
+    expect(routesSentTo($lpod, 'hello'))->toBe($sent);
 })->with([
     'the first is the main one' => [
-        [['role' => 'app', 'host' => 'Stry.Home.Arpa', 'upstream' => 'systemd-stry:8000'], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001']],
-        [['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'main' => true, 'via' => null], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'main' => false, 'via' => null]],
+        [['role' => 'app', 'host' => 'Hello.Home.Arpa', 'upstream' => 'systemd-hello:8000'], ['role' => 'websockets', 'host' => 'ws.hello.home.arpa', 'upstream' => 'systemd-hello-reverb:6001']],
+        [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'systemd-hello:8000', 'main' => true, 'via' => null], ['role' => 'websockets', 'host' => 'ws.hello.home.arpa', 'upstream' => 'systemd-hello-reverb:6001', 'main' => false, 'via' => null]],
     ],
     'the first that says so' => [
-        [['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'main' => false], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'main' => true], ['role' => 's3', 'host' => 's3.stry.home.arpa', 'upstream' => 'systemd-stry-rustfs:9000', 'main' => true]],
-        [['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'main' => false, 'via' => null], ['role' => 'websockets', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'main' => true, 'via' => null], ['role' => 's3', 'host' => 's3.stry.home.arpa', 'upstream' => 'systemd-stry-rustfs:9000', 'main' => false, 'via' => null]],
+        [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'systemd-hello:8000', 'main' => false], ['role' => 'websockets', 'host' => 'ws.hello.home.arpa', 'upstream' => 'systemd-hello-reverb:6001', 'main' => true], ['role' => 's3', 'host' => 's3.hello.home.arpa', 'upstream' => 'systemd-hello-rustfs:9000', 'main' => true]],
+        [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'systemd-hello:8000', 'main' => false, 'via' => null], ['role' => 'websockets', 'host' => 'ws.hello.home.arpa', 'upstream' => 'systemd-hello-reverb:6001', 'main' => true, 'via' => null], ['role' => 's3', 'host' => 's3.hello.home.arpa', 'upstream' => 'systemd-hello-rustfs:9000', 'main' => false, 'via' => null]],
     ],
     'none, which removes them' => [[], []],
 ]);
@@ -99,17 +99,17 @@ it('saves the routes with lowercase hostnames and one main route', function (arr
 it('suggests hostnames one label under the wildcard site of the proxy', function () {
     fakeLpod()->respond('proxy routes --json', json_encode(['contract' => 1, 'proxy' => ['installed' => true, 'running' => true, 'layout' => 'handlers', 'domain' => 'home.example.com'], 'routes' => []]));
     Installation::factory()->for($this->environment)->create([
-        'application' => 'stry',
-        'manifest' => "routes:\n  app:\n    upstream: systemd-stry:8000\n  ws:\n    upstream: systemd-stry-reverb:6001\n    via: main\n",
+        'application' => 'hello',
+        'manifest' => "routes:\n  app:\n    upstream: systemd-hello:8000\n  ws:\n    upstream: systemd-hello-reverb:6001\n    via: main\n",
     ]);
 
     $this->actingAs($this->owner)
-        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'stry']))
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'hello']))
         ->assertInertia(fn ($page) => $page->loadDeferredProps('routes', fn ($reload) => $reload
             ->where('routes.data.layout', 'handlers')
             ->where('routes.data.domain', 'home.example.com')
-            ->where('routes.data.routes.0.suggested_host', 'stry.home.example.com')
-            ->where('routes.data.routes.1.suggested_host', 'stry-ws.home.example.com')
+            ->where('routes.data.routes.0.suggested_host', 'hello.home.example.com')
+            ->where('routes.data.routes.1.suggested_host', 'hello-ws.home.example.com')
             ->where('routes.data.routes.1.via', 'main')));
 });
 
@@ -117,19 +117,19 @@ it('suggests hostnames under the domain of the proxy defaults, but not behind a 
     fakeLpod()->respond('proxy routes --json', json_encode(['contract' => 1, 'proxy' => ['installed' => true, 'running' => true, 'layout' => $layout, 'domain' => $wildcard], 'routes' => []]));
     app(ProxySettings::class)->fill(['domain' => 'example.com'])->save();
     Installation::factory()->for($this->environment)->create([
-        'application' => 'stry',
-        'manifest' => "routes:\n  app:\n    upstream: systemd-stry:8000\n  ws:\n    upstream: systemd-stry-reverb:6001\n",
+        'application' => 'hello',
+        'manifest' => "routes:\n  app:\n    upstream: systemd-hello:8000\n  ws:\n    upstream: systemd-hello-reverb:6001\n",
     ]);
 
     $this->actingAs($this->owner)
-        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'stry']))
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'hello']))
         ->assertInertia(fn ($page) => $page->loadDeferredProps('routes', fn ($reload) => $reload
             ->where('routes.data.default_domain', 'example.com')
             ->where('routes.data.routes.0.suggested_host', $main)
             ->where('routes.data.routes.1.suggested_host', $other)));
 })->with([
-    'a site per hostname' => ['sites', null, 'stry.example.com', 'ws.stry.example.com'],
-    'a wildcard site' => ['handlers', 'home.example.com', 'stry.home.example.com', 'stry-ws.home.example.com'],
+    'a site per hostname' => ['sites', null, 'hello.example.com', 'ws.hello.example.com'],
+    'a wildcard site' => ['handlers', 'home.example.com', 'hello.home.example.com', 'hello-ws.home.example.com'],
 ]);
 
 it('gives the install page the domain of the proxy defaults', function () {
@@ -145,50 +145,50 @@ it('sends a route through the main one, but never the main route itself', functi
     $lpod = fakeLpod();
 
     $this->actingAs($this->owner)
-        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'stry']), ['routes' => [
-            ['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'via' => 'main'],
-            ['role' => 'ws', 'host' => 'ws.stry.home.arpa', 'upstream' => 'systemd-stry-reverb:6001', 'via' => 'main'],
+        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'hello']), ['routes' => [
+            ['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'systemd-hello:8000', 'via' => 'main'],
+            ['role' => 'ws', 'host' => 'ws.hello.home.arpa', 'upstream' => 'systemd-hello-reverb:6001', 'via' => 'main'],
         ]])
         ->assertInertiaFlash('type', 'success');
 
-    expect(array_column(routesSentTo($lpod, 'stry'), 'via', 'role'))->toBe(['app' => null, 'ws' => 'main']);
+    expect(array_column(routesSentTo($lpod, 'hello'), 'via', 'role'))->toBe(['app' => null, 'ws' => 'main']);
 });
 
 it('refuses routes lpod would refuse', function (array $route, string $field) {
     $lpod = fakeLpod();
 
     $this->actingAs($this->owner)
-        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'stry']), ['routes' => [
-            ['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000'],
+        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'hello']), ['routes' => [
+            ['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'systemd-hello:8000'],
             $route,
         ]])
         ->assertSessionHasErrors($field);
 
     $lpod->assertNothingRan();
 })->with([
-    'a host that is no hostname' => [['role' => 'web', 'host' => 'https://stry.home.arpa', 'upstream' => 'systemd-stry:8000'], 'routes.1.host'],
-    'the same host in other case' => [['role' => 'web', 'host' => 'STRY.home.arpa', 'upstream' => 'systemd-stry:8000'], 'routes.1.host'],
-    'the same role twice' => [['role' => 'app', 'host' => 'www.stry.home.arpa', 'upstream' => 'systemd-stry:8000'], 'routes.1.role'],
-    'an upstream without a port' => [['role' => 'web', 'host' => 'www.stry.home.arpa', 'upstream' => 'systemd-stry'], 'routes.1.upstream'],
-    'via anything but main' => [['role' => 'web', 'host' => 'www.stry.home.arpa', 'upstream' => 'systemd-stry:8000', 'via' => 'ws'], 'routes.1.via'],
+    'a host that is no hostname' => [['role' => 'web', 'host' => 'https://hello.home.arpa', 'upstream' => 'systemd-hello:8000'], 'routes.1.host'],
+    'the same host in other case' => [['role' => 'web', 'host' => 'HELLO.home.arpa', 'upstream' => 'systemd-hello:8000'], 'routes.1.host'],
+    'the same role twice' => [['role' => 'app', 'host' => 'www.hello.home.arpa', 'upstream' => 'systemd-hello:8000'], 'routes.1.role'],
+    'an upstream without a port' => [['role' => 'web', 'host' => 'www.hello.home.arpa', 'upstream' => 'systemd-hello'], 'routes.1.upstream'],
+    'via anything but main' => [['role' => 'web', 'host' => 'www.hello.home.arpa', 'upstream' => 'systemd-hello:8000', 'via' => 'ws'], 'routes.1.via'],
 ]);
 
 it('shows the error when lpod cannot save the routes', function () {
     fakeLpod()->respond('* routes set --stdin --json', new HostResult(1, '', 'Each host can only have one route.'));
 
     $this->actingAs($this->owner)
-        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'stry']), ['routes' => [
-            ['role' => 'app', 'host' => 'stry.home.arpa', 'upstream' => 'systemd-stry:8000'],
+        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'hello']), ['routes' => [
+            ['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'systemd-hello:8000'],
         ]])
         ->assertInertiaFlash('type', 'error')
-        ->assertInertiaFlash('description', 'lpod stry routes set --stdin --json failed: Each host can only have one route.');
+        ->assertInertiaFlash('description', 'lpod hello routes set --stdin --json failed: Each host can only have one route.');
 });
 
 it('forbids users who are not the owner to change routes', function () {
     $lpod = fakeLpod();
 
     $this->actingAs(User::factory()->create())
-        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'stry']), ['routes' => []])
+        ->put(action([ApplicationRoutesController::class, 'update'], [$this->environment, 'hello']), ['routes' => []])
         ->assertForbidden();
 
     $lpod->assertNothingRan();
