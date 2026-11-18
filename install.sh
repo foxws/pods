@@ -8,6 +8,11 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -s -- --proxy --host pods.example.com
 #
+# Or only prepare this host for a Pods that runs elsewhere, or as another
+# user (lpod and Pods' SSH key, no Pods):
+#
+#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA... pods'
+#
 # Run it again to update. "--help" lists every option.
 set -euo pipefail
 
@@ -26,6 +31,8 @@ LOCAL_PORT=9090
 LPOD="${BIN_DIR}/lpod"
 
 IDLE=true
+PODS=true
+AUTHORIZED_KEY=""
 PROXY=false
 HOST=""
 HTTP_PORT=80
@@ -45,6 +52,11 @@ Installs or updates Pods as rootless Podman Quadlets for the current user.
 
 Usage: install.sh [options]
 
+  --no-pods             Only prepare this host for a Pods that runs elsewhere, or as another
+                        user: check the requirements and install lpod. Install the proxy
+                        from that Pods, in the host's settings
+  --authorized-key KEY  Add this SSH public key to ~/.ssh/authorized_keys, such as Pods'
+                        (Hosts, Copy public key), so that Pods can reach this user
   --proxy               Also install the Pods proxy (Caddy), and route --host to Pods
   --host NAME           The hostname Pods is reached at through the proxy, e.g. pods.example.com
   --proxy-ports H,S     The proxy's host ports for HTTP and HTTPS (default 80,443),
@@ -94,6 +106,8 @@ parse_arguments() {
                 ;;
             --behind-proxy) BEHIND_PROXY=true ;;
             --no-idle) IDLE=false ;;
+            --no-pods) PODS=false ;;
+            --authorized-key) AUTHORIZED_KEY="${2:-}"; shift ;;
             --name) OWNER_NAME="${2:-}"; shift ;;
             --email) OWNER_EMAIL="${2:-}"; shift ;;
             --uninstall) UNINSTALL=true ;;
@@ -104,6 +118,17 @@ parse_arguments() {
 
         shift
     done
+
+    if [ "$PODS" = false ]; then
+        if [ "$PROXY" = true ] || [ "$UNINSTALL" = true ] || [ -n "$HOST" ] || [ -n "$OWNER_NAME" ] || [ -n "$OWNER_EMAIL" ]; then
+            fail "--no-pods only installs lpod (and --authorized-key). Install the proxy from Pods, in the host's settings."
+        fi
+    fi
+
+    # One line of a known key type, so nothing else ends up in authorized_keys.
+    if [ -n "$AUTHORIZED_KEY" ] && ! [[ "$AUTHORIZED_KEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)\ [A-Za-z0-9+/]+={0,3}(\ [^[:cntrl:]]*)?$ ]]; then
+        fail "--authorized-key takes one SSH public key, e.g. 'ssh-ed25519 AAAA... pods'"
+    fi
 
     if [ "$PROXY" = true ] && [ "$UNINSTALL" = false ] && ! [[ "$HOST" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
         fail "--proxy needs --host with the hostname Pods is reached at, e.g. --host pods.example.com"
@@ -120,11 +145,11 @@ parse_arguments() {
 # host over SSH like any other.
 check_requirements() {
     if [ "$(id -u)" -eq 0 ]; then
-        fail "Run this as the user that should own Pods, not as root."
+        fail "Run this as the user that should own Pods (or with --no-pods, its applications), not as root."
     fi
 
     local command
-    for command in podman systemctl curl tar jq; do
+    for command in podman systemctl curl jq; do
         command -v "$command" > /dev/null 2>&1 || fail "$command is required. Install it first."
     done
 
@@ -135,10 +160,14 @@ check_requirements() {
         fail "Pods needs Podman 6 or newer (found ${version:-none})."
     fi
 
+    if [ "$PODS" = true ]; then
+        command -v tar > /dev/null 2>&1 || fail "tar is required. Install it first."
+    fi
+
     systemctl --user show-environment > /dev/null 2>&1 || fail "The systemd user manager isn't reachable. Log in as this user directly, not with su."
 
     if [ "$(loginctl show-user "$USER" -p Linger --value 2> /dev/null)" != "yes" ]; then
-        warn "Lingering is off, so Pods stops when you log out. Turn it on with: sudo loginctl enable-linger $USER"
+        warn "Lingering is off, so your units stop when you log out. Turn it on with: sudo loginctl enable-linger $USER"
     fi
 
     if ! systemctl is-active --quiet sshd 2> /dev/null && ! systemctl is-active --quiet ssh 2> /dev/null; then
@@ -275,14 +304,9 @@ artisan() {
     podman exec -i --user docker systemd-pods php artisan "$@"
 }
 
-# Pods' SSH key lives in its storage volume. Its public key goes into this
-# user's authorized_keys, so Pods can reach this host as a local environment.
-connect_local_host() {
-    info "Setting up Pods' SSH key and the local environment..."
-    artisan pods:install --no-interaction > /dev/null 2>&1 || true
-
-    local key
-    key="$(podman exec --user docker systemd-pods cat /app/storage/app/private/ssh/id_ed25519.pub)"
+# Adds a public key to this user's authorized_keys, once.
+authorize_key() {
+    local key="$1"
 
     mkdir -p "${HOME}/.ssh"
     chmod 700 "${HOME}/.ssh"
@@ -296,8 +320,19 @@ connect_local_host() {
         fi
 
         echo "$key" >> "${HOME}/.ssh/authorized_keys"
-        info "Added Pods' key to ~/.ssh/authorized_keys."
+        info "Added the key to ~/.ssh/authorized_keys."
+    else
+        info "The key is in ~/.ssh/authorized_keys."
     fi
+}
+
+# Pods' SSH key lives in its storage volume. Its public key goes into this
+# user's authorized_keys, so Pods can reach this host as a local environment.
+connect_local_host() {
+    info "Setting up Pods' SSH key and the local environment..."
+    artisan pods:install --no-interaction > /dev/null 2>&1 || true
+
+    authorize_key "$(podman exec --user docker systemd-pods cat /app/storage/app/private/ssh/id_ed25519.pub)"
 
     artisan pods:install --no-interaction || warn "The local environment isn't connected yet. Fix the problem above, then run: podman exec --user docker systemd-pods php artisan pods:verify"
 }
@@ -419,6 +454,28 @@ uninstall() {
     systemctl --user daemon-reload
 }
 
+# With --no-pods: lpod and the key only, for a Pods elsewhere to manage this
+# user. A Pods on this machine as another user reaches it as
+# host.containers.internal; one elsewhere by this host's name.
+prepare_host() {
+    install_lpod
+
+    if [ -n "$AUTHORIZED_KEY" ]; then
+        authorize_key "$AUTHORIZED_KEY"
+    fi
+
+    echo
+    info "This host is ready for Pods. In Pods, use Hosts, Add environment with:"
+    echo
+    echo "    User: ${USER}"
+    echo "    Host: host.containers.internal (Pods on this machine, as another user), or $(hostname) (Pods elsewhere)"
+    echo
+
+    if [ -z "$AUTHORIZED_KEY" ]; then
+        info "First add Pods' public key (Hosts, Copy public key) to ~/.ssh/authorized_keys, or run this again with --authorized-key."
+    fi
+}
+
 main() {
     parse_arguments "$@"
     check_requirements
@@ -429,12 +486,23 @@ main() {
         return
     fi
 
+    if [ "$PODS" = false ]; then
+        prepare_host
+
+        return
+    fi
+
     # The proxy reaches Pods by container name, which can't wake it.
     if [ "$PROXY" = true ]; then
         IDLE=false
     fi
 
     install_lpod
+
+    if [ -n "$AUTHORIZED_KEY" ]; then
+        authorize_key "$AUTHORIZED_KEY"
+    fi
+
     disable_idle
     fetch_units
     create_env_secret

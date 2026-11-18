@@ -102,6 +102,12 @@ curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -
 
 On a host shared with other users, give the proxy other ports with `--proxy-ports 28080,28443`, and add `--behind-proxy` when another proxy in front handles HTTPS. `--uninstall` removes Pods and keeps its data; add `--purge` to remove that too. `--help` lists every option.
 
+To prepare a host (or another user on the same machine) for a Pods that runs elsewhere, use `--no-pods`. It checks the requirements and installs lpod, and `--authorized-key` adds Pods' public key (**Hosts**, **Copy public key**) to that user's `~/.ssh/authorized_keys`. It installs no Pods and no proxy: install the proxy from Pods, in the new environment's settings.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/main/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA… pods'
+```
+
 ## Getting started
 
 Once `install.sh` is done:
@@ -109,7 +115,7 @@ Once `install.sh` is done:
 1. **Create the owner.** Open `http://127.0.0.1:9090` on the host (or `ssh -L 9090:127.0.0.1:9090 HOST` and open it on your own machine). Pods sends you to **Set up Pods**. Enter the setup code `install.sh` printed, then your name, email address and password. If you lost the code, `journalctl --user -u pods` shows it again.
 2. **Check the local host.** **Hosts** lists the machine Pods runs on as the local environment, already connected. Its overview shows CPU, memory, disk and any failed units.
 3. **Install an application from the catalog.** Open **Applications**, then **Install application**, and search the **Catalog** for Memos. Pick it, check the Quadlet file Pods shows you, keep **Start after installing** on, and press **Install memos**. Memos listens on `127.0.0.1:5230` on the host. Its page has its containers, its journal, and Start, Stop, Restart, and Pull and redeploy.
-4. **Add another host (optional).** Install lpod there (see [Requirements](#requirements)), and add Pods' public key to `~/.ssh/authorized_keys` of the user that owns the Quadlets (**Hosts**, **Copy public key**). Then use **Add environment** with its hostname and that user. Pods pins the host's key on first contact.
+4. **Add another host (optional).** As the user that owns the Quadlets there, run `install.sh --no-pods --authorized-key '…'` with Pods' public key (**Hosts**, **Copy public key**), or install lpod (see [Requirements](#requirements)) and add the key to `~/.ssh/authorized_keys` yourself. Then use **Add environment** with its hostname and that user. Another user on the machine Pods runs on is `host.containers.internal`, with its own lingering (`sudo loginctl enable-linger USER`), and its proxy on ports such as 28080 behind the main one. Pods pins the host's key on first contact.
 
 Next, give an application a hostname with the [proxy](#proxy), or make your own repository installable, as below.
 

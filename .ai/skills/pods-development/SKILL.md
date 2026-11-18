@@ -84,6 +84,7 @@ lpod generates each application's routes file, with the routes kept on its `# lp
 - UI: `ProxySettingsCard.vue` on the host's settings page (deferred `proxy` prop, group `proxy`). It warns when rootless Podman can't publish the ports (`unprivileged_port_start`). The certificate button is a `UButton` with `external`, so it's a plain download, not an Inertia visit.
 - `ghcr.io/foxws/pods-proxy:main` is Caddy built with xcaddy (`containers/runtimes/proxy/Containerfile`, published by `.github/workflows/build-proxy.yml` on changes and weekly). A new DNS provider needs another `--with` line there, its name in `ProxySettingsData::DnsProviders`, and its token variable in lpod's `proxy_dns_env`.
 - `install.sh --proxy` calls `lpod proxy settings set` only while there's no Caddyfile yet, so running it again keeps settings made in Pods.
+- `install.sh --no-pods [--authorized-key KEY]` only prepares a host or user for a Pods elsewhere: the requirement checks, lpod, and the key in `authorized_keys` (`authorize_key`, shared with the local install). It refuses `--proxy`, `--host`, `--uninstall` and the owner options, since that Pods installs the proxy and keeps its source.
 - The fields (mode, domain, token, email, and under Advanced the DNS provider, resolvers, ports and image) are `ProxySettingsFields.vue`, shared by the host's card and the defaults form, with `ProxySettingsFormValues` from `resources/js/types/index.d.ts`.
 
 ### Proxy defaults
