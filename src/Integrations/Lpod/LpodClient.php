@@ -38,6 +38,7 @@ use Integrations\Lpod\Exceptions\LpodException;
 use Integrations\Lpod\Exceptions\UnsupportedCommandException;
 use Integrations\Lpod\Exceptions\UnsupportedContractException;
 use Integrations\Ssh\Contracts\RunsHostCommands;
+use Integrations\Ssh\HostResult;
 
 /**
  * Talks to lpod on an environment's host, through its JSON contract.
@@ -700,10 +701,46 @@ class LpodClient
     }
 
     /**
+     * Installs another lpod over the one on the host, for the user Pods connects as: a release such as
+     * v4.0.0, or a branch such as main. lpod before 4.0.0-rc.2 prints the installer's text even with
+     * --json, so only the exit code counts here; verify the host afterwards to read its new version.
+     */
+    public function selfUpdate(Environment $environment, string $version): void
+    {
+        $this->execute($environment, ['self-update', $version, '--json'], timeout: 180);
+    }
+
+    /**
      * @param  list<string>  $arguments
      * @return array<string, mixed>
      */
     protected function json(Environment $environment, array $arguments, ?string $input = null, int $timeout = 30): array
+    {
+        $command = implode(' ', $arguments);
+
+        $result = $this->execute($environment, $arguments, $input, $timeout);
+
+        $payload = json_decode($result->output, true);
+
+        if (! is_array($payload)) {
+            throw LpodException::invalidJson($command);
+        }
+
+        $contract = isset($payload['contract']) ? (int) $payload['contract'] : null;
+
+        if ($contract !== self::Contract) {
+            throw UnsupportedContractException::make($contract, self::Contract);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Runs lpod, and turns a host it can't reach, a missing lpod and a failed command into an exception.
+     *
+     * @param  list<string>  $arguments
+     */
+    protected function execute(Environment $environment, array $arguments, ?string $input = null, int $timeout = 30): HostResult
     {
         $command = implode(' ', $arguments);
 
@@ -729,18 +766,6 @@ class LpodClient
             throw LpodException::commandFailed($command, $result);
         }
 
-        $payload = json_decode($result->output, true);
-
-        if (! is_array($payload)) {
-            throw LpodException::invalidJson($command);
-        }
-
-        $contract = isset($payload['contract']) ? (int) $payload['contract'] : null;
-
-        if ($contract !== self::Contract) {
-            throw UnsupportedContractException::make($contract, self::Contract);
-        }
-
-        return $payload;
+        return $result;
     }
 }

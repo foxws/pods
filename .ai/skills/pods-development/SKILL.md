@@ -20,7 +20,8 @@ Pods is still in development. Read `docs/architecture.md` before you change how 
 Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Actions` → `Integrations\Lpod\LpodClient` → `Integrations\Ssh\SshHostRunner` → `ssh` → `lpod … --json` on the host.
 
 - Every environment is an SSH target, the local host too (`host.containers.internal`). Never add a code path that runs `podman`, `systemctl` or `journalctl` from Pods itself.
-- Pods only runs lpod. If lpod lacks a command, it needs a PR in [foxws/lpod](https://github.com/foxws/lpod) first. Hosts use lpod from `main` until lpod 4.0 is tagged.
+- Pods only runs lpod. If lpod lacks a command, it needs a PR in [foxws/lpod](https://github.com/foxws/lpod) first.
+- **lpod version.** `config('services.pods.lpod_version')` (`PODS_LPOD_VERSION`) is the lpod release this Pods needs, and must equal `LPOD_REF` in `install.sh` (a test checks it); a release PR bumps both. `LpodVersionData::fromEnvironment()` compares it with the host's `facts['lpod']` (a release without `v`, or `dev-BRANCH`; a newer release isn't offered a downgrade). The host's settings page shows `LpodVersionCard.vue`, and `PUT environments/{environment}/lpod` (`EnvironmentLpodController`, `UpdateLpod`) runs `lpod self-update VERSION --json` through `LpodClient::selfUpdate()`, which only checks the exit code (lpod before 4.0.0-rc.2 prints text there), then `VerifyEnvironment`, and refuses with `CannotUpdateLpodException` when the host still reports another version. A feature that needs a newer lpod should also bump the pin.
 - Podman 6+ and systemd only. Don't add Docker or Podman Compose paths.
 
 ## Rules

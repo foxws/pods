@@ -61,6 +61,7 @@ export type {
   ImageData,
   InstallationData,
   JournalEntryData,
+  LpodVersionData,
   ManifestData,
   ManifestRouteData,
   ManifestSecretData,

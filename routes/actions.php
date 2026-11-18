@@ -15,6 +15,7 @@ use Modules\Web\Applications\Controllers\ApplicationUpdateController;
 use Modules\Web\Containers\Controllers\ContainerOperationController;
 use Modules\Web\Containers\Controllers\ContainerPruneController;
 use Modules\Web\Environments\Controllers\EnvironmentController;
+use Modules\Web\Environments\Controllers\EnvironmentLpodController;
 use Modules\Web\Environments\Controllers\EnvironmentProxyController;
 use Modules\Web\Environments\Controllers\EnvironmentSettingsController;
 use Modules\Web\Images\Controllers\ImageController;
@@ -43,6 +44,7 @@ Route::resource('environments', EnvironmentController::class)->only(['store', 'd
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
     // Settings
     Route::put('/settings', [EnvironmentSettingsController::class, 'update'])->name('settings.update');
+    Route::put('/lpod', [EnvironmentLpodController::class, 'update'])->name('lpod.update');
 
     // Proxy
     Route::prefix('/proxy')->name('proxy.')->group(function () {
