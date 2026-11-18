@@ -103,9 +103,14 @@ class Installation extends Model
         ]);
     }
 
+    /**
+     * Reads the attribute, because $this->changes is the model's own list of attributes the last save changed.
+     */
     public function isChangedOutsidePods(): bool
     {
-        return collect($this->changes ?? [])->flatten()->isNotEmpty();
+        $changes = $this->getAttribute('changes');
+
+        return is_array($changes) && collect($changes)->flatten()->isNotEmpty();
     }
 
     /**

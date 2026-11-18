@@ -200,6 +200,40 @@ it('only updates to a newer tag of the repository', function () {
     expect(collect($lpod->recorded())->pluck('arguments')->contains(fn (array $arguments): bool => in_array('fetch', $arguments, true)))->toBeFalse();
 });
 
+it('replaces files that differ from the source with the ones of its own reference, and keeps what it was updated from', function () {
+    $lpod = fakeLpod()
+        ->respond('quadlet fetch *', immichRelease())
+        ->respond('immich down --json', lpodFixture('ok'));
+    Installation::factory()->for($this->environment)->fromGit()->create([
+        'application' => 'immich',
+        'reference' => 'v3.2.0',
+        'commit' => 'c41e9a2',
+        'updated_from' => 'v3.1.0',
+        'changes' => ['modified' => ['immich.pod'], 'added' => [], 'removed' => []],
+    ]);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0'])
+        ->assertSessionHasNoErrors()->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(['quadlet', 'install', 'immich', '--replace', '--start', '--stdin', '--json']);
+    expect($this->environment->installations()->sole())
+        ->reference->toBe('v3.2.0')
+        ->updated_from->toBe('v3.1.0')
+        ->changes->toBeNull();
+});
+
+it('only reinstalls its own reference when files differ from the source', function () {
+    $lpod = fakeLpod();
+    Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'v3.2.0']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0'])
+        ->assertSessionHasErrors('tag');
+
+    expect(collect($lpod->recorded())->pluck('arguments')->contains(fn (array $arguments): bool => in_array('fetch', $arguments, true)))->toBeFalse();
+});
+
 it('leaves the application running when the tag cannot be installed', function (Closure $respond, string $error) {
     $lpod = fakeLpod();
     $respond($lpod);
