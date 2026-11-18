@@ -28,8 +28,6 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 QUADLET_DIR="${CONFIG_HOME}/containers/systemd"
 PROXY_CONFIG="${CONFIG_HOME}/pods-proxy"
 BIN_DIR="${HOME}/.local/bin"
-# The port Pods listens on, on 127.0.0.1. Cockpit has 9090. --port picks
-# another; an existing install keeps the one it has.
 DEFAULT_PORT=9393
 LOCAL_PORT=""
 LPOD="${BIN_DIR}/lpod"
