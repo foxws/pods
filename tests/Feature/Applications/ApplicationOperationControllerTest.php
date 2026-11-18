@@ -28,11 +28,11 @@ it('force stops an application with lpod down --force', function () {
     $lpod = fakeLpod();
 
     $this->actingAs($this->owner)
-        ->post(action(ApplicationOperationController::class, [$this->environment, 'stry', ApplicationOperation::ForceStop]))
+        ->post(action(ApplicationOperationController::class, [$this->environment, 'hello', ApplicationOperation::ForceStop]))
         ->assertRedirect()
         ->assertInertiaFlash('type', 'success');
 
-    $lpod->assertRan(['stry', 'down', '--force', '--json']);
+    $lpod->assertRan(['hello', 'down', '--force', '--json']);
 });
 
 it('flashes the error when lpod fails', function () {

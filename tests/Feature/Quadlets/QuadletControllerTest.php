@@ -171,15 +171,15 @@ it('creates the secrets the files need before installing, with the values on std
 
 it('fills secrets in from a key of an entered .env file', function () {
     $lpod = fakeLpod();
-    $env = "APP_NAME=stry\nDB_PASSWORD=\"correct horse # battery\"\nDB_USERNAME=\${APP_NAME}\n";
+    $env = "APP_NAME=hello\nDB_PASSWORD=\"correct horse # battery\"\nDB_USERNAME=\${APP_NAME}\n";
 
     $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
-        'application' => 'stry',
+        'application' => 'hello',
         'files' => $this->files,
-        'secrets' => [['name' => 'stry-env', 'driver' => 'file', 'value' => $env]],
+        'secrets' => [['name' => 'hello-env', 'driver' => 'file', 'value' => $env]],
         'derived_secrets' => [
-            ['name' => 'stry-pgsql-password', 'from' => 'stry-env', 'key' => 'DB_PASSWORD'],
-            ['name' => 'stry-pgsql-user', 'from' => 'stry-env', 'key' => 'DB_USERNAME'],
+            ['name' => 'hello-pgsql-password', 'from' => 'hello-env', 'key' => 'DB_PASSWORD'],
+            ['name' => 'hello-pgsql-user', 'from' => 'hello-env', 'key' => 'DB_USERNAME'],
         ],
     ])->assertSessionHasNoErrors();
 
@@ -188,9 +188,9 @@ it('fills secrets in from a key of an entered .env file', function () {
         ->mapWithKeys(fn (array $call) => [$call['arguments'][2] => $call['input']]);
 
     expect($created->all())->toBe([
-        'stry-env' => $env,
-        'stry-pgsql-password' => 'correct horse # battery',
-        'stry-pgsql-user' => 'stry',
+        'hello-env' => $env,
+        'hello-pgsql-password' => 'correct horse # battery',
+        'hello-pgsql-user' => 'hello',
     ]);
 
     foreach ($lpod->recorded() as $call) {
@@ -203,11 +203,11 @@ it('refuses to fill a secret in when the .env file lacks its key', function (arr
 
     $this->actingAs($this->owner)
         ->post(action([QuadletController::class, 'store'], $this->environment), [
-            'application' => 'stry',
+            'application' => 'hello',
             'files' => $this->files,
             'secrets' => [
-                ['name' => 'stry-env', 'driver' => 'file', 'value' => "DB_PASSWORD=secret-value\nDB_HOST=\n"],
-                ['name' => 'stry-typesense-api-key', 'driver' => 'file', 'value' => 'typed-by-hand'],
+                ['name' => 'hello-env', 'driver' => 'file', 'value' => "DB_PASSWORD=secret-value\nDB_HOST=\n"],
+                ['name' => 'hello-typesense-api-key', 'driver' => 'file', 'value' => 'typed-by-hand'],
             ],
             'derived_secrets' => [$derived],
         ])
@@ -216,10 +216,10 @@ it('refuses to fill a secret in when the .env file lacks its key', function (arr
     expect(session('errors')->first($field))->not->toContain('secret-value');
     $lpod->assertNothingRan();
 })->with([
-    'missing key' => [['name' => 'stry-pgsql-user', 'from' => 'stry-env', 'key' => 'DB_USERNAME'], 'derived_secrets.0.key'],
-    'empty key' => [['name' => 'stry-pgsql-host', 'from' => 'stry-env', 'key' => 'DB_HOST'], 'derived_secrets.0.key'],
-    'source not entered' => [['name' => 'stry-pgsql-user', 'from' => 'other-env', 'key' => 'DB_USERNAME'], 'derived_secrets.0.from'],
-    'value entered too' => [['name' => 'stry-typesense-api-key', 'from' => 'stry-env', 'key' => 'DB_PASSWORD'], 'derived_secrets.0.name'],
+    'missing key' => [['name' => 'hello-pgsql-user', 'from' => 'hello-env', 'key' => 'DB_USERNAME'], 'derived_secrets.0.key'],
+    'empty key' => [['name' => 'hello-pgsql-host', 'from' => 'hello-env', 'key' => 'DB_HOST'], 'derived_secrets.0.key'],
+    'source not entered' => [['name' => 'hello-pgsql-user', 'from' => 'other-env', 'key' => 'DB_USERNAME'], 'derived_secrets.0.from'],
+    'value entered too' => [['name' => 'hello-typesense-api-key', 'from' => 'hello-env', 'key' => 'DB_PASSWORD'], 'derived_secrets.0.name'],
 ]);
 
 it('refuses a source that is not a valid .env file without echoing it', function () {
@@ -227,10 +227,10 @@ it('refuses a source that is not a valid .env file without echoing it', function
 
     $this->actingAs($this->owner)
         ->post(action([QuadletController::class, 'store'], $this->environment), [
-            'application' => 'stry',
+            'application' => 'hello',
             'files' => $this->files,
-            'secrets' => [['name' => 'stry-env', 'driver' => 'file', 'value' => "DB_PASSWORD=has secret-value spaces\n"]],
-            'derived_secrets' => [['name' => 'stry-pgsql-password', 'from' => 'stry-env', 'key' => 'DB_PASSWORD']],
+            'secrets' => [['name' => 'hello-env', 'driver' => 'file', 'value' => "DB_PASSWORD=has secret-value spaces\n"]],
+            'derived_secrets' => [['name' => 'hello-pgsql-password', 'from' => 'hello-env', 'key' => 'DB_PASSWORD']],
         ])
         ->assertSessionHasErrors('derived_secrets.0.from');
 
@@ -453,25 +453,25 @@ it('resolves the sources of an application pods.yml relative to its directory', 
 
 it('sets up the timers its pods.yml names after the install', function () {
     $lpod = fakeLpod();
-    $manifest = "version: 1\nname: spotweb\ntimers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: hourly\n    persistent: true\n    randomized_delay_sec: 5min\n    timeout_start_sec: infinity\n";
+    $manifest = "version: 1\nname: nextcloud\ntimers:\n  cron:\n    container: nextcloud-cron\n    on_calendar: hourly\n    persistent: true\n    randomized_delay_sec: 5min\n    timeout_start_sec: infinity\n";
 
     $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
-        'application' => 'spotweb',
+        'application' => 'nextcloud',
         'files' => $this->files,
-        'source' => ['repository' => 'https://github.com/francoism90/spotweb', 'reference' => 'main', 'path' => 'containers/systemd/spotweb', 'commit' => 'a41f9c2', 'manifest' => $manifest, 'manifest_path' => ''],
+        'source' => ['repository' => 'https://github.com/foxws/quadlets', 'reference' => 'main', 'path' => 'nextcloud', 'commit' => 'a41f9c2', 'manifest' => $manifest, 'manifest_path' => ''],
     ])->assertInertiaFlash('type', 'success');
 
-    $lpod->assertRan(fn (array $arguments, ?string $input) => $arguments === ['spotweb', 'timers', 'set', '--stdin', '--json']
+    $lpod->assertRan(fn (array $arguments, ?string $input) => $arguments === ['nextcloud', 'timers', 'set', '--stdin', '--json']
         && json_decode($input, true) === ['timers' => [[
-            'name' => 'retrieve',
-            'container' => 'spotweb-retrieve',
+            'name' => 'cron',
+            'container' => 'nextcloud-cron',
             'on_calendar' => ['hourly'],
             'persistent' => true,
             'randomized_delay_sec' => '5min',
             'timeout_start_sec' => 'infinity',
         ]]]);
-    expect(collect($lpod->recorded())->pluck('arguments')->search(['quadlet', 'install', 'spotweb', '--start', '--stdin', '--json']))
-        ->toBeLessThan(collect($lpod->recorded())->pluck('arguments')->search(['spotweb', 'timers', 'set', '--stdin', '--json']));
+    expect(collect($lpod->recorded())->pluck('arguments')->search(['quadlet', 'install', 'nextcloud', '--start', '--stdin', '--json']))
+        ->toBeLessThan(collect($lpod->recorded())->pluck('arguments')->search(['nextcloud', 'timers', 'set', '--stdin', '--json']));
 });
 
 it('leaves timers alone when neither pods.yml names any', function () {
@@ -503,18 +503,18 @@ it('removes the timers of the previous pods.yml when the new one names none', fu
 });
 
 it('says when the timers could not be set up, but keeps the install', function () {
-    fakeLpod()->respond('* timers set --stdin --json', new HostResult(1, '', 'spotweb-retrieve isn\'t a container Quadlet of spotweb.'));
+    fakeLpod()->respond('* timers set --stdin --json', new HostResult(1, '', 'nextcloud-cron isn\'t a container Quadlet of nextcloud.'));
 
     $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
-        'application' => 'spotweb',
+        'application' => 'nextcloud',
         'files' => $this->files,
-        'source' => ['repository' => 'https://github.com/francoism90/spotweb', 'reference' => 'main', 'path' => '', 'commit' => 'a41f9c2', 'manifest' => "timers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: hourly\n", 'manifest_path' => ''],
+        'source' => ['repository' => 'https://github.com/foxws/quadlets', 'reference' => 'main', 'path' => '', 'commit' => 'a41f9c2', 'manifest' => "timers:\n  cron:\n    container: nextcloud-cron\n    on_calendar: hourly\n", 'manifest_path' => ''],
     ])
-        ->assertRedirect(action([ApplicationController::class, 'show'], [$this->environment, 'spotweb']))
+        ->assertRedirect(action([ApplicationController::class, 'show'], [$this->environment, 'nextcloud']))
         ->assertInertiaFlash('type', 'error')
-        ->assertInertiaFlash('title', 'spotweb installed, but its timers weren\'t set up');
+        ->assertInertiaFlash('title', 'nextcloud installed, but its timers weren\'t set up');
 
-    expect($this->environment->installations()->sole()->application)->toBe('spotweb');
+    expect($this->environment->installations()->sole()->application)->toBe('nextcloud');
 });
 
 it('refuses a pods.yml with timers lpod could not set up', function (string $manifest, string $error) {
@@ -522,18 +522,18 @@ it('refuses a pods.yml with timers lpod could not set up', function (string $man
 
     $this->actingAs($this->owner)
         ->postJson(action(QuadletFetchController::class, $this->environment), [
-            'repository' => 'https://github.com/francoism90/spotweb',
+            'repository' => 'https://github.com/foxws/quadlets',
             'reference' => 'main',
         ])
         ->assertOk()
         ->assertJsonPath('data.manifest', null)
         ->assertJsonPath('data.manifest_error', fn (string $message) => str_contains($message, $error));
 })->with([
-    'invalid name' => ["timers:\n  Retrieve:\n    container: spotweb-retrieve\n    on_calendar: hourly\n", 'isn\'t a valid timer name'],
-    'the idle check' => ["timers:\n  idle:\n    container: spotweb-retrieve\n    on_calendar: hourly\n", 'isn\'t a valid timer name'],
-    'no schedule' => ["timers:\n  retrieve:\n    container: spotweb-retrieve\n", 'timers.retrieve.on_calendar'],
-    'empty schedule list' => ["timers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: []\n", 'timers.retrieve.on_calendar'],
-    'two lines' => ["timers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: \"hourly\\nOnBootSec=1\"\n", 'isn\'t a calendar event'],
-    'one container twice' => ["timers:\n  a:\n    container: spotweb-retrieve\n    on_calendar: hourly\n  b:\n    container: spotweb-retrieve\n    on_calendar: daily\n", 'timers.a.container'],
-    'invalid timeout' => ["timers:\n  retrieve:\n    container: spotweb-retrieve\n    on_calendar: hourly\n    timeout_start_sec: forever\n", 'timers.retrieve.timeout_start_sec'],
+    'invalid name' => ["timers:\n  Cron:\n    container: nextcloud-cron\n    on_calendar: hourly\n", 'isn\'t a valid timer name'],
+    'the idle check' => ["timers:\n  idle:\n    container: nextcloud-cron\n    on_calendar: hourly\n", 'isn\'t a valid timer name'],
+    'no schedule' => ["timers:\n  cron:\n    container: nextcloud-cron\n", 'timers.cron.on_calendar'],
+    'empty schedule list' => ["timers:\n  cron:\n    container: nextcloud-cron\n    on_calendar: []\n", 'timers.cron.on_calendar'],
+    'two lines' => ["timers:\n  cron:\n    container: nextcloud-cron\n    on_calendar: \"hourly\\nOnBootSec=1\"\n", 'isn\'t a calendar event'],
+    'one container twice' => ["timers:\n  a:\n    container: nextcloud-cron\n    on_calendar: hourly\n  b:\n    container: nextcloud-cron\n    on_calendar: daily\n", 'timers.a.container'],
+    'invalid timeout' => ["timers:\n  cron:\n    container: nextcloud-cron\n    on_calendar: hourly\n    timeout_start_sec: forever\n", 'timers.cron.timeout_start_sec'],
 ]);

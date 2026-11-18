@@ -107,7 +107,7 @@ class SuggestOnDemandSettings
     }
 
     /**
-     * The main unit is the pod (immich-pod.service is immich.pod) or the container (stry.service is stry.container).
+     * The main unit is the pod (immich-pod.service is immich.pod) or the container (hello.service is hello.container).
      */
     protected function mainFileName(ApplicationData $application): string
     {

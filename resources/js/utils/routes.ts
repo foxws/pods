@@ -1,8 +1,8 @@
 /**
  * The hostname Pods suggests for a route, as SuggestRoutes does on the server: the application's name
  * for the main route, and the role with it for the others. Under home.arpa, or the proxy defaults'
- * domain when they have one, that's stry.home.arpa and ws.stry.home.arpa. Behind a wildcard site, whose
- * certificate covers one label, it's stry.DOMAIN and stry-ws.DOMAIN.
+ * domain when they have one, that's hello.home.arpa and ws.hello.home.arpa. Behind a wildcard site, whose
+ * certificate covers one label, it's hello.DOMAIN and hello-ws.DOMAIN.
  */
 export function suggestedHost(
   application: string,

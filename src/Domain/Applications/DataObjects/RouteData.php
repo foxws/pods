@@ -20,12 +20,12 @@ class RouteData extends Data
     public const string RolePattern = '/^[a-z][a-z0-9_-]{0,31}$/';
 
     /**
-     * A container and the port it listens on, such as systemd-stry:8000.
+     * A container and the port it listens on, such as systemd-hello:8000.
      */
     public const string UpstreamPattern = '/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}:\d{1,5}$/';
 
     /**
-     * A hostname, such as stry.home.arpa.
+     * A hostname, such as hello.home.arpa.
      */
     public const string HostPattern = '/^(?=.{1,253}$)[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/';
 
