@@ -4,10 +4,10 @@ import JournalLog from '@/components/Applications/JournalLog.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
+import { useHostReload } from '@/composables/polling'
 import type { EnvironmentData, HostProperty, JournalEntryData } from '@/types'
 import { Head, router } from '@inertiajs/vue3'
 import type { SelectItem, TabsItem } from '@nuxt/ui'
-import { useIntervalFn } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
@@ -62,7 +62,7 @@ const changeWindow = (since: string | number): void => {
   )
 }
 
-const { pause, resume } = useIntervalFn(() => router.reload({ only: ['entries'] }), 5000)
+const { pause, resume } = useHostReload(['entries'], 5000)
 
 const toggleFollowing = (): void => {
   isFollowing.value = !isFollowing.value
