@@ -33,6 +33,7 @@ LOCAL_PORT=""
 LPOD="${BIN_DIR}/lpod"
 
 IDLE=true
+IDLE_LISTEN=127.0.0.1
 PODS=true
 AUTHORIZED_KEY=""
 PROXY=false
@@ -65,10 +66,10 @@ Usage: install.sh [options]
                         e.g. 28080,28443 on a host shared with other users
   --behind-proxy        Another proxy in front handles HTTPS: the Pods proxy serves plain HTTP
   --port PORT           The port Pods listens on, on 127.0.0.1 (default 9393, or the one an
-                        existing install has)
+                        existing install has). Behind the proxy, its socket listens on every
+                        address
   --no-idle             Keep Pods running all the time, instead of starting it on the first
-                        request and stopping it after 10 minutes without one. Pods also keeps
-                        running while it has a route through the proxy
+                        request and stopping it after 10 minutes without one
   --name NAME           With --email and PODS_OWNER_PASSWORD, create the owner here
   --email EMAIL         instead of on Pods' setup page
   --uninstall           Remove Pods (and with --proxy, the proxy). Keeps its data
@@ -83,8 +84,9 @@ Pods listens on 127.0.0.1:9393 (or --port) only. Reach it on this machine,
 or through an SSH tunnel: ssh -L 9393:127.0.0.1:9393 HOST
 Like cockpit.socket, a socket listens there and starts Pods on the first
 request, and Pods stops again when nobody uses it (unless --no-idle). With
-a route through the proxy (--proxy, or one set in Pods), Pods runs all the
-time for now, since the proxy reaches it by name.
+a route through the proxy (--proxy, or one set in Pods), the socket listens
+on every address instead, since the proxy container can't reach 127.0.0.1:
+block the port in the host's firewall to keep Pods off your network.
 
 lpod is installed (or upgraded, when it's older) at LPOD_REF. A git checkout
 of lpod, or a build of a branch (lpod self-update main), is kept.
@@ -409,8 +411,8 @@ publish_port() {
     printf '# Written by install.sh --port.\n[Container]\nPublishPort=\nPublishPort=127.0.0.1:%s:8000\n' "$LOCAL_PORT" > "$dropin"
 }
 
-# Whether Pods has a route through the proxy. The proxy reaches Pods by
-# name, and lpod's socket only listens on 127.0.0.1, so Pods can't sleep.
+# Whether Pods has a route through the proxy, so the proxy has to reach
+# its socket.
 has_routes() {
     "$LPOD" pods routes --json 2> /dev/null | jq -e '.routes | length > 0' > /dev/null 2>&1
 }
@@ -433,15 +435,28 @@ disable_idle() {
 # Pods on the first request, and Pods (published on 127.0.0.1:PORT+10000 then)
 # stops after 10 minutes without one. The scheduler only runs at 01:00 UTC,
 # when Pods' daily housekeeping is due (routes/console.php).
+#
+# Behind the proxy, the socket listens on every address: the proxy container
+# reaches the host as host.containers.internal, which isn't 127.0.0.1, and
+# lpod points Pods' route there, so a request through the proxy wakes Pods.
+# A unix socket doesn't work instead, since SELinux doesn't let a container
+# connect to a socket the user's systemd holds, and a user's socket units
+# can't limit who connects (IPAddressAllow= needs a system unit).
 enable_idle() {
     info "Letting Pods sleep when nobody uses it..."
 
     if ! "$LPOD" pods ondemand enable --json \
-        --listen 127.0.0.1 --port "$LOCAL_PORT" --app-port 8000 \
+        ${IDLE_LISTEN:+--listen "$IDLE_LISTEN"} --port "$LOCAL_PORT" --app-port 8000 \
         --schedule pods-schedule --schedule-at 01:00 \
         --schedule-env "APP_COMMAND=php -d variables_order=EGPCS /app/artisan schedule:run" > /dev/null; then
         warn "Pods runs all the time instead. Update lpod (lpod self-update) and run this again, or pass --no-idle."
         IDLE=false
+
+        return
+    fi
+
+    if [ -z "$IDLE_LISTEN" ]; then
+        warn "So the proxy can wake Pods, its socket listens on port ${LOCAL_PORT} on every address. Block that port in the host's firewall to keep Pods off your network, or pass --no-idle."
     fi
 }
 
@@ -645,11 +660,6 @@ main() {
         return
     fi
 
-    # The proxy reaches Pods by container name, which can't wake it.
-    if [ "$PROXY" = true ]; then
-        IDLE=false
-    fi
-
     install_lpod
 
     if [ -n "$AUTHORIZED_KEY" ]; then
@@ -663,10 +673,10 @@ main() {
         warn "Pods moves from port $(installed_port) to ${LOCAL_PORT}. The APP_URL in the pods-env secret still has the old one."
     fi
 
-    # A route set with --proxy earlier, or in Pods, needs Pods to stay up.
-    if [ "$IDLE" = true ] && has_routes; then
-        info "Pods has a route through the proxy, so it keeps running."
-        IDLE=false
+    # A route through the proxy, from --proxy now or earlier, or set in Pods,
+    # needs a socket the proxy container can reach.
+    if [ "$PROXY" = true ] || has_routes; then
+        IDLE_LISTEN=""
     fi
 
     disable_idle
@@ -699,7 +709,7 @@ main() {
 
     if [ "$PROXY" = true ]; then
         info "Point ${HOST} at this host first."
-    else
+    elif [ "$IDLE" = false ] || [ -n "$IDLE_LISTEN" ]; then
         info "It only listens on this host. From elsewhere, tunnel to it: ssh -L ${LOCAL_PORT}:127.0.0.1:${LOCAL_PORT} $(hostname)"
     fi
 
