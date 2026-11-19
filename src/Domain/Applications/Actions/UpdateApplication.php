@@ -51,8 +51,9 @@ class UpdateApplication
         }
 
         $source = $this->lpod->fetchQuadlets($environment, $installation->repository, $tag, $path);
+        $files = $source->quadletFiles();
 
-        if ($source->files === []) {
+        if ($files === []) {
             throw CannotUpdateApplicationException::noFiles($tag, $path);
         }
 
@@ -62,27 +63,27 @@ class UpdateApplication
             default => $installation->commit,
         };
 
-        $check = $this->lpod->checkQuadlets($environment, $source->files);
+        $check = $this->lpod->checkQuadlets($environment, $files);
 
         if (! $check->valid) {
             throw CannotUpdateApplicationException::invalidFiles($tag, $check->errors);
         }
 
-        $missingSecrets = $this->missingSecrets($installation, $source->files);
+        $missingSecrets = $this->missingSecrets($installation, $files);
 
         if ($missingSecrets !== []) {
             throw CannotUpdateApplicationException::missingSecrets($tag, $missingSecrets);
         }
 
         $previousManifest = $installation->manifest();
-        $leftOver = array_values(array_diff($this->installedFileNames($installation), array_column($source->files, 'name')));
+        $leftOver = array_values(array_diff($this->installedFileNames($installation), array_column($files, 'name')));
         $removable = $removeOldFiles ? array_values(array_intersect($leftOver, array_keys($installation->checksums))) : [];
 
         $this->lpod->stopAndWait($environment, $application);
 
         $removed = $removable !== [] ? $this->lpod->removeFiles($environment, $application, $removable) : [];
 
-        ($this->installQuadlets)($environment, $application, $source->files, start: true, replace: true, source: [
+        ($this->installQuadlets)($environment, $application, $files, start: true, replace: true, source: [
             'repository' => $installation->repository,
             'reference' => $tag,
             'path' => $path,

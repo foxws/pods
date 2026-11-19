@@ -18,6 +18,16 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 class QuadletSourceData extends Data
 {
     /**
+     * The repository manifest. It's read when fetching, and never installed.
+     */
+    public const string ManifestFile = 'pods.yml';
+
+    /**
+     * The extensions of Quadlet units and of the files they use, as the install page offers them.
+     */
+    public const array QuadletExtensions = ['container', 'pod', 'volume', 'network', 'kube', 'image', 'build', 'env', 'yaml', 'yml'];
+
+    /**
      * @param  list<array{name: string, content: string}>  $files
      */
     public function __construct(
@@ -56,5 +66,20 @@ class QuadletSourceData extends Data
             manifest_yaml: $manifest !== null ? $payload['manifest'] : null,
             manifest_path: $manifest !== null ? (string) ($payload['manifest_path'] ?? '') : null,
         );
+    }
+
+    /**
+     * The fetched files to install: the Quadlet units and the files they use, without pods.yml
+     * or the repository's other files, such as a README.md.
+     *
+     * @return list<array{name: string, content: string}>
+     */
+    public function quadletFiles(): array
+    {
+        return array_values(array_filter(
+            $this->files,
+            fn (array $file): bool => $file['name'] !== self::ManifestFile
+                && in_array(pathinfo($file['name'], PATHINFO_EXTENSION), self::QuadletExtensions, true),
+        ));
     }
 }

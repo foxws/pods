@@ -134,6 +134,27 @@ it('stops the application, installs the files of the tag over its files and keep
         ->updated_from->toBe('v3.1.0');
 });
 
+it('installs and tracks only the Quadlet files of the tag, without its pods.yml', function () {
+    $lpod = fakeLpod()
+        ->respond('quadlet fetch *', immichRelease([
+            'immich.pod' => "[Pod]\nPublishPort=2283:2283\n",
+            'pods.yml' => "version: 1\nname: immich\n",
+            'README.md' => "# Immich\n",
+        ]))
+        ->respond('immich down --json', lpodFixture('ok'));
+    $installation = Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'v3.1.0']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0'])
+        ->assertRedirect()
+        ->assertInertiaFlash('type', 'success');
+
+    $install = collect($lpod->recorded())->first(fn (array $call): bool => $call['arguments'] === ['quadlet', 'install', 'immich', '--replace', '--start', '--stdin', '--json']);
+
+    expect(json_decode((string) $install['input'], true)['files'])->toBe([['name' => 'immich.pod', 'content' => "[Pod]\nPublishPort=2283:2283\n"]])
+        ->and($installation->refresh()->checksums)->toHaveKeys(['immich.pod'])->not->toHaveKeys(['pods.yml', 'README.md']);
+});
+
 it('asks for the after_update steps of the new release', function () {
     fakeLpod()
         ->respond('quadlet fetch *', immichRelease(manifest: "version: 1\nname: immich\nafter_update:\n  migrate:\n    label: Migrate the database\n    container: immich-server\n    command: npm run migrate\n"))

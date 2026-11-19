@@ -30,8 +30,9 @@ class LinkApplicationSource
     {
         $files = $this->lpod->files($environment, $application);
         $source = $this->lpod->fetchQuadlets($environment, $repository, $reference, $path);
+        $sourceFiles = $source->quadletFiles();
 
-        if ($source->files === []) {
+        if ($sourceFiles === []) {
             throw CannotLinkApplicationSourceException::noFiles($reference, $path);
         }
 
@@ -45,7 +46,7 @@ class LinkApplicationSource
             'commit' => $source->commit,
             'manifest' => $source->manifest_yaml,
             'manifest_path' => $source->manifest_path,
-            'checksums' => Installation::checksumsOf($source->files),
+            'checksums' => Installation::checksumsOf($sourceFiles),
             'updated_from' => null,
         ]);
 

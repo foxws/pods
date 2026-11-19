@@ -35,7 +35,7 @@ class InstallProxy
         ($this->installQuadlets)(
             environment: $environment,
             application: self::Application,
-            files: $source->files,
+            files: $source->quadletFiles(),
             start: false,
             source: [
                 'repository' => $repository,
