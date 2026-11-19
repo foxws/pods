@@ -60,7 +60,7 @@ const { environment } = useNavigation()
         <UDashboardSearchButton
           v-else
           label="Search apps, containers, secrets"
-          :kbds="['/']"
+          :kbds="['meta', 'k']"
           class="w-full max-w-md"
         />
       </div>

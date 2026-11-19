@@ -100,7 +100,6 @@ const footerItems = computed<NavigationMenuItem[]>(() => [
         :groups="paletteGroups"
         :loading="isSearching"
         placeholder="Search apps, containers, images, secrets…"
-        shortcut="/"
       >
         <template #empty>
           <p class="py-6 text-center text-sm text-muted">
