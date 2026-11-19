@@ -13,6 +13,7 @@ import StatGrid from '@/components/Ui/StatGrid.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import { useHostPolling } from '@/composables/applications'
 import { useHostAction } from '@/composables/hostActions'
+import { useHostReload } from '@/composables/polling'
 import type {
   ContainerDetailData,
   ContainerOperation,
@@ -24,9 +25,8 @@ import type {
 } from '@/types'
 import { containerState } from '@/utils/containers'
 import { formatBytes, formatPercent, formatPort, formatRelative, formatUptime } from '@/utils/format'
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
-import { useIntervalFn } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
@@ -63,7 +63,7 @@ const visibleLogs = computed(() =>
   (props.logs?.data ?? []).filter((entry) => !showsErrorsOnly.value || entry.priority <= 3),
 )
 
-const { pause: stopFollowing, resume: startFollowing } = useIntervalFn(() => router.reload({ only: ['logs'] }), 5000, {
+const { pause: stopFollowing, resume: startFollowing } = useHostReload(['logs'], 5000, {
   immediate: false,
 })
 
@@ -93,7 +93,7 @@ watch(
   },
 )
 
-const { pause: stopSampling, resume: startSampling } = useIntervalFn(() => router.reload({ only: ['stats'] }), 5000, {
+const { pause: stopSampling, resume: startSampling } = useHostReload(['stats'], 5000, {
   immediate: false,
   immediateCallback: true,
 })

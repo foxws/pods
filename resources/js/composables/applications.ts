@@ -1,7 +1,7 @@
 import ApplicationOperationController from '@/actions/Modules/Web/Applications/Controllers/ApplicationOperationController'
 import type { ApplicationData, ApplicationOperation, EnvironmentData, HostProperty } from '@/types'
+import { useHostReload } from '@/composables/polling'
 import { router } from '@inertiajs/vue3'
-import { useIntervalFn } from '@vueuse/core'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
 const pendingStatus: Record<ApplicationOperation, ApplicationData['status']> = {
@@ -45,8 +45,8 @@ export function useApplicationOperations(environment: MaybeRefOrGetter<Environme
  * Reloads host-backed props: every 5 seconds while a unit is changing state, every 30 seconds otherwise.
  */
 export function useHostPolling(only: string[], isBusy: MaybeRefOrGetter<boolean>) {
-  return useIntervalFn(
-    () => router.reload({ only }),
+  return useHostReload(
+    only,
     computed(() => (toValue(isBusy) ? 5000 : 30000)),
   )
 }
