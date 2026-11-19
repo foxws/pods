@@ -83,7 +83,7 @@ It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' unit
 
 Pods is a container like any of your applications, not a service your host depends on. Your applications are systemd units, so they keep running, restarting and updating whether Pods is up or not.
 
-By default, `install.sh` doesn't keep Pods running. Like `cockpit.socket`, a systemd socket (`pods-ondemand.socket`) listens on `127.0.0.1:9393` and starts Pods on the first request. Pods stops again after 10 minutes without one, and its scheduler only wakes for a moment at 01:00 UTC for the daily housekeeping. While Pods has a route through the [proxy](#proxy), it keeps running instead, even when `install.sh` runs again without `--proxy`, since the proxy reaches it by name. You can also start and stop it yourself:
+By default, `install.sh` doesn't keep Pods running. Like `cockpit.socket`, a systemd socket (`pods-ondemand.socket`) listens on `127.0.0.1:9393` and starts Pods on the first request. Pods stops again after 10 minutes without one, and its scheduler only wakes for a moment at 01:00 UTC for the daily housekeeping. While Pods has a route through the [proxy](#proxy), the socket listens on every address instead, and the route goes through it, so a request through the proxy wakes Pods too. You can also start and stop it yourself:
 
 ```bash
 lpod pods down                                # stop Pods now; the next request starts it again
@@ -91,7 +91,9 @@ systemctl --user stop pods-ondemand.socket    # keep it off, even when something
 systemctl --user start pods-ondemand.socket   # let the next request start it again
 ```
 
-Pass `--no-idle` to keep Pods running all the time, and start and stop it as `pods.service` instead. With `--proxy`, Pods runs all the time for now, because its socket only listens on `127.0.0.1`, which the proxy container can't reach.
+Pass `--no-idle` to keep Pods running all the time, and start and stop it as `pods.service` instead.
+
+**Behind the proxy**, with `--proxy` or a route set in Pods (even when `install.sh` runs again without `--proxy`), the proxy container reaches the host as `host.containers.internal`, which isn't `127.0.0.1`. So `pods-ondemand.socket` listens on port 9393 on every address, and lpod points Pods' route at it. That port is then reachable from your network too, so check that the host's firewall blocks it (Fedora Server's default firewalld zone only opens the services it lists, but Fedora Workstation's opens every port from 1025 up), or pass `--no-idle` to keep Pods on `127.0.0.1`. A unix socket for the proxy doesn't work instead: SELinux doesn't let a container connect to a socket the user's systemd holds, and a user's socket units can't limit who connects.
 
 ### A hostname for Pods
 
