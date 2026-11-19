@@ -67,7 +67,7 @@ On each host:
 - [lpod](https://github.com/foxws/lpod) 4 in the user's `PATH` (Pods also looks in `~/.local/bin`), with `jq` installed, and `git` for installing and updating applications from Git repositories and the catalog
 - An SSH server, and lingering for rootless users (`loginctl enable-linger`) so their systemd user manager runs without a login
 
-For Pods itself: PHP 8.4+, Node with pnpm, and `ssh` and `ssh-keygen` on the machine or in the container that runs it.
+For Pods itself: PHP 8.5+, Node with pnpm, and `ssh` and `ssh-keygen` on the machine or in the container that runs it.
 
 ## Install
 
