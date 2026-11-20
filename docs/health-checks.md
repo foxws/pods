@@ -1,3 +1,13 @@
+---
+title: Health Checks
+section: Configuration
+order: 5
+tags:
+    - health
+    - monitoring
+    - uptime
+---
+
 # Health checks
 
 Pods doesn't ship a health check package. Pick what fits how you run it.

@@ -1,10 +1,19 @@
+---
+title: Roadmap
+section: Development
+order: 3
+tags:
+    - roadmap
+    - planned
+---
+
 # Roadmap
 
 Pods is still in development. This is what's planned, roughly in order. Nothing here is a promise, and the order can change.
 
 ## Volume backups and restores
 
-Pods exports volumes (see [Backups in the README](../README.md#backups)), but doesn't restore them yet. Next:
+Pods exports volumes (see [Backups](backups.md)), but doesn't restore them yet. Next:
 
 1. **lpod.** `lpod volume import NAME --stdin [--stop] --json` reads an archive into `podman volume import`, creates the volume first when it doesn't exist, and refuses `device` and NFS volumes, like `volume export`.
 2. **Restore.** An import starts from an archive Pods made, or one the owner uploads. It replaces the volume's contents, so the UI asks for confirmation, shows which applications it stops, and offers to export the current contents first. It runs in `pods-queue` like an export, streaming the archive over SSH from the backups disk, and sends the same kind of notification.
@@ -19,7 +28,7 @@ Open questions:
 
 ## Proxy
 
-Still open for the optional per-host proxy (see [Proxy in the README](../README.md#proxy)):
+Still open for the optional per-host proxy (see [Proxy](proxy.md)):
 
 - **A real-host check:** installing the proxy in each mode from Pods, the root certificate download, and `install.sh --proxy` on a host set up by an older install.sh. So far it's only tested against `fakeLpod()` and stubbed binaries.
 - **More DNS providers** for the wildcard mode, each a `--with` line in `containers/runtimes/proxy/Containerfile`, a name in `ProxySettingsData::DnsProviders` and its token variable in lpod.
@@ -40,6 +49,8 @@ Pods installs Quadlets from Git. Development setups, such as a Laravel applicati
 - **Invited users.** The owner invites users and gives each a role per environment (viewer, operator or admin), using spatie/laravel-permission. Host routes are already scoped per environment and go through policies, so this doesn't need a rewrite.
 - **Streaming logs** for applications, containers and the journal, instead of polling.
 - **Live host state for changes made outside Pods**, such as a unit that crashed or finished starting, which still need polling. That would take a watcher of `podman events` per host that broadcasts them, which would keep an on-demand Pods awake.
+- **Fresh host details.** The Podman, lpod and systemd versions on a host's pages are what Pods stored when the host was added, lpod was updated from Pods, or `pods:verify` last ran, so upgrading Podman on the host still shows the old version. `pods:verify` can run daily next to `pods:sync`, and the host's settings page can get a "Check again" button.
+- **Settings within an environment.** The Settings link in the sidebar always opens `/settings/account`, which has no environment in its URL, so the sidebar loses the selected host and its links. With an environment selected it should open the settings under `/environments/{environment}/settings/…`, with the account, application and proxy sections next to the host's own, and keep the host in the sidebar. Without an environment, or with none added yet, it stays on `/settings`.
 - **A notifications page.** Notifications are only broadcast now, so a finished export's toast is missed when no page is open. Adding the `database` channel next to `broadcast` keeps them in the existing `notifications` table, so a bell in the header can show the unread count and a page can list them with links to what they're about (an export's download, a restored volume, a failed timer), mark them read and clear old ones. It's worth doing once more than exports notify, such as restores, scheduled backups and the `podman events` watcher above. Once users are invited, each one sees only their own.
 - **More of the application catalog:** brand logos, and more of lerd.sh's services in [foxws/quadlets](https://github.com/foxws/quadlets).
 - **Application metadata on the Applications list**: the label, description and icon of the stored `pods.yml`, as the application page shows them.

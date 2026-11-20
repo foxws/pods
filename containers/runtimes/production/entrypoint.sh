@@ -66,6 +66,11 @@ if [[ "${APP_COMMAND}" == *octane:frankenphp* ]]; then
     ${PHP_CLI} migrate --seed --force --no-interaction
     # Prints the setup code while Pods has no owner, so it's in the log.
     ${PHP_CLI} pods:setup --no-interaction
+
+    # Only the web server serves manifest.json and sw.js, so the queue,
+    # Reverb and scheduler containers sharing this entrypoint skip it.
+    log "INFO" "Creating the PWA manifest..."
+    ${PHP_CLI} pwa:generate
 fi
 
 if [ "${APP_OPTIMIZE:-true}" = "true" ]; then

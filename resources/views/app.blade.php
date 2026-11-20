@@ -6,6 +6,8 @@
     <meta name="color-scheme" content="dark" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="csp-nonce" content="{{ Vite::cspNonce() }}" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    @pwaHead
     @fonts
     @vite([
         'resources/css/app.css',
@@ -18,5 +20,7 @@
     <div class="isolate">
         <x-inertia::app />
     </div>
+
+    @pwaSw
 </body>
 </html>

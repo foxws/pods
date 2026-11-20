@@ -13,7 +13,7 @@ metadata:
 
 # Pods development
 
-Pods is still in development. Read `docs/architecture.md` before you change how Pods talks to hosts, and `docs/roadmap.md` before you build a planned feature. The README documents `pods.yml` and the proxy for users.
+Pods is still in development. Read `docs/architecture.md` before you change how Pods talks to hosts, and `docs/roadmap.md` before you build a planned feature. The user documentation is in `docs/` (`manifest.md` for `pods.yml`, `proxy.md`, `ondemand.md`, `backups.md` and others), with front matter for foxws/laravel-docs (`title`, `section`, `order`, `tags`; the project's `metadata` on `docs/index.md`), so link between pages as `page.md`. The README is a short overview that links to them.
 
 ## How Pods reaches a host
 
@@ -48,7 +48,7 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 3. Add the `LpodClient` method, the data object and the cache keys.
 4. Add the action, the controller, the route and the Vue component, following the sibling module.
 5. Write feature tests with `fakeLpod()`: assert the props, the exact arguments with `$lpod->assertRan([...])`, stdin for secrets, the order of calls when it matters (`collect($lpod->recorded())->pluck('arguments')->search(...)`), and the error toast when lpod fails (`$lpod->respond('pattern', new HostResult(1, '', 'message'))`). Run `vendor/bin/pest tests/Feature tests/Unit`; the Browser tests hang here.
-6. Update `docs/roadmap.md`, the README or `docs/architecture.md` when they describe it, and this skill.
+6. Update `docs/roadmap.md`, the page in `docs/` that describes it (and the README's feature list), or `docs/architecture.md`, and this skill.
 
 ## pods.yml (ManifestData)
 
@@ -113,3 +113,11 @@ lpod generates each application's routes file, with the routes kept on its `# lp
 - `VolumeExportController` (`actions/environments/{environment}/volume-exports`, scoped bindings): `store` takes `volumes` or `application` (its volumes where `HostVolumeData::isExportable()`, named or anonymous) and `stop_applications`; `download` only needs a signed link (`VolumeExportData::downloadUrl()`, a day), so it works from a notification; `destroy` refuses an unfinished export (409). The Volumes page gets `exports` (the newest 25, from the database, not the host), shows them in `VolumeExportsCard.vue`, polls them every 5 seconds while one is unfinished, and starts exports with `VolumeExportModal.vue`.
 - `pods:prune-exports` (daily, 01:00) keeps `services.pods.volume_exports_kept` (3) finished archives per volume, removes failed exports after a week, fails exports unfinished after twice the timeout, and removes the folders of removed hosts.
 - Not built yet: restores (`lpod volume import`), see `docs/roadmap.md`. Ask the user before adding a dependency or a new disk.
+
+## PWA
+
+Pods is installable through foxws/laravel-pwa (`config/pwa.php`, `@pwaHead` and `@pwaSw` in `resources/views/app.blade.php`, `public/offline.html`). The production entrypoint runs `pwa:generate` for the web server only. The icons and the manifest's screenshots are in `public/images/`, not `storage/app/public` as the package suggests: `pods-data.volume` is mounted over `/app/storage`, so files there never reach an existing install. `tests/Feature/Support/PwaTest.php` checks that every path in the config is a file in `public/`. The logo is the AppLogo badge (`--logo-gradient` with Lucide's `box`), and the screenshots also live in `francoism90/.github` under `assets/pods`.
+
+## PWA
+
+Pods is installable through foxws/laravel-pwa (`config/pwa.php`, `@pwaHead` and `@pwaSw` in `resources/views/app.blade.php`, `public/offline.html`). The production entrypoint runs `pwa:generate` for the web server only. The icons and the manifest's screenshots are in `public/images/`, not `storage/app/public` as the package suggests: `pods-data.volume` is mounted over `/app/storage`, so files there never reach an existing install. `tests/Feature/Support/PwaTest.php` checks that every path in the config is a file in `public/`. The logo is the AppLogo badge (`--logo-gradient` with Lucide's `box`), and the screenshots also live in `francoism90/.github` under `assets/pods`.

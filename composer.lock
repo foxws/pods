@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8fd1f868603b345c6c5098c57959fe2f",
+    "content-hash": "c69ac3739043f1395ce86b2843f74dde",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -1063,6 +1063,89 @@
             ],
             "time": "2026-11-19T09:49:47+00:00",
             "published-time": "2026-11-19T09:58:07+00:00"
+        },
+        {
+            "name": "foxws/laravel-pwa",
+            "version": "3.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/foxws/laravel-pwa.git",
+                "reference": "50732fe66add51f2c164546360b73e11485cbb66"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/foxws/laravel-pwa/zipball/50732fe66add51f2c164546360b73e11485cbb66",
+                "reference": "50732fe66add51f2c164546360b73e11485cbb66",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^13.0",
+                "php": "^8.5",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^8.8",
+                "orchestra/testbench": "^11.0",
+                "pestphp/pest": "^5.0",
+                "pestphp/pest-plugin-arch": "^5.0",
+                "pestphp/pest-plugin-laravel": "^5.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Pwa": "Foxws\\Pwa\\Facades\\Pwa"
+                    },
+                    "providers": [
+                        "Foxws\\Pwa\\PwaServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Foxws\\Pwa\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "francoism90",
+                    "email": "francoism90@users.noreply.github.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "PWA manifest and Blade directives for Laravel.",
+            "homepage": "https://github.com/foxws/laravel-pwa",
+            "keywords": [
+                "blade",
+                "foxws",
+                "laravel",
+                "laravel-pwa",
+                "manifest",
+                "progressive-web-app",
+                "pwa",
+                "service-worker"
+            ],
+            "support": {
+                "issues": "https://github.com/foxws/laravel-pwa/issues",
+                "source": "https://github.com/foxws/laravel-pwa/tree/3.0.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/Foxws",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-11-19T09:46:10+00:00",
+            "published-time": "2026-11-19T09:58:15+00:00"
         },
         {
             "name": "foxws/laravel-scout-builder",
