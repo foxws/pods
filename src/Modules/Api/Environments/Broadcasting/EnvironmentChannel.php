@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Modules\Web\Environments\Broadcasting;
+namespace Modules\Api\Environments\Broadcasting;
 
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
