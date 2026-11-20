@@ -14,6 +14,7 @@ import { formatPort, formatRelative } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BadgeProps, TableColumn } from '@nuxt/ui'
 import { computed } from 'vue'
+import { timeOf, type SortableColumn } from '@/utils/sorting'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -58,6 +59,14 @@ const columns: TableColumn<PodData>[] = [
   { accessorKey: 'ports', header: 'Ports' },
   { accessorKey: 'networks', header: 'Networks' },
   { accessorKey: 'created_at', header: 'Created' },
+]
+
+const sortable: SortableColumn<PodData>[] = [
+  { column: 'name', label: 'Pod', value: (row) => row.name },
+  { column: 'status', label: 'Status', value: (row) => row.status },
+  { column: 'application', label: 'Application', value: (row) => row.application },
+  { column: 'containers', label: 'Containers', value: (row) => row.containers, descendingFirst: true },
+  { column: 'created_at', label: 'Created', value: (row) => timeOf(row.created_at), descendingFirst: true },
 ]
 
 const containerCount = (pod: PodData): string =>
@@ -120,6 +129,7 @@ const searchText = (pod: PodData): string =>
       <DataTable
         :data="pods?.data"
         :columns="columns"
+        :sortable="sortable"
         :loading="!pods"
         :filters="filters"
         :search-text="searchText"

@@ -18,6 +18,7 @@ import { pluralize } from '@/utils/application'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, ref } from 'vue'
+import type { SortableColumn } from '@/utils/sorting'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -70,6 +71,14 @@ const columns: TableColumn<NetworkData>[] = [
   { accessorKey: 'applications', header: 'Applications' },
   { id: 'status', header: 'Status' },
   { id: 'actions', header: '' },
+]
+
+const sortable: SortableColumn<NetworkData>[] = [
+  { column: 'name', label: 'Network', value: (row) => row.name },
+  { column: 'driver', label: 'Driver', value: (row) => row.driver },
+  { column: 'subnet', label: 'Subnet', value: (row) => row.subnet },
+  { column: 'containers', label: 'Containers', value: (row) => row.containers, descendingFirst: true },
+  { column: 'applications', label: 'Applications', value: (row) => row.applications[0] },
 ]
 
 const isCreating = ref(false)
@@ -176,6 +185,7 @@ const searchText = (network: NetworkData): string =>
       <DataTable
         :data="networks?.data"
         :columns="columns"
+        :sortable="sortable"
         :loading="!networks"
         :filters="filters"
         :search-text="searchText"

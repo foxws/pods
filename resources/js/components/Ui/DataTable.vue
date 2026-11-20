@@ -1,4 +1,8 @@
 <script setup lang="ts" generic="T extends object">
+import SortableHeader from '@/components/Ui/SortableHeader.vue'
+import TableSortControls from '@/components/Ui/TableSortControls.vue'
+import { useTableSort } from '@/composables/tables'
+import type { SortableColumn, TableSort } from '@/utils/sorting'
 import type { TableColumn, TabsItem } from '@nuxt/ui'
 import { usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
@@ -23,9 +27,14 @@ const props = withDefaults(
     empty?: string
     label: string
     rowKey?: (row: T) => string
+    /** The columns a click on their header sorts by, matched by column id. */
+    sortable?: SortableColumn<T>[]
+    defaultSort?: TableSort | null
   }>(),
   {
     filters: () => [],
+    sortable: () => [],
+    defaultSort: null,
     searchPlaceholder: 'Filter',
     empty: 'Nothing matches this filter.',
   },
@@ -48,6 +57,8 @@ const search = ref(props.searchText ? (new URL(page.url, 'http://pods.local').se
 
 const rows = computed(() => props.data ?? [])
 
+const { sort, sorted, directionOf, toggle } = useTableSort(rows, () => props.sortable, props.defaultSort)
+
 const countOf = (item: DataTableFilter<T>): number =>
   item.match ? rows.value.filter(item.match).length : rows.value.length
 
@@ -59,7 +70,7 @@ const visible = computed(() => {
   const active = props.filters.find((item) => item.value === filter.value)
   const query = search.value.trim().toLowerCase()
 
-  return rows.value.filter(
+  return sorted.value.filter(
     (row) =>
       (!active?.match || active.match(row)) &&
       (!query || !props.searchText || props.searchText(row).toLowerCase().includes(query)),
@@ -72,7 +83,7 @@ const isLoading = computed(() => props.loading && !props.data)
 <template>
   <div class="flex flex-col gap-3">
     <div
-      v-if="filters.length || searchText || $slots.toolbar"
+      v-if="filters.length || searchText || $slots.toolbar || (sortable.length && $slots.item)"
       class="flex flex-wrap items-center justify-between gap-3"
     >
       <UTabs
@@ -88,6 +99,13 @@ const isLoading = computed(() => props.loading && !props.data)
 
       <div class="flex w-full items-center gap-2 sm:w-auto">
         <slot name="toolbar" />
+
+        <TableSortControls
+          v-if="sortable.length && $slots.item"
+          v-model="sort"
+          :columns="sortable"
+          class="md:hidden"
+        />
 
         <UInput
           v-if="searchText"
@@ -143,6 +161,18 @@ const isLoading = computed(() => props.loading && !props.data)
       class="rounded-lg border border-default"
       :class="{ 'hidden md:block': $slots.item }"
     >
+      <template
+        v-for="column in sortable"
+        :key="column.column"
+        #[`${column.column}-header`]
+      >
+        <SortableHeader
+          :label="column.label"
+          :direction="directionOf(column.column)"
+          @toggle="toggle(column)"
+        />
+      </template>
+
       <template
         v-for="(_, name) in $slots"
         :key="name"
