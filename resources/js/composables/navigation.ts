@@ -3,6 +3,10 @@ import { index as containers } from '@/actions/Modules/Web/Containers/Controller
 import overview from '@/actions/Modules/Web/Environments/Controllers/EnvironmentOverviewController'
 import { index as images } from '@/actions/Modules/Web/Images/Controllers/ImageController'
 import journal from '@/actions/Modules/Web/Journal/Controllers/JournalController'
+import {
+  index as notifications,
+  environment as notificationsInEnvironment,
+} from '@/actions/Modules/Web/Notifications/Controllers/NotificationController'
 import { index as networks } from '@/actions/Modules/Web/Networks/Controllers/NetworkController'
 import { index as pods } from '@/actions/Modules/Web/Pods/Controllers/PodController'
 import { index as secrets } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
@@ -110,6 +114,15 @@ export function useNavigation() {
   )
 
   /**
+   * The user's notifications, inside the selected environment like the settings, so the sidebar keeps its host.
+   */
+  const notificationsLink = computed(() => {
+    const to = environment.value ? notificationsInEnvironment.url(environment.value.id) : notifications.url()
+
+    return { to, active: isCurrent(to) }
+  })
+
+  /**
    * Settings stay inside the selected environment, so the sidebar keeps its host; without one they're under /settings.
    */
   const settingsUrl = (section: SettingsSection = 'account'): string =>
@@ -125,6 +138,7 @@ export function useNavigation() {
       label: 'Go to',
       items: [
         ...links.value.map(({ label, icon, to }) => ({ label, icon, to })),
+        { label: 'Notifications', icon: 'i-lucide-bell', to: notificationsLink.value.to },
         ...(environment.value
           ? [{ label: 'Journal', icon: 'i-lucide-scroll-text', to: journal.url(environment.value.id) }]
           : []),
@@ -141,5 +155,5 @@ export function useNavigation() {
     },
   ])
 
-  return { environment, links, tabBarLinks, journalLink, settingsUrl, sidebarItems, searchGroups }
+  return { environment, links, tabBarLinks, journalLink, notificationsLink, settingsUrl, sidebarItems, searchGroups }
 }

@@ -351,6 +351,18 @@ export type NetworkData = {
   applications: string[]
   default: boolean
 }
+export type NotificationData = {
+  id: string
+  type: string
+  title: string
+  message: string | null
+  level: NotificationLevel
+  url: string | null
+  environment: string | null
+  read_at: string | null
+  created_at: string | null
+}
+export type NotificationLevel = 'success' | 'error' | 'warning' | 'info'
 export type OnDemandData = {
   enabled: boolean
   listening: boolean

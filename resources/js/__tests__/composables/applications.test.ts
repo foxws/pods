@@ -3,7 +3,7 @@ import { router } from '@inertiajs/vue3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { nextTick, reactive, ref, toValue, type MaybeRefOrGetter } from 'vue'
 
-const page = reactive({ props: { hostRefresh: 10 as number | undefined } })
+const page = reactive({ props: { refresher: 10 as number | undefined } })
 
 vi.mock('@inertiajs/vue3', () => ({
   router: {
@@ -36,7 +36,7 @@ vi.mock('@vueuse/core', () => ({
 
 describe('useHostPolling', () => {
   beforeEach(() => {
-    page.props.hostRefresh = 10
+    page.props.refresher = 10
   })
 
   afterEach(() => {
@@ -45,7 +45,7 @@ describe('useHostPolling', () => {
   })
 
   it('reloads as often as the setting says while nothing is changing state, without the busy-only props', () => {
-    page.props.hostRefresh = 180
+    page.props.refresher = 180
 
     useHostPolling(['application'], () => false, ['logs'])
 
@@ -71,7 +71,7 @@ describe('useHostPolling', () => {
   })
 
   it('follows a unit that changes state as often as a setting shorter than 5 seconds', () => {
-    page.props.hostRefresh = 3
+    page.props.refresher = 3
 
     useHostPolling(['application'], () => true)
 
@@ -79,7 +79,7 @@ describe('useHostPolling', () => {
   })
 
   it('stops reloading when the setting is off, but still follows a unit that changes state', async () => {
-    page.props.hostRefresh = 0
+    page.props.refresher = 0
     const isBusy = ref(false)
 
     useHostPolling(['application'], isBusy)

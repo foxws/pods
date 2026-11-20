@@ -5,6 +5,7 @@ import MobileTabBar from '@/components/Ui/MobileTabBar.vue'
 import { useAppearance } from '@/composables/appearance'
 import { useAuth } from '@/composables/auth'
 import { useFlash } from '@/composables/flash'
+import { useNotificationUpdates } from '@/composables/notifications'
 import { useNavigation } from '@/composables/navigation'
 import { useHostSearch } from '@/composables/search'
 import { useVolumeExportNotifications } from '@/composables/volumeExports'
@@ -41,6 +42,7 @@ const { logOut, user } = useAuth()
 
 if (user.value) {
   useVolumeExportNotifications(user.value.id)
+  useNotificationUpdates(user.value.id)
 }
 
 const page = usePage()
