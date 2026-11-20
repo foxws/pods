@@ -1,0 +1,174 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Enabled
+    |--------------------------------------------------------------------------
+    |
+    | When set to false, pwa:generate writes a self-unregistering service
+    | worker that clears all caches and removes itself. By default the
+    | PWA is disabled when APP_ENV is local, so the service worker can't
+    | cache Vite dev server assets. Override this with PWA_ENABLED, for
+    | example to disable it on staging or to test the PWA locally.
+    |
+    */
+
+    'enabled' => (bool) env('PWA_ENABLED', env('APP_ENV') !== 'local'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Manifest Output Path
+    |--------------------------------------------------------------------------
+    |
+    | This option defines the output path for the generated manifest.json file.
+    | The path is relative to the public/ directory. By default, it will be
+    | generated at public/manifest.json.
+    |
+    */
+
+    'manifest_path' => env('PWA_MANIFEST_PATH', 'manifest.json'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Service Worker Ignored Paths
+    |--------------------------------------------------------------------------
+    |
+    | Define URL path prefixes that the service worker should never intercept
+    | or cache. Any request whose pathname starts with one of these values
+    | will be passed directly to the network, bypassing all SW logic.
+    | PWA_IGNORE_PATHS takes a comma-separated list, e.g. "/api/,/admin/".
+    |
+    */
+
+    'ignore_paths' => env('PWA_IGNORE_PATHS', [
+        '/_inertia/',
+        '/actions/',
+        '/api/',
+        '/app/',
+        '/broadcasting/',
+        '/telescope/',
+        '/up',
+    ]),
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Service Worker Path
+    |--------------------------------------------------------------------------
+    |
+    | This option defines the output path for the service worker file, relative
+    | to the public/ directory. It must match the path registered in the body
+    | component and the scope it is intended to control.
+    |
+    */
+
+    'sw_path' => env('PWA_SW_PATH', 'sw.js'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Manifest
+    |--------------------------------------------------------------------------
+    |
+    | This section defines the settings for the Progressive Web Application
+    | (PWA) manifest. The manifest provides metadata about the application,
+    | such as its name, icons, and theme colors, which are used when the
+    | application is installed on a user's device.
+    |
+    */
+
+    'manifest' => [
+        'id' => env('PWA_ID', '/'),
+        'name' => env('APP_NAME', 'Pods'),
+        'short_name' => env('PWA_SHORT_NAME', 'Pods'),
+        'description' => env('PWA_DESCRIPTION', 'A self-hosted web UI for Podman Quadlet, made for homelabs.'),
+        'start_url' => env('PWA_START_URL', '/'),
+        'scope' => env('PWA_SCOPE', '/'),
+        'display_override' => ['standalone', 'minimal-ui'],
+        'display' => env('PWA_DISPLAY', 'standalone'),
+        'orientation' => env('PWA_ORIENTATION', 'any'),
+        'background_color' => env('PWA_BACKGROUND_COLOR', '#0a0a0a'),
+        'theme_color' => env('PWA_THEME_COLOR', '#0a0a0a'),
+        'lang' => env('PWA_LANG', 'en'),
+        'dir' => env('PWA_DIR', 'ltr'),
+        'categories' => ['developer', 'utilities'],
+        'screenshots' => [
+            [
+                'src' => '/images/screenshots/overview.webp',
+                'sizes' => '1920x1080',
+                'type' => 'image/webp',
+                'form_factor' => 'wide',
+                'label' => 'A host\'s CPU, memory, disk, recent activity and applications',
+            ],
+            [
+                'src' => '/images/screenshots/applications.webp',
+                'sizes' => '1920x1720',
+                'type' => 'image/webp',
+                'form_factor' => 'wide',
+                'label' => 'Start, stop and update the Quadlet applications on a host',
+            ],
+            [
+                'src' => '/images/screenshots/containers.webp',
+                'sizes' => '1920x1500',
+                'type' => 'image/webp',
+                'form_factor' => 'wide',
+                'label' => 'Every container on a host, with its CPU and memory',
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Icons
+    |--------------------------------------------------------------------------
+    |
+    | Define the icons for your PWA manifest. Each icon entry supports a
+    | "disk" key (any configured Laravel filesystem disk) and a "path"
+    | relative to that disk's root. The URL is resolved at generation time
+    | via Storage::disk()->url(). Set "disk" to null to fall back to a path.
+    |
+    */
+
+    'icons' => [
+        [
+            'disk' => env('PWA_ICON_DISK', null),
+            'path' => env('PWA_ICON_MOBILE_PATH', '/images/icons/icon-192x192.png'),
+            'sizes' => env('PWA_ICON_MOBILE_SIZES', '192x192'),
+            'type' => env('PWA_ICON_MOBILE_TYPE', 'image/png'),
+        ],
+        [
+            'disk' => env('PWA_ICON_DISK', null),
+            'path' => env('PWA_ICON_DESKTOP_PATH', '/images/icons/icon-512x512.png'),
+            'sizes' => env('PWA_ICON_DESKTOP_SIZES', '512x512'),
+            'type' => env('PWA_ICON_DESKTOP_TYPE', 'image/png'),
+        ],
+        [
+            'disk' => env('PWA_ICON_DISK', null),
+            'path' => env('PWA_ICON_MASKABLE_PATH', '/images/icons/icon-maskable-512x512.png'),
+            'sizes' => env('PWA_ICON_MASKABLE_SIZES', '512x512'),
+            'type' => env('PWA_ICON_MASKABLE_TYPE', 'image/png'),
+            'purpose' => 'maskable',
+        ],
+    ],
+
+    /**
+     * The Apple Touch Icon is used by iOS devices when a user adds the web application to their home screen.
+     */
+    'apple_touch_icon' => env('PWA_APPLE_TOUCH_ICON', '/images/icons/apple-touch-icon.png'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Service Worker Update Interval
+    |--------------------------------------------------------------------------
+    |
+    | How often (in hours) the page should proactively call registration.update()
+    | to check for a new service worker. Set to 0 or null to rely solely on the
+    | browser's built-in per-navigation check.
+    |
+    */
+
+    'update_interval' => env('PWA_UPDATE_INTERVAL', 24),
+
+];

@@ -49,8 +49,8 @@ const isEditing = ref(false)
         v-if="!data.proxy_installed"
         class="text-muted"
       >
-        The Pods proxy isn't installed on this host, so nothing routes hostnames to applications yet. See Proxy in the
-        README of Pods for installing it.
+        The Pods proxy isn't installed on this host, so nothing routes hostnames to applications yet. Install it from
+        the Proxy section of this host's settings.
       </p>
       <template v-else>
         <UAlert

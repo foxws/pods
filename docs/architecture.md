@@ -1,3 +1,14 @@
+---
+title: Architecture
+section: Development
+order: 2
+tags:
+    - architecture
+    - lpod
+    - ssh
+    - contract
+---
+
 # Architecture
 
 Pods is a Laravel application that manages Podman hosts. It doesn't talk to Podman directly. It runs [lpod](https://github.com/foxws/lpod) on each host over SSH and reads the JSON lpod prints.

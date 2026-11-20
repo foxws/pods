@@ -13,7 +13,8 @@
         "spatie/laravel-translatable",
         "foxws/laravel-essentials",
         "foxws/laravel-ddd",
-        "foxws/laravel-scout-builder"
+        "foxws/laravel-scout-builder",
+        "foxws/laravel-pwa"
     ],
     "sail": false,
     "skills": [
@@ -31,6 +32,7 @@
         "tailwindcss-development",
         "laravel-ddd-development",
         "laravel-essentials-development",
+        "pwa-development",
         "scout-builder-development",
         "laravel-permission-development",
         "responsecache-development",
