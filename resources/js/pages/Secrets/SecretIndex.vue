@@ -4,10 +4,13 @@ import HostError from '@/components/Environments/HostError.vue'
 import SecretCreateModal from '@/components/Secrets/SecretCreateModal.vue'
 import SecretDetailModal from '@/components/Secrets/SecretDetailModal.vue'
 import RowActions from '@/components/Ui/RowActions.vue'
+import SortableHeader from '@/components/Ui/SortableHeader.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import type { ApplicationData, EnvironmentData, HostProperty, SecretData } from '@/types'
+import { useTableSort } from '@/composables/tables'
 import { formatRelative } from '@/utils/format'
+import { timeOf, type SortableColumn } from '@/utils/sorting'
 import { Head, Link } from '@inertiajs/vue3'
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, onMounted, ref } from 'vue'
@@ -32,6 +35,15 @@ const columns: TableColumn<SecretData>[] = [
   { accessorKey: 'updated_at', header: 'Updated' },
   { id: 'actions', header: '' },
 ]
+
+const sortable: SortableColumn<SecretData>[] = [
+  { column: 'name', label: 'Name', value: (row) => row.name },
+  { column: 'driver', label: 'Driver', value: (row) => row.driver },
+  { column: 'used_by', label: 'Used by', value: (row) => row.used_by.length, descendingFirst: true },
+  { column: 'updated_at', label: 'Updated', value: (row) => timeOf(row.updated_at), descendingFirst: true },
+]
+
+const { sorted, directionOf, toggle } = useTableSort(() => props.secrets?.data ?? [], sortable)
 
 const viewing = ref<SecretData | null>(null)
 const isViewing = computed({
@@ -93,12 +105,24 @@ const actions = (secret: SecretData): DropdownMenuItem[] =>
       />
 
       <UTable
-        :data="secrets?.data ?? []"
+        :data="sorted"
         :columns="columns"
         :loading="!secrets"
         empty="There are no secrets on this host."
         class="rounded-lg border border-default"
       >
+        <template
+          v-for="column in sortable"
+          :key="column.column"
+          #[`${column.column}-header`]
+        >
+          <SortableHeader
+            :label="column.label"
+            :direction="directionOf(column.column)"
+            @toggle="toggle(column)"
+          />
+        </template>
+
         <template #name-cell="{ row }">
           <span class="flex items-center gap-2 font-mono text-highlighted">
             <UIcon

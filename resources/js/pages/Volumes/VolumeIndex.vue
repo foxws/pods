@@ -23,6 +23,7 @@ import { formatBytes } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
+import type { SortableColumn } from '@/utils/sorting'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -67,6 +68,15 @@ const columns: TableColumn<HostVolumeData>[] = [
   { accessorKey: 'applications', header: 'Application' },
   { accessorKey: 'type', header: 'Type' },
   { id: 'actions', header: '' },
+]
+
+const sortable: SortableColumn<HostVolumeData>[] = [
+  { column: 'name', label: 'Volume', value: (row) => row.name },
+  { column: 'driver', label: 'Driver', value: (row) => row.driver },
+  { column: 'size', label: 'Size', value: (row) => row.size, descendingFirst: true },
+  { column: 'containers', label: 'Containers', value: (row) => row.containers.length, descendingFirst: true },
+  { column: 'applications', label: 'Application', value: (row) => row.applications[0] },
+  { column: 'type', label: 'Type', value: (row) => row.type },
 ]
 
 const isCreating = ref(false)
@@ -215,6 +225,7 @@ const searchText = (volume: HostVolumeData): string =>
       <DataTable
         :data="volumes?.data"
         :columns="columns"
+        :sortable="sortable"
         :loading="!volumes"
         :filters="filters"
         :search-text="searchText"

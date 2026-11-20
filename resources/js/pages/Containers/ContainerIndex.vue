@@ -21,6 +21,7 @@ import { formatBytes, formatPercent, formatPort, formatUptime } from '@/utils/fo
 import { Head, Link } from '@inertiajs/vue3'
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, ref } from 'vue'
+import { timeOf, type SortableColumn } from '@/utils/sorting'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -63,6 +64,26 @@ const columns: TableColumn<HostContainerData>[] = [
   { accessorKey: 'memory', header: 'Memory' },
   { accessorKey: 'started_at', header: 'Uptime' },
   { id: 'actions', header: '' },
+]
+
+const sortable: SortableColumn<HostContainerData>[] = [
+  { column: 'name', label: 'Container', value: (row) => row.name },
+  { column: 'state', label: 'Status', value: (row) => row.state },
+  { column: 'application', label: 'Application', value: (row) => row.application },
+  { column: 'image', label: 'Image', value: (row) => row.image },
+  { column: 'cpu', label: 'CPU', value: (row) => row.cpu, descendingFirst: true },
+  { column: 'memory', label: 'Memory', value: (row) => row.memory, descendingFirst: true },
+  // Uptime grows as the start moves back, so the earliest start sorts as the largest.
+  {
+    column: 'started_at',
+    label: 'Uptime',
+    value: (row) => {
+      const startedAt = timeOf(row.started_at)
+
+      return startedAt === null ? null : -startedAt
+    },
+    descendingFirst: true,
+  },
 ]
 
 const { send, processing } = useHostAction()
@@ -168,6 +189,7 @@ const searchText = (container: HostContainerData): string =>
       <DataTable
         :data="containers?.data"
         :columns="columns"
+        :sortable="sortable"
         :loading="!containers"
         :filters="filters"
         :search-text="searchText"
