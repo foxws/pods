@@ -26,7 +26,7 @@ For Pods itself: PHP 8.5+, Node with pnpm, and `ssh` and `ssh-keygen` on the mac
 Pods runs on a host as rootless Podman Quadlets, for the user whose applications it manages. One command installs it, and running it again updates it:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.8/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.9/install.sh | bash
 ```
 
 It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9393` (`--port` picks another; Cockpit has 9090): open it on the host, or through an SSH tunnel (`ssh -L 9393:127.0.0.1:9393 HOST`). Running it again keeps the port, and updates lpod when it's older than the release needs.
@@ -52,7 +52,7 @@ Pass `--no-idle` to keep Pods running all the time, and start and stop it as `po
 To reach it by a hostname, add the [proxy](proxy.md):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.8/install.sh | bash -s -- --proxy --host pods.example.com
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.9/install.sh | bash -s -- --proxy --host pods.example.com
 ```
 
 On a host shared with other users, give the proxy other ports with `--proxy-ports 28080,28443`, and add `--behind-proxy` when another proxy in front handles HTTPS. `--uninstall` removes Pods and keeps its data; add `--purge` to remove that too. `--help` lists every option.
@@ -60,5 +60,5 @@ On a host shared with other users, give the proxy other ports with `--proxy-port
 To prepare a host (or another user on the same machine) for a Pods that runs elsewhere, use `--no-pods`. It checks the requirements and installs lpod, and `--authorized-key` adds Pods' public key (**Hosts**, **Copy public key**) to that user's `~/.ssh/authorized_keys`. It installs no Pods and no proxy: install the proxy from Pods, in the new environment's settings.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.8/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA… pods'
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.9/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA… pods'
 ```
