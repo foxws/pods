@@ -44,7 +44,7 @@ Route::resource('environments', EnvironmentController::class)->only(['index']);
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
     Route::get('/', EnvironmentOverviewController::class)->name('overview');
     Route::get('/journal', JournalController::class)->name('journal');
-    Route::get('/notifications', [NotificationController::class, 'indexInEnvironment'])->name('notifications.index');
+    Route::get('/notifications', [NotificationController::class, 'environment'])->name('notifications.index');
     Route::get('/search', EnvironmentSearchController::class)->name('search');
     Route::get('/settings', [EnvironmentSettingsController::class, 'show'])->name('settings');
     Route::get('/settings/{section}', [SettingsController::class, 'showInEnvironment'])->name('settings.show')->whereIn('section', SettingsController::Sections);

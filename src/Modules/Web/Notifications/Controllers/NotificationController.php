@@ -36,7 +36,7 @@ class NotificationController implements HasMiddleware
     /**
      * The same list, with the environment that was selected, so the sidebar keeps its host.
      */
-    public function indexInEnvironment(Request $request, #[CurrentUser] User $user, Environment $environment): Response
+    public function environment(Request $request, #[CurrentUser] User $user, Environment $environment): Response
     {
         Gate::authorize('view', $environment);
 

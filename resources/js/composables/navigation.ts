@@ -5,7 +5,7 @@ import { index as images } from '@/actions/Modules/Web/Images/Controllers/ImageC
 import journal from '@/actions/Modules/Web/Journal/Controllers/JournalController'
 import {
   index as notifications,
-  indexInEnvironment as notificationsInEnvironment,
+  environment as notificationsInEnvironment,
 } from '@/actions/Modules/Web/Notifications/Controllers/NotificationController'
 import { index as networks } from '@/actions/Modules/Web/Networks/Controllers/NetworkController'
 import { index as pods } from '@/actions/Modules/Web/Pods/Controllers/PodController'

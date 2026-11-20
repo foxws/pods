@@ -84,7 +84,7 @@ it('lists the notifications inside the selected environment', function () {
     $environment = Environment::factory()->create();
 
     $this->actingAs(User::factory()->create()->assignRole('super-admin'))
-        ->get(action([NotificationController::class, 'indexInEnvironment'], $environment))
+        ->get(action([NotificationController::class, 'environment'], $environment))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('Notifications/NotificationIndex')
