@@ -39,7 +39,7 @@ it('shares how often host pages refresh', function () {
     $settings->save();
 
     $this->get(route('login'))
-        ->assertInertia(fn ($page) => $page->where('hostRefresh', 180));
+        ->assertInertia(fn ($page) => $page->where('refresher', 180));
 });
 
 it('gives the auth pages relative urls, whatever scheme urls are generated with', function () {

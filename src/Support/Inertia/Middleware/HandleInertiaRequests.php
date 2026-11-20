@@ -37,8 +37,7 @@ class HandleInertiaRequests extends Middleware
                 ? EnvironmentData::collect(Environment::query()->orderByDesc('is_local')->orderBy('name')->get())->all()
                 : [],
             'notifications' => fn (): int => $user?->unreadNotifications()->count() ?? 0,
-            // Not a once prop: a page reads it again on each visit, so a saved change applies without a reload.
-            'hostRefresh' => fn (): int => app(GeneralSettings::class)->host_refresh,
+            'refresher' => fn (): int => app(GeneralSettings::class)->host_refresh,
         ]);
     }
 

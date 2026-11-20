@@ -26,6 +26,6 @@ declare module '@inertiajs/core' {
     /** The number of unread notifications. */
     readonly notifications: number | undefined
     /** Seconds between reloads of an idle host page; 0 turns them off. */
-    readonly hostRefresh: number | undefined
+    readonly refresher: number | undefined
   }
 }
