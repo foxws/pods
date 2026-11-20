@@ -18,6 +18,7 @@ use Modules\Web\Environments\Controllers\EnvironmentController;
 use Modules\Web\Environments\Controllers\EnvironmentLpodController;
 use Modules\Web\Environments\Controllers\EnvironmentProxyController;
 use Modules\Web\Environments\Controllers\EnvironmentSettingsController;
+use Modules\Web\Environments\Controllers\EnvironmentVerificationController;
 use Modules\Web\Images\Controllers\ImageController;
 use Modules\Web\Images\Controllers\ImagePruneController;
 use Modules\Web\Images\Controllers\ImageUpdateController;
@@ -46,6 +47,7 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     // Settings
     Route::put('/settings', [EnvironmentSettingsController::class, 'update'])->name('settings.update');
     Route::put('/lpod', [EnvironmentLpodController::class, 'update'])->name('lpod.update');
+    Route::post('/verification', [EnvironmentVerificationController::class, 'store'])->name('verification.store');
 
     // Proxy
     Route::prefix('/proxy')->name('proxy.')->group(function () {

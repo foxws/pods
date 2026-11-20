@@ -1,27 +1,21 @@
 <script setup lang="ts">
 import { update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentLpodController'
+import { store as verify } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentVerificationController'
+import { useHostAction } from '@/composables/hostActions'
 import type { EnvironmentData, LpodVersionData } from '@/types'
-import { router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { formatRelative } from '@/utils/format'
 
 const props = defineProps<{
   environment: EnvironmentData
   lpod: LpodVersionData
 }>()
 
-const isUpdating = ref(false)
+const { send: sendUpdate, processing: isUpdating } = useHostAction()
+const { send: sendCheck, processing: isChecking } = useHostAction()
 
-const updateLpod = (): void => {
-  router.put(
-    update.url(props.environment.id),
-    {},
-    {
-      preserveScroll: true,
-      onStart: () => (isUpdating.value = true),
-      onFinish: () => (isUpdating.value = false),
-    },
-  )
-}
+const updateLpod = (): void => sendUpdate('put', update.url(props.environment.id))
+
+const checkAgain = (): void => sendCheck('post', verify.url(props.environment.id))
 </script>
 
 <template>
@@ -30,6 +24,7 @@ const updateLpod = (): void => {
       <h2 class="font-semibold text-highlighted">lpod</h2>
       <p class="text-sm text-muted">
         Pods manages this host through lpod, installed for {{ environment.user }}. Each user on a host has their own.
+        Pods checks the versions daily, or when you check again.
       </p>
     </template>
 
@@ -40,20 +35,38 @@ const updateLpod = (): void => {
 
         <dt class="text-muted">Pods needs</dt>
         <dd class="font-mono">{{ lpod.required }}</dd>
+
+        <dt class="text-muted">Podman</dt>
+        <dd class="font-mono">{{ environment.podman ?? 'unknown' }}</dd>
+
+        <dt class="text-muted">Checked</dt>
+        <dd>{{ environment.last_seen_at ? formatRelative(environment.last_seen_at) : 'never' }}</dd>
       </dl>
 
-      <UButton
-        v-if="lpod.update_available"
-        :label="`Update to ${lpod.required}`"
-        icon="i-lucide-download"
-        :loading="isUpdating"
-        @click="updateLpod"
-      />
-      <span
-        v-else
-        class="text-sm text-muted"
-        >Up to date</span
-      >
+      <div class="flex flex-wrap items-center gap-2">
+        <UButton
+          label="Check again"
+          icon="i-lucide-refresh-cw"
+          color="neutral"
+          variant="outline"
+          :loading="isChecking"
+          :disabled="isUpdating"
+          @click="checkAgain"
+        />
+        <UButton
+          v-if="lpod.update_available"
+          :label="`Update to ${lpod.required}`"
+          icon="i-lucide-download"
+          :loading="isUpdating"
+          :disabled="isChecking"
+          @click="updateLpod"
+        />
+        <span
+          v-else
+          class="text-sm text-muted"
+          >Up to date</span
+        >
+      </div>
     </div>
   </UCard>
 </template>

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Domain\Applications\Commands\SyncCommand;
+use Domain\Environments\Commands\VerifyCommand;
 use Domain\Volumes\Commands\PruneExportsCommand;
 use Illuminate\Auth\Console\ClearResetsCommand;
 use Illuminate\Cache\Console\PruneStaleTagsCommand;
@@ -25,6 +26,10 @@ if (class_exists(PruneTelescopeCommand::class)) {
         ->withoutOverlapping(10)
         ->dailyAt('01:00');
 }
+
+Schedule::command(VerifyCommand::class)
+    ->withoutOverlapping(10)
+    ->dailyAt('01:00');
 
 Schedule::command(SyncCommand::class)
     ->withoutOverlapping(10)

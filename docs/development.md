@@ -64,7 +64,7 @@ Laravel 13 on Octane with FrankenPHP, Inertia v3, Vue 3, Nuxt UI 4 and Tailwind 
 ```bash
 composer dev               # Octane, queue, Reverb, logs and Vite
 php artisan pods:install   # Generate the SSH key and register the local host
-php artisan pods:verify    # Check that every host answers with a supported lpod contract
+php artisan pods:verify    # Check that every host answers with a supported lpod contract, and store its versions (also daily at 01:00 UTC)
 php artisan users:create   # Create a user (--password-stdin keeps the password out of argv)
 composer test              # Pint check and Pest
 composer types:check       # Larastan

@@ -8,7 +8,6 @@ import { useFlash } from '@/composables/flash'
 import { useNavigation } from '@/composables/navigation'
 import { useHostSearch } from '@/composables/search'
 import { useVolumeExportNotifications } from '@/composables/volumeExports'
-import { index as settingsIndex } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
@@ -16,7 +15,7 @@ import { computed, ref } from 'vue'
 const { nonce } = useAppearance()
 useFlash()
 
-const { environment, tabBarLinks, journalLink, sidebarItems, searchGroups } = useNavigation()
+const { environment, tabBarLinks, journalLink, settingsUrl, sidebarItems, searchGroups } = useNavigation()
 
 const isSidebarOpen = ref(false)
 
@@ -55,7 +54,7 @@ const isSettingsPage = computed(() =>
 
 const footerItems = computed<NavigationMenuItem[]>(() => [
   journalLink.value,
-  { label: 'Settings', icon: 'i-lucide-settings', to: settingsIndex.url(), active: isSettingsPage.value },
+  { label: 'Settings', icon: 'i-lucide-settings', to: settingsUrl(), active: isSettingsPage.value },
   { label: 'Log out', icon: 'i-lucide-log-out', class: 'lg:hidden', onSelect: logOut },
 ])
 </script>
