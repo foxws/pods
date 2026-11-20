@@ -444,6 +444,33 @@ class LpodClient
     }
 
     /**
+     * The disk space each named and anonymous volume uses, in bytes, by name. lpod walks every file
+     * for it, so it's kept for 10 minutes, and given longer than other reads. Writes don't forget it:
+     * applications change their volumes' sizes all the time anyway. A host whose lpod has no
+     * "volumes sizes" yet answers with its plain volume list, which has no sizes.
+     *
+     * @return array<string, int|null>
+     */
+    public function volumeSizes(Environment $environment): array
+    {
+        $payload = Cache::flexible(
+            $this->cacheKey($environment, 'volumes.sizes'),
+            [600, 3600],
+            fn (): array => $this->json($environment, ['volumes', 'sizes', '--json'], timeout: 300),
+        );
+
+        $sizes = [];
+
+        foreach (is_array($payload['sizes'] ?? null) ? $payload['sizes'] : [] as $entry) {
+            if (is_array($entry) && is_string($entry['name'] ?? null)) {
+                $sizes[$entry['name']] = is_int($entry['size'] ?? null) ? $entry['size'] : null;
+            }
+        }
+
+        return $sizes;
+    }
+
+    /**
      * Streams the volume's contents as a tar archive into the file at the path. With $stop, lpod
      * stops the applications whose running containers use the volume first, and starts them
      * again afterwards. lpod refuses volumes backed by a folder or device on the host, and NFS.

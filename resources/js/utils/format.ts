@@ -75,3 +75,17 @@ export function formatUptime(since: string | null | undefined): string {
 
   return `${minutes} min`
 }
+
+/**
+ * How much of the total is used, as a whole percentage (0 without a total).
+ */
+export function percentOf(used: number, total: number): number {
+  return total > 0 ? Math.round((used / total) * 100) : 0
+}
+
+/**
+ * A rate in bytes per second, such as "1.2 MB/s", or "–" without one.
+ */
+export function formatRate(bytesPerSecond: number | null): string {
+  return bytesPerSecond === null ? '–' : `${formatBytes(bytesPerSecond)}/s`
+}

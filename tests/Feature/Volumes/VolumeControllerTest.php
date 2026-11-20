@@ -26,6 +26,44 @@ it('lists the volumes', function () {
                 ->where('volumes.data.3.type', 'nfs')->where('volumes.data.4.type', 'device')->where('volumes.data.5.applications', [])));
 });
 
+it('gives the sizes of the volumes in a group of their own', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([VolumeController::class, 'index'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->missing('sizes')
+            ->loadDeferredProps('sizes', fn ($reload) => $reload
+                ->where('sizes.data.immich-library', 48318382080)
+                ->where('sizes.data.vaultwarden-data', 2359296)
+                ->missing('sizes.data./var/mnt/photos')
+                ->where('sizes.error', null)));
+
+    $lpod->assertRan(['volumes', 'sizes', '--json']);
+});
+
+it('gives no sizes when the host lpod has no volumes sizes yet', function () {
+    // An older lpod answers "volumes sizes" with its plain volume list.
+    fakeLpod()->respond('volumes sizes --json', json_encode(['contract' => 1, 'volumes' => []]));
+
+    $this->actingAs($this->owner)
+        ->get(action([VolumeController::class, 'index'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps('sizes', fn ($reload) => $reload->where('sizes.data', [])->where('sizes.error', null)));
+});
+
+it('still lists the volumes when their sizes fail', function () {
+    fakeLpod()->respond('volumes sizes --json', new HostResult(1, '', 'du: cannot access'));
+
+    $this->actingAs($this->owner)
+        ->get(action([VolumeController::class, 'index'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps(['default', 'sizes'], fn ($reload) => $reload
+                ->has('volumes.data', 6)
+                ->where('sizes.data', null)
+                ->where('sizes.error', 'lpod volumes sizes --json failed: du: cannot access')));
+});
+
 it('removes a volume', function () {
     $lpod = fakeLpod();
 

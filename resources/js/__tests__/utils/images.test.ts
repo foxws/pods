@@ -1,5 +1,13 @@
 import type { ImageData } from '@/types'
-import { applicationsWithUpdates, totalSize, unusedImages } from '@/utils/images'
+import {
+  applicationsWithUpdates,
+  imageName,
+  imageRegistry,
+  imageStatus,
+  isUnusedTagged,
+  totalSize,
+  unusedImages,
+} from '@/utils/images'
 import { expect, test } from 'vite-plus/test'
 
 const image = (overrides: Partial<ImageData>): ImageData => ({
@@ -34,4 +42,23 @@ test('lists each application with an image update once, sorted', () => {
       image({ used_by: ['vaultwarden'] }),
     ]),
   ).toEqual(['immich', 'paperless'])
+})
+
+test('names an image after the last part of its repository, and its registry after the rest', () => {
+  const app = image({ repository: 'ghcr.io/immich-app/immich-server' })
+  const layer = image({ repository: null, dangling: true })
+
+  expect([imageName(app), imageRegistry(app)]).toEqual(['immich-server', 'ghcr.io/immich-app'])
+  expect([imageName(layer), imageRegistry(layer)]).toEqual(['<none>', 'untagged layer'])
+})
+
+test('gives a dangling layer its own badge, before an update or whether it is used', () => {
+  expect(imageStatus(image({ dangling: true, update: '13' })).label).toBe('Dangling')
+  expect(imageStatus(image({ update: '13' })).label).toBe('Update available')
+  expect(imageStatus(image({ containers: 0 })).label).toBe('Unused')
+  expect(imageStatus(image({})).label).toBe('In use')
+  expect([isUnusedTagged(image({ containers: 0 })), isUnusedTagged(image({ containers: 0, dangling: true }))]).toEqual([
+    true,
+    false,
+  ])
 })

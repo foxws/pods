@@ -24,7 +24,7 @@ import type {
 } from '@/types'
 import { describeApplication } from '@/utils/application'
 import { attentionItems, type AttentionItem } from '@/utils/attention'
-import { formatBytes, formatRelative, formatUptime } from '@/utils/format'
+import { formatBytes, formatRelative, formatUptime, percentOf } from '@/utils/format'
 import { describeEvent, eventTime } from '@/utils/events'
 import { totalSize, unusedImages } from '@/utils/images'
 import { pluralize } from '@/utils/application'
@@ -60,8 +60,6 @@ const list = computed(() => props.applications?.data ?? [])
 const isBusy = computed(() => list.value.some((application) => isTransitioning(application.status)))
 
 useHostPolling(['host', 'applications', 'events'], isBusy)
-
-const percentage = (used: number, total: number): number => (total > 0 ? Math.round((used / total) * 100) : 0)
 
 const hostLine = computed(() =>
   [
@@ -218,7 +216,7 @@ const podmanLine = computed(() =>
             <p class="text-sm text-muted">Memory</p>
             <p class="text-2xl font-semibold text-highlighted">{{ formatBytes(stats.memory_used) }}</p>
             <UProgress
-              :model-value="percentage(stats.memory_used, stats.memory_total)"
+              :model-value="percentOf(stats.memory_used, stats.memory_total)"
               size="xs"
               class="mt-2"
             />
@@ -232,7 +230,7 @@ const podmanLine = computed(() =>
             <p class="text-sm text-muted">Disk</p>
             <p class="text-2xl font-semibold text-highlighted">{{ formatBytes(stats.disk_used) }}</p>
             <UProgress
-              :model-value="percentage(stats.disk_used, stats.disk_total)"
+              :model-value="percentOf(stats.disk_used, stats.disk_total)"
               size="xs"
               class="mt-2"
             />

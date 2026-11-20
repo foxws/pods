@@ -12,9 +12,10 @@ import type { EnvironmentData, HostProperty, PodData } from '@/types'
 import { pluralize } from '@/utils/application'
 import { formatPort, formatRelative } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
-import type { BadgeProps, TableColumn } from '@nuxt/ui'
+import type { TableColumn } from '@nuxt/ui'
 import { computed } from 'vue'
 import { timeOf, type SortableColumn } from '@/utils/sorting'
+import { isStoppedPod, podContainerCount, podStatus } from '@/utils/pods'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -23,31 +24,17 @@ const props = defineProps<{
 
 const list = computed(() => props.pods?.data ?? [])
 
-const isStopped = (pod: PodData): boolean => ['exited', 'stopped', 'created', 'dead'].includes(pod.status)
-
 const running = computed(() => list.value.filter((pod) => pod.status === 'running'))
 const degraded = computed(() => list.value.filter((pod) => pod.status === 'degraded'))
 const unmanaged = computed(() => list.value.filter((pod) => !pod.quadlet))
 
 useHostPolling(['pods'], () => false)
 
-const statuses: Record<string, { label: string; color: BadgeProps['color'] }> = {
-  running: { label: 'Running', color: 'success' },
-  degraded: { label: 'Degraded', color: 'warning' },
-  paused: { label: 'Paused', color: 'warning' },
-  dead: { label: 'Dead', color: 'error' },
-  exited: { label: 'Exited', color: 'neutral' },
-  stopped: { label: 'Stopped', color: 'neutral' },
-  created: { label: 'Created', color: 'neutral' },
-}
-
-const status = (pod: PodData) => statuses[pod.status] ?? { label: 'Unknown', color: 'warning' as const }
-
 const filters: DataTableFilter<PodData>[] = [
   { label: 'All', value: 'all' },
   { label: 'Running', value: 'running', match: (pod) => pod.status === 'running' },
   { label: 'Degraded', value: 'degraded', match: (pod) => pod.status === 'degraded' },
-  { label: 'Stopped', value: 'stopped', match: isStopped },
+  { label: 'Stopped', value: 'stopped', match: isStoppedPod },
   { label: 'Unmanaged', value: 'unmanaged', match: (pod) => !pod.quadlet },
 ]
 
@@ -68,9 +55,6 @@ const sortable: SortableColumn<PodData>[] = [
   { column: 'containers', label: 'Containers', value: (row) => row.containers, descendingFirst: true },
   { column: 'created_at', label: 'Created', value: (row) => timeOf(row.created_at), descendingFirst: true },
 ]
-
-const containerCount = (pod: PodData): string =>
-  pod.status === 'running' || pod.status === 'degraded' ? `${pod.running} of ${pod.containers}` : String(pod.containers)
 
 const searchText = (pod: PodData): string =>
   [pod.name, pod.application, pod.quadlet, ...pod.networks].filter(Boolean).join(' ')
@@ -151,7 +135,7 @@ const searchText = (pod: PodData): string =>
                 {{ row.ports.map(formatPort).join(', ') || 'no published ports' }}</span
               >
             </span>
-            <StateBadge v-bind="status(row)" />
+            <StateBadge v-bind="podStatus(row)" />
           </component>
         </template>
 
@@ -163,7 +147,7 @@ const searchText = (pod: PodData): string =>
         </template>
 
         <template #status-cell="{ row }">
-          <StateBadge v-bind="status(row.original)" />
+          <StateBadge v-bind="podStatus(row.original)" />
         </template>
 
         <template #application-cell="{ row }">
@@ -181,7 +165,7 @@ const searchText = (pod: PodData): string =>
         </template>
 
         <template #containers-cell="{ row }">
-          {{ containerCount(row.original) }}
+          {{ podContainerCount(row.original) }}
         </template>
 
         <template #ports-cell="{ row }">

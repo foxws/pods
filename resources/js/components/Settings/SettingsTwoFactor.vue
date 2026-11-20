@@ -1,34 +1,17 @@
 <script setup lang="ts">
 import PasswordConfirmModal from '@/components/Passkeys/PasswordConfirmModal.vue'
 import { useAuth } from '@/composables/auth'
-import { usePasskeys } from '@/composables/passkeys'
+import { usePasskeys, usePasswordConfirmation } from '@/composables/passkeys'
 import { useTwoFactor } from '@/composables/twoFactor'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 const { user } = useAuth()
 const { isPasswordConfirmed } = usePasskeys()
 const { http, qrSvg, codes, start, confirmSetup, fetchRecoveryCodes, regenerate, turnOff } = useTwoFactor()
 
+const { confirmOpen, withConfirmedPassword, onConfirmed } = usePasswordConfirmation(isPasswordConfirmed)
+
 const enabled = computed(() => user.value?.two_factor_enabled ?? false)
-const confirmOpen = ref(false)
-
-let pendingAction: (() => Promise<void> | void) | null = null
-
-const withConfirmedPassword = async (action: () => Promise<void> | void) => {
-  if (await isPasswordConfirmed()) {
-    await action()
-
-    return
-  }
-
-  pendingAction = action
-  confirmOpen.value = true
-}
-
-const onConfirmed = async () => {
-  await pendingAction?.()
-  pendingAction = null
-}
 </script>
 
 <template>
