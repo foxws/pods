@@ -1,0 +1,28 @@
+[Unit]
+Description=Pods Reverb
+# Tells open pages when Pods changes something on a host, so they reload it
+# (live props). Pods forwards Reverb's WebSocket path to it, so browsers
+# reach it on Pods' own address. It starts and stops with Pods, so it sleeps
+# with an on-demand Pods too.
+After=pods.container
+PartOf=pods.container
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Container]
+Image=ghcr.io/foxws/pods:1.0.0-rc.5
+AutoUpdate=registry
+HealthCmd=none
+Environment=PUID=%U
+Environment=PGID=%G
+Environment=APP_COMMAND="php -d variables_order=EGPCS /app/artisan reverb:start --host=0.0.0.0 --port=8080"
+UserNS=keep-id
+Secret=pods-env,target=/app/.env,mode=0400,uid=%U,gid=%G
+Volume=pods-data.volume:/app/storage:rw
+Network=pods.network
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+TimeoutStopSec=30

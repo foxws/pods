@@ -44,6 +44,8 @@ Rootless Quadlets belong to a user's systemd manager, so that user needs lingeri
 
 Reads go through `Cache::flexible()` per environment and key, for `PODS_CACHE_TTL` seconds (default 5), and are served stale for a little longer while they refresh. Writes clear the keys they affect, so the next page load or poll shows the new state. Lifecycle commands use `--no-block`, so a request returns right away and the page polls until systemd is done.
 
+Clearing those keys also broadcasts `EnvironmentChanged` (no payload) on the private channel `environments.{ulid}`, once per request and host, after the response, and never to the tab that made the change. The props that show a host's state are Inertia live props on that event (`deferFromHost(..., live: $environment)`), so other open pages reload them at once. Pods only knows about the changes it makes itself, so pages keep polling for the rest, such as a unit that crashed or finished starting. Logs, stats and the journal stay polled. In production, `pods-reverb` (`reverb:start`, part of `pods.container`) runs Reverb, and Pods' FrankenPHP forwards `/app/*` to it (`OCTANE_REVERB_UPSTREAM`), so browsers reach it on Pods' own address and a connection wakes an on-demand Pods. A tab hidden for a minute disconnects, so Pods can still sleep, and refreshes its live props when it reconnects.
+
 The golden JSON for every command lives in `tests/Fixtures/lpod/contract-1/`. The same files are in lpod's `tests/fixtures/contract-1/`, and they must stay identical: they are the spec for both sides.
 
 ## Applications and Quadlets
@@ -58,7 +60,7 @@ For each application it installs, Pods does keep an installation (`src/Domain/Ap
 
 ## Web layer
 
-Each page is a module in `src/Modules/Web` with an Inertia controller and a Vue page in `resources/js/pages`. Host routes are nested under `/environments/{environment}` in `routes/web.php` (pages) and `routes/actions.php` (actions), so several tabs can stay on different hosts. Slow host data is loaded with deferred props and skeletons, and status pages poll.
+Each page is a module in `src/Modules/Web` with an Inertia controller and a Vue page in `resources/js/pages`. Host routes are nested under `/environments/{environment}` in `routes/web.php` (pages) and `routes/actions.php` (actions), so several tabs can stay on different hosts. Slow host data is loaded with deferred props and skeletons, status pages poll, and host state props are live (see above).
 
 ## Users
 

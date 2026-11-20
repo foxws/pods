@@ -1,6 +1,6 @@
 [Unit]
 Description=Pods
-Wants=pods-schedule.container
+Wants=pods-schedule.container pods-reverb.container
 StartLimitIntervalSec=300
 StartLimitBurst=5
 

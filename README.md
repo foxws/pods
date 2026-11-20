@@ -38,7 +38,7 @@ Browser ──HTTP──▶ Pods (Laravel) ──SSH──▶ host ──▶ lpo
 - **Quadlets are the source of truth.** An application is a group of Quadlet units (`.container`, `.pod`, `.kube`, `.volume`, `.network`) as reported by `podman quadlet list`. Pods stores no copy of your containers. It only stores the environments (hosts) and its own users.
 - **One SSH key per Pods instance.** `pods:install` generates an ed25519 key pair. You add the public key to `~/.ssh/authorized_keys` of the user that owns the Quadlets. When you add a host, Pods pins its host key and refuses to connect when it changes.
 - **Secrets only travel on stdin.** Secret values are piped to lpod and never end up in command arguments, logs or the database.
-- **Reads are cached for a few seconds** per host (`PODS_CACHE_TTL`). Actions such as start, stop or prune clear the cache, and the pages poll for the new state.
+- **Reads are cached for a few seconds** per host (`PODS_CACHE_TTL`). Actions such as start, stop or prune clear the cache, and the pages poll for the new state. Other open pages of the host reload what changed right away, over Reverb (`pods-reverb`, on Pods' own address).
 
 See [docs/architecture.md](docs/architecture.md) for the details.
 

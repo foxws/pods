@@ -22,6 +22,7 @@ use Domain\Containers\DataObjects\HostContainerData;
 use Domain\Containers\Enums\ContainerOperation;
 use Domain\Environments\DataObjects\HostEventData;
 use Domain\Environments\DataObjects\HostSettingsData;
+use Domain\Environments\Events\EnvironmentChanged;
 use Domain\Environments\Models\Environment;
 use Domain\Images\DataObjects\ImageData;
 use Domain\Networks\DataObjects\NetworkData;
@@ -688,11 +689,29 @@ class LpodClient
         return Cache::flexible($this->cacheKey($environment, $key), [$ttl, $ttl * 6], fn (): array => $this->json($environment, $arguments));
     }
 
+    /**
+     * Forgets what a write changed, and tells the host's open pages to reload their live props.
+     */
     protected function forget(Environment $environment, string ...$keys): void
     {
         foreach ($keys as $key) {
             Cache::forget($this->cacheKey($environment, $key));
         }
+
+        $this->broadcastChanged($environment);
+    }
+
+    /**
+     * Broadcasts once per request and host, after the response: a write that runs several lpod
+     * commands sends one event. The tab that made the change has its own redirect, so it's left
+     * out, and a broadcaster that can't be reached never fails the write.
+     */
+    protected function broadcastChanged(Environment $environment): void
+    {
+        $event = new EnvironmentChanged($environment);
+        $event->dontBroadcastToCurrentUser();
+
+        defer(fn () => rescue(fn () => event($event)), "pods.environment-changed.{$environment->ulid}");
     }
 
     protected function cacheKey(Environment $environment, string $key): string

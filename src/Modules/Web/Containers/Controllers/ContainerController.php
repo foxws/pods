@@ -33,8 +33,8 @@ class ContainerController implements HasMiddleware
 
         return Inertia::render('Containers/ContainerIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'containers' => $this->deferFromHost(fn (): array => $lpod->containers($environment)),
-            'host' => $this->deferFromHost(fn () => $lpod->host($environment)),
+            'containers' => $this->deferFromHost(fn (): array => $lpod->containers($environment), live: $environment),
+            'host' => $this->deferFromHost(fn () => $lpod->host($environment), live: $environment),
         ]);
     }
 

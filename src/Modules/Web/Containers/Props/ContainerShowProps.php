@@ -44,10 +44,10 @@ class ContainerShowProps implements ProvidesInertiaProperties
         return [
             'environment' => EnvironmentData::fromModel($this->environment),
             'name' => $this->container,
-            'container' => $this->deferFromHost(fn () => $this->lpod->container($this->environment, $this->container)),
+            'container' => $this->deferFromHost(fn () => $this->lpod->container($this->environment, $this->container), live: $this->environment),
             'logs' => $this->deferFromHost(fn (): array => $this->lpod->containerLogs($this->environment, $this->container), 'details'),
             'stats' => $this->optionalFromHost(fn () => $this->lpod->containerStats($this->environment, $this->container)),
-            'quadlet' => $this->deferFromHost(fn (): ?QuadletFileData => $this->quadlet(), 'details'),
+            'quadlet' => $this->deferFromHost(fn (): ?QuadletFileData => $this->quadlet(), 'details', live: $this->environment),
         ];
     }
 

@@ -256,4 +256,24 @@ return [
         'command' => env('OCTANE_ROADRUNNER_COMMAND', 'vendor/bin/roadrunner-worker'),
         'http_middleware' => env('OCTANE_ROADRUNNER_HTTP_MIDDLEWARE', 'static'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | FrankenPHP's Caddy
+    |--------------------------------------------------------------------------
+    |
+    | Production Pods serves Reverb on its own address: with an upstream such
+    | as systemd-pods-reverb:8080, Caddy forwards Reverb's WebSocket path to
+    | it, so browsers reach it wherever they reach Pods (127.0.0.1, an SSH
+    | tunnel or the proxy), and a connection wakes Pods when it sleeps.
+    |
+    */
+
+    'caddy' => [
+        'env' => array_filter([
+            'CADDY_SERVER_EXTRA_DIRECTIVES' => env('OCTANE_REVERB_UPSTREAM')
+                ? 'reverse_proxy /app/* '.env('OCTANE_REVERB_UPSTREAM')
+                : null,
+        ]),
+    ],
 ];

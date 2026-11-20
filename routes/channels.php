@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Broadcast;
 use Modules\Api\Users\Broadcasting\UserChannel;
+use Modules\Web\Environments\Broadcasting\EnvironmentChannel;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,3 +18,4 @@ use Modules\Api\Users\Broadcasting\UserChannel;
 */
 
 Broadcast::channel('users.{user}', UserChannel::class);
+Broadcast::channel('environments.{environment}', EnvironmentChannel::class);

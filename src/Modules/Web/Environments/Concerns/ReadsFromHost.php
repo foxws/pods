@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Modules\Web\Environments\Concerns;
 
 use Closure;
+use Domain\Environments\Events\EnvironmentChanged;
+use Domain\Environments\Models\Environment;
 use Inertia\DeferProp;
 use Inertia\Inertia;
 use Inertia\OptionalProp;
@@ -33,12 +35,13 @@ trait ReadsFromHost
 
     /**
      * A host read the page loads after it renders, in the request of its group, as fromHost() gives it.
+     * Given the environment as `live`, the page reloads it whenever Pods changes something on that host.
      *
      * @param  Closure(): mixed  $callback
      */
-    protected function deferFromHost(Closure $callback, string $group = 'default'): DeferProp
+    protected function deferFromHost(Closure $callback, string $group = 'default', ?Environment $live = null): DeferProp
     {
-        return Inertia::defer(fn (): array => $this->fromHost($callback), $group);
+        return $this->liveOn(Inertia::defer(fn (): array => $this->fromHost($callback), $group), $live);
     }
 
     /**
@@ -46,8 +49,26 @@ trait ReadsFromHost
      *
      * @param  Closure(): mixed  $callback
      */
-    protected function optionalFromHost(Closure $callback): OptionalProp
+    protected function optionalFromHost(Closure $callback, ?Environment $live = null): OptionalProp
     {
-        return Inertia::optional(fn (): array => $this->fromHost($callback));
+        return $this->liveOn(Inertia::optional(fn (): array => $this->fromHost($callback)), $live);
+    }
+
+    /**
+     * Pods only knows about the changes it makes itself, so pages still poll for the rest,
+     * such as a unit that crashed or finished starting.
+     *
+     * @template TProp of DeferProp|OptionalProp
+     *
+     * @param  TProp  $prop
+     * @return TProp
+     */
+    protected function liveOn(DeferProp|OptionalProp $prop, ?Environment $environment): DeferProp|OptionalProp
+    {
+        if ($environment === null) {
+            return $prop;
+        }
+
+        return $prop->live(on: new EnvironmentChanged($environment));
     }
 }
