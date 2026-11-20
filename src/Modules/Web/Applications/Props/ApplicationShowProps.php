@@ -62,24 +62,24 @@ class ApplicationShowProps implements ProvidesInertiaProperties
         return [
             'environment' => EnvironmentData::fromModel($this->environment),
             'name' => $this->application,
-            'application' => $this->deferFromHost(fn () => $this->lpod->application($this->environment, $this->application)),
-            'ondemand' => $this->deferFromHost(fn () => $this->lpod->onDemand($this->environment, $this->application)),
+            'application' => $this->deferFromHost(fn () => $this->lpod->application($this->environment, $this->application), live: $this->environment),
+            'ondemand' => $this->deferFromHost(fn () => $this->lpod->onDemand($this->environment, $this->application), live: $this->environment),
             'ondemandSuggestion' => $this->deferFromHost(fn () => ($this->suggestOnDemandSettings)(
                 $this->lpod->application($this->environment, $this->application)->application,
                 $this->files(),
                 $this->installation()?->manifest(),
             ), 'details'),
-            'files' => $this->deferFromHost(fn (): array => $this->files(), 'details'),
-            'installation' => $this->deferFromHost(fn (): ?InstallationData => $this->installationData(), 'details'),
+            'files' => $this->deferFromHost(fn (): array => $this->files(), 'details', live: $this->environment),
+            'installation' => $this->deferFromHost(fn (): ?InstallationData => $this->installationData(), 'details', live: $this->environment),
             'routes' => $this->deferFromHost(fn () => ($this->suggestRoutes)(
                 $this->application,
                 $this->lpod->proxyRoutes($this->environment),
                 $this->installation()?->manifest(),
-            ), 'routes'),
-            'timers' => $this->deferFromHost(fn (): array => $this->timers(), 'details'),
+            ), 'routes', live: $this->environment),
+            'timers' => $this->deferFromHost(fn (): array => $this->timers(), 'details', live: $this->environment),
             'updates' => $this->deferFromHost(fn (): array => $this->installation() !== null ? ($this->listApplicationUpdates)($this->installation()) : [], 'updates'),
             'logs' => $this->deferFromHost(fn (): array => $this->lpod->logs($this->environment, $this->application), 'details'),
-            'secrets' => $this->deferFromHost(fn (): array => $this->lpod->secrets($this->environment), 'details'),
+            'secrets' => $this->deferFromHost(fn (): array => $this->lpod->secrets($this->environment), 'details', live: $this->environment),
         ];
     }
 

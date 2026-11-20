@@ -307,11 +307,54 @@ fetch_units() {
         | tar -xz -C "$WORK" --strip-components=1 --wildcards '*/containers/quadlets/production' '*/containers/proxy'
 }
 
+# Reverb, which tells open pages when Pods changes a host. Pods reaches it
+# on pods.network, and forwards browsers to it on its own address
+# (OCTANE_REVERB_UPSTREAM), so VITE_REVERB_HOST stays empty.
+reverb_env() {
+    cat <<EOF
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=pods
+REVERB_APP_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+REVERB_APP_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+REVERB_HOST=systemd-pods-reverb
+REVERB_PORT=8080
+REVERB_SCHEME=http
+VITE_REVERB_HOST=
+OCTANE_REVERB_UPSTREAM=systemd-pods-reverb:8080
+EOF
+}
+
+# A pods-env secret from before Reverb gets its settings once, in place of
+# BROADCAST_CONNECTION=null; the rest of it stays as it is.
+add_reverb_env() {
+    local current
+    current="$(podman secret inspect --showsecret --format '{{.SecretData}}' pods-env)"
+
+    if grep -q '^REVERB_APP_KEY=' <<< "$current"; then
+        return
+    fi
+
+    info "Adding Reverb to the pods-env secret..."
+
+    local file
+    file="$(mktemp)"
+    chmod 600 "$file"
+
+    {
+        grep -v '^BROADCAST_CONNECTION=' <<< "$current" || true
+        reverb_env
+    } > "$file"
+
+    podman secret create --replace pods-env "$file" > /dev/null
+    rm -f "$file"
+}
+
 # The app's .env, as the pods-env secret. It's only created once: run with
 # --uninstall --purge to start over.
 create_env_secret() {
     if podman secret exists pods-env 2> /dev/null; then
         info "The pods-env secret exists; keeping it."
+        add_reverb_env
 
         return
     fi
@@ -340,13 +383,13 @@ DB_DATABASE=/app/storage/app/private/database.sqlite
 SESSION_DRIVER=database
 CACHE_STORE=database
 QUEUE_CONNECTION=sync
-BROADCAST_CONNECTION=null
 SCOUT_DRIVER=database
 MAIL_MAILER=log
 OCTANE_SERVER=frankenphp
 PODS_LOCAL_SSH_HOST=host.containers.internal
 PODS_LOCAL_SSH_USER=${USER}
 EOF
+    reverb_env >> "$file"
 
     podman secret create pods-env "$file" > /dev/null
     rm -f "$file"
@@ -599,7 +642,7 @@ uninstall() {
         "$LPOD" pods ondemand disable --json > /dev/null 2>&1 || true
     fi
 
-    systemctl --user stop pods.service pods-schedule.service 2> /dev/null || true
+    systemctl --user stop pods.service pods-schedule.service pods-reverb.service 2> /dev/null || true
 
     local unit_path
     unit_path="$(podman quadlet list --format json 2> /dev/null | jq -r 'first(.[] | select(.Name == "pods.container") | .Path) // empty' 2> /dev/null || true)"

@@ -82,7 +82,9 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                     // Where browsers reach Reverb, shared with Echo as the "echo" prop;
-                    // differs from the above when Reverb sits behind a reverse proxy.
+                    // differs from the above when Reverb sits behind a reverse proxy. An
+                    // empty VITE_REVERB_HOST means the page's own address, which production
+                    // Pods forwards to Reverb (octane.caddy).
                     'wsKey' => (string) env('VITE_REVERB_APP_KEY', env('REVERB_APP_KEY')),
                     'wsHost' => (string) env('VITE_REVERB_HOST', env('REVERB_HOST')),
                     'wsPort' => (int) env('VITE_REVERB_PORT', env('REVERB_PORT', 8080)),

@@ -144,7 +144,7 @@ const subtitle = computed(() =>
     .join(' · '),
 )
 
-useHostPolling(['application', 'ondemand', 'logs'], () => !!summary.value && isTransitioning(summary.value.status))
+useHostPolling(['application', 'ondemand'], () => !!summary.value && isTransitioning(summary.value.status), ['logs'])
 
 const onDemand = computed(() => props.ondemand?.data ?? null)
 

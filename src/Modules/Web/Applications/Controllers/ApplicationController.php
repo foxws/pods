@@ -39,8 +39,8 @@ class ApplicationController implements HasMiddleware
 
         return Inertia::render('Applications/ApplicationIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment)),
-            'host' => $this->deferFromHost(fn () => $lpod->host($environment)),
+            'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $environment),
+            'host' => $this->deferFromHost(fn () => $lpod->host($environment), live: $environment),
             'images' => $this->deferFromHost(fn (): array => $lpod->images($environment), 'images'),
         ]);
     }
