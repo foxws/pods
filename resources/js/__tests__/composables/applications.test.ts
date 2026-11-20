@@ -1,34 +1,52 @@
 import { useHostPolling } from '@/composables/applications'
 import { router } from '@inertiajs/vue3'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { ref, toValue, type MaybeRefOrGetter } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { nextTick, reactive, ref, toValue, type MaybeRefOrGetter } from 'vue'
+
+const page = reactive({ props: { hostRefresh: 30 as number | undefined } })
 
 vi.mock('@inertiajs/vue3', () => ({
   router: {
     reload: vi.fn<(options: { only: string[]; onFinish: () => void }) => void>((options) => options.onFinish()),
   },
+  usePage: () => page,
 }))
 
 // The tests run without a DOM, where VueUse never starts an interval, so they
-// take the reload and the interval useHostReload hands it.
-let poll: { reload: () => void; interval: MaybeRefOrGetter<number> } | undefined
+// take the reload, the interval and the controls useHostReload hands it.
+let poll:
+  | {
+      reload: () => void
+      interval: MaybeRefOrGetter<number>
+      pause: ReturnType<typeof vi.fn<() => void>>
+      resume: ReturnType<typeof vi.fn<() => void>>
+    }
+  | undefined
 
 vi.mock('@vueuse/core', () => ({
   useDocumentVisibility: () => ref('visible'),
   useIntervalFn: (reload: () => void, interval: MaybeRefOrGetter<number>) => {
-    poll = { reload, interval }
+    const pause = vi.fn<() => void>()
+    const resume = vi.fn<() => void>()
+    poll = { reload, interval, pause, resume }
 
-    return { isActive: ref(true), pause: vi.fn<() => void>(), resume: vi.fn<() => void>() }
+    return { isActive: ref(true), pause, resume }
   },
 }))
 
 describe('useHostPolling', () => {
+  beforeEach(() => {
+    page.props.hostRefresh = 30
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
     poll = undefined
   })
 
-  it('reloads every 3 minutes while nothing is changing state, without the busy-only props', () => {
+  it('reloads as often as the setting says while nothing is changing state, without the busy-only props', () => {
+    page.props.hostRefresh = 180
+
     useHostPolling(['application'], () => false, ['logs'])
 
     poll?.reload()
@@ -48,7 +66,22 @@ describe('useHostPolling', () => {
 
     isBusy.value = false
     poll?.reload()
-    expect(toValue(poll?.interval)).toBe(180_000)
+    expect(toValue(poll?.interval)).toBe(30_000)
     expect(router.reload).toHaveBeenLastCalledWith(expect.objectContaining({ only: ['application'] }))
+  })
+
+  it('stops reloading when the setting is off, but still follows a unit that changes state', async () => {
+    page.props.hostRefresh = 0
+    const isBusy = ref(false)
+
+    useHostPolling(['application'], isBusy)
+
+    expect(poll?.pause).toHaveBeenCalledOnce()
+
+    isBusy.value = true
+    await nextTick()
+
+    expect(poll?.resume).toHaveBeenCalledOnce()
+    expect(toValue(poll?.interval)).toBe(5_000)
   })
 })

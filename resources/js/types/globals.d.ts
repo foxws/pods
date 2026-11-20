@@ -23,5 +23,7 @@ declare module '@inertiajs/core' {
     readonly environments: EnvironmentData[] | undefined
     readonly environment?: EnvironmentData
     readonly echo: EchoConfig | undefined
+    /** Seconds between reloads of an idle host page; 0 turns them off. */
+    readonly hostRefresh: number | undefined
   }
 }

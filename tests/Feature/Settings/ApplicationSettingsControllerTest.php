@@ -56,3 +56,24 @@ it('denies a regular user from updating application settings', function () {
 
     $response->assertForbidden();
 });
+
+it('saves how often host pages refresh', function () {
+    $user = User::factory()->create()->assignRole('super-admin');
+
+    $this->actingAs($user)
+        ->patch(action([ApplicationSettingsController::class, 'update']), ['host_refresh' => 0])
+        ->assertRedirect()
+        ->assertInertiaFlash('type', 'success');
+
+    expect(app(GeneralSettings::class)->host_refresh)->toBe(0);
+});
+
+it('refuses a refresh interval that is not one of the choices', function (mixed $interval) {
+    $user = User::factory()->create()->assignRole('super-admin');
+
+    $this->actingAs($user)
+        ->patch(action([ApplicationSettingsController::class, 'update']), ['host_refresh' => $interval])
+        ->assertSessionHasErrors('host_refresh');
+
+    expect(app(GeneralSettings::class)->host_refresh)->toBe(30);
+})->with([1, 45, -30, 'often']);

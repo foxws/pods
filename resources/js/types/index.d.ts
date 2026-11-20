@@ -101,6 +101,7 @@ export type ApplicationSettings = {
   timezone: string
   default_locale: Locale
   allow_registration: boolean
+  host_refresh: number
 }
 
 export type ProxyMode = 'letsencrypt' | 'local' | 'wildcard' | 'http'

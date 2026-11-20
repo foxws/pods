@@ -33,6 +33,15 @@ it('shares the site name from the application settings', function () {
         ->assertInertia(fn ($page) => $page->where('app', 'Boilerplate Test'));
 });
 
+it('shares how often host pages refresh', function () {
+    $settings = app(GeneralSettings::class);
+    $settings->host_refresh = 180;
+    $settings->save();
+
+    $this->get(route('login'))
+        ->assertInertia(fn ($page) => $page->where('hostRefresh', 180));
+});
+
 it('gives the auth pages relative urls, whatever scheme urls are generated with', function () {
     $this->get(route('login'))
         ->assertInertia(fn ($page) => $page

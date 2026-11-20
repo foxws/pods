@@ -98,7 +98,8 @@ class SshHostRunner implements RunsHostCommands
     /**
      * Every lpod call is its own ssh command, and a page load makes several at once. With a
      * control master, the first one keeps its connection open for a while and the next ones
-     * run over it, so they skip the key exchange, the login and the user's login shell. ssh
+     * run over it, so they skip the TCP connection, the key exchange and the login (the user's
+     * shell still starts for each command). ssh
      * falls back to a connection of its own when the master is busy starting or gone.
      *
      * @return list<string>
