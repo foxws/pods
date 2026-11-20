@@ -14,6 +14,9 @@ AutoUpdate=local
 HealthCmd=none
 Environment=APP_COMMAND="php -d variables_order=EGPCS /app/artisan schedule:work"
 UserNS=keep-id
+# An init reaps the SSH control masters Pods leaves running (ControlPersist),
+# which PHP, as the container's first process, wouldn't.
+RunInit=true
 ShmSize=128m
 Volume=pods-dev-source.volume:/app:rw,z
 Volume=pods-dev-cache.volume:/cache:rw

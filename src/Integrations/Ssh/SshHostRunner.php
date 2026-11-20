@@ -57,6 +57,7 @@ class SshHostRunner implements RunsHostCommands
             '-o', "UserKnownHostsFile={$this->knownHostsFile($environment)}",
             '-o', 'ConnectTimeout=10',
             '-o', 'LogLevel=ERROR',
+            ...$this->connectionReuse(),
             '-l', $environment->user,
             '--',
             $environment->host,
@@ -77,6 +78,36 @@ class SshHostRunner implements RunsHostCommands
             escapeshellarg((string) config('services.pods.lpod_binary')),
             ...array_map(escapeshellarg(...), $arguments),
         ]);
+    }
+
+    /**
+     * Every lpod call is its own ssh command, and a page load makes several at once. With a
+     * control master, the first one keeps its connection open for a while and the next ones
+     * run over it, so they skip the key exchange, the login and the user's login shell. ssh
+     * falls back to a connection of its own when the master is busy starting or gone.
+     *
+     * @return list<string>
+     */
+    protected function connectionReuse(): array
+    {
+        $persist = (int) config('services.pods.ssh_control_persist');
+
+        if ($persist <= 0) {
+            return [];
+        }
+
+        $directory = (string) config('services.pods.ssh_control_directory');
+        File::ensureDirectoryExists($directory, 0700);
+
+        return [
+            '-o', 'ControlMaster=auto',
+            // %C hashes the host, port and user, which keeps the socket path short enough.
+            '-o', "ControlPath={$directory}/%C",
+            '-o', "ControlPersist={$persist}",
+            // A master whose host went away stops within 45 seconds instead of hanging the next calls.
+            '-o', 'ServerAliveInterval=15',
+            '-o', 'ServerAliveCountMax=3',
+        ];
     }
 
     protected function knownHostsFile(Environment $environment): string

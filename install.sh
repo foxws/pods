@@ -179,6 +179,7 @@ check_requirements() {
 
     if [ "$PODS" = true ]; then
         command -v tar > /dev/null 2>&1 || fail "tar is required. Install it first."
+        has_container_init || fail "Podman's container init (catatonit) is required: Pods' units use RunInit=true. Install the catatonit package first."
     fi
 
     systemctl --user show-environment > /dev/null 2>&1 || fail "The systemd user manager isn't reachable. Log in as this user directly, not with su."
@@ -190,6 +191,20 @@ check_requirements() {
     if ! systemctl is-active --quiet sshd 2> /dev/null && ! systemctl is-active --quiet ssh 2> /dev/null; then
         warn "No SSH server seems to run. Pods reaches this host over SSH, so start sshd (or ssh) first."
     fi
+}
+
+# Whether Podman finds catatonit for RunInit=true, in the helper
+# directories it searches or on the PATH.
+has_container_init() {
+    local path
+
+    for path in /usr/local/libexec/podman /usr/local/lib/podman /usr/libexec/podman /usr/lib/podman; do
+        if [ -x "${path}/catatonit" ]; then
+            return 0
+        fi
+    done
+
+    command -v catatonit > /dev/null 2>&1
 }
 
 # Whether release A (such as 4.0.0-rc.1) is older than release B, where a

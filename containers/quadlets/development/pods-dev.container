@@ -16,6 +16,9 @@ StartLimitBurst=5
 Image=pods-dev.build
 AutoUpdate=local
 UserNS=keep-id
+# An init reaps the SSH control masters Pods leaves running (ControlPersist),
+# which PHP, as the container's first process, wouldn't.
+RunInit=true
 ShmSize=128m
 Volume=pods-dev-source.volume:/app:rw,z,U
 Volume=pods-dev-config.volume:/config:rw
