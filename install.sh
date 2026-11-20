@@ -13,7 +13,9 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.9/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA... pods'
 #
-# Run it again to update. "--help" lists every option.
+# To update, run pods-update, which this installs in ~/.local/bin: it runs
+# the newest release's install.sh, which keeps this install's setup.
+# "--help" lists every option.
 set -euo pipefail
 
 # The release this install.sh belongs to, and the lpod release it needs.
@@ -32,12 +34,13 @@ DEFAULT_PORT=9393
 LOCAL_PORT=""
 LPOD="${BIN_DIR}/lpod"
 
-IDLE=true
+IDLE=""
 IDLE_LISTEN=127.0.0.1
 PODS=true
 AUTHORIZED_KEY=""
 PROXY=false
 HOST=""
+KEEP_ROUTES=false
 HTTP_PORT=80
 HTTPS_PORT=443
 BEHIND_PROXY=false
@@ -70,6 +73,7 @@ Usage: install.sh [options]
                         address
   --no-idle             Keep Pods running all the time, instead of starting it on the first
                         request and stopping it after 10 minutes without one
+  --idle                Let Pods sleep again after an install with --no-idle
   --name NAME           With --email and PODS_OWNER_PASSWORD, create the owner here
   --email EMAIL         instead of on Pods' setup page
   --uninstall           Remove Pods (and with --proxy, the proxy). Keeps its data
@@ -79,6 +83,11 @@ Usage: install.sh [options]
 Environment: PODS_REF (default v1.0.0-rc.9) and LPOD_REF (default v4.0.0-rc.7) pick the
 versions to install. PODS_OWNER_PASSWORD is the owner's password, with --name
 and --email, for unattended installs.
+
+Running this again keeps the install's setup: its port, whether Pods sleeps,
+and the proxy with Pods' route as set in Pods. Options given again change it.
+To update, run pods-update (in ~/.local/bin), which runs the newest release's
+install.sh with the options you give it.
 
 Pods listens on 127.0.0.1:9393 (or --port) only. Reach it on this machine,
 or through an SSH tunnel: ssh -L 9393:127.0.0.1:9393 HOST
@@ -118,6 +127,7 @@ parse_arguments() {
             --behind-proxy) BEHIND_PROXY=true ;;
             --port) LOCAL_PORT="${2:-}"; shift ;;
             --no-idle) IDLE=false ;;
+            --idle) IDLE=true ;;
             --no-pods) PODS=false ;;
             --authorized-key) AUTHORIZED_KEY="${2:-}"; shift ;;
             --name) OWNER_NAME="${2:-}"; shift ;;
@@ -501,6 +511,50 @@ has_routes() {
     "$LPOD" pods routes --json 2> /dev/null | jq -e '.routes | length > 0' > /dev/null 2>&1
 }
 
+# Whether an earlier install.sh installed Pods for this user.
+is_installed() {
+    podman quadlet list --format json 2> /dev/null | jq -e 'any(.[]; .Name == "pods.container")' > /dev/null 2>&1
+}
+
+# Whether the Pods proxy is installed for this user, by install.sh or Pods.
+has_proxy() {
+    podman quadlet list --format json 2> /dev/null | jq -e 'any(.[]; .Name == "pods-proxy.container")' > /dev/null 2>&1
+}
+
+# The hostname of Pods' main route through the proxy, if it has one.
+routed_host() {
+    "$LPOD" pods routes --json 2> /dev/null | jq -r 'first(.routes[] | select(.main) | .host) // empty' 2> /dev/null || true
+}
+
+# Running this again keeps what the earlier install set up, unless the
+# options say otherwise: Pods sleeps when it did, and an installed proxy is
+# updated with the route Pods has, which may have been edited in Pods since.
+# Run it before disable_idle.
+keep_setup() {
+    if ! is_installed; then
+        IDLE="${IDLE:-true}"
+
+        return
+    fi
+
+    if [ -z "$IDLE" ]; then
+        if is_idle; then
+            IDLE=true
+        else
+            IDLE=false
+        fi
+    fi
+
+    if [ "$PROXY" = false ] && has_proxy; then
+        HOST="$(routed_host)"
+
+        if [ -n "$HOST" ]; then
+            PROXY=true
+            KEEP_ROUTES=true
+        fi
+    fi
+}
+
 # Whether Pods runs on demand now, from an earlier install.
 is_idle() {
     "$LPOD" pods ondemand status --json 2> /dev/null | jq -e '.ondemand.enabled' > /dev/null 2>&1
@@ -546,6 +600,40 @@ enable_idle() {
     if [ -z "$IDLE_LISTEN" ]; then
         warn "So the proxy can wake Pods, its socket listens on port ${LOCAL_PORT} on every address. Block that port in the host's firewall to keep Pods off your network, or pass --no-idle."
     fi
+}
+
+# pods-update runs the newest release's install.sh (or PODS_REF's), so an
+# update needs no options or version: install.sh keeps the setup it finds.
+install_update_command() {
+    mkdir -p "$BIN_DIR"
+
+    cat > "${BIN_DIR}/pods-update" <<'EOF'
+#!/usr/bin/env bash
+# Written by Pods' install.sh. Updates Pods to its newest release (or to
+# PODS_REF), keeping this install's setup. Options go to install.sh, such as
+# pods-update --no-idle; "pods-update --help" lists them.
+set -euo pipefail
+
+ref="${PODS_REF:-}"
+
+if [ -z "$ref" ]; then
+    ref="$(curl -fsSL 'https://api.github.com/repos/foxws/pods/releases?per_page=1' | jq -r '.[0].tag_name // empty')"
+fi
+
+if [ -z "$ref" ]; then
+    echo "error: Pods' newest release wasn't found. Name one, e.g. PODS_REF=v1.0.0 pods-update" >&2
+    exit 1
+fi
+
+script="$(mktemp)"
+trap 'rm -f "$script"' EXIT
+
+curl -fsSL "https://raw.githubusercontent.com/foxws/pods/${ref}/install.sh" -o "$script" 2> /dev/null \
+    || { echo "error: Pods has no release or branch ${ref}." >&2; exit 1; }
+PODS_REF="$ref" bash "$script" "$@"
+EOF
+
+    chmod 755 "${BIN_DIR}/pods-update"
 }
 
 artisan() {
@@ -641,7 +729,9 @@ install_proxy() {
         } > "${QUADLET_DIR}/pods-proxy.container.d/install.conf"
     fi
 
-    route_pods
+    if [ "$KEEP_ROUTES" = false ]; then
+        route_pods
+    fi
 
     systemctl --user daemon-reload
     systemctl --user restart pods-proxy.service
@@ -707,6 +797,8 @@ uninstall() {
         info "Kept Pods' data (the pods-data volume) and the pods-env secret. Add --purge to remove them."
     fi
 
+    rm -f "${BIN_DIR}/pods-update"
+
     systemctl --user daemon-reload
 }
 
@@ -761,6 +853,8 @@ main() {
         warn "Pods moves from port $(installed_port) to ${LOCAL_PORT}. The APP_URL in the pods-env secret still has the old one."
     fi
 
+    keep_setup
+
     # A route through the proxy, from --proxy now or earlier, or set in Pods,
     # needs a socket the proxy container can reach.
     if [ "$PROXY" = true ] || has_routes; then
@@ -781,6 +875,8 @@ main() {
     if [ "$IDLE" = true ]; then
         enable_idle
     fi
+
+    install_update_command
 
     local url="http://127.0.0.1:${LOCAL_PORT}"
 
@@ -808,6 +904,8 @@ main() {
         echo "    ${SETUP_CODE}"
         echo
     fi
+
+    info "To update Pods later, run: pods-update"
 }
 
 main "$@"
