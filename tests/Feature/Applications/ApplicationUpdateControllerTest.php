@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Domain\Applications\Models\Installation;
+use Domain\Environments\DataObjects\LpodVersionData;
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
 use Integrations\Ssh\HostResult;
@@ -325,3 +326,22 @@ it('still updates when the host refuses the timers of the new release', function
 
     expect($installation->refresh()->reference)->toBe('v3.2.0');
 });
+
+it('says when the host runs another lpod than Pods needs, which can fail the dry run', function (?string $installed, bool $hints) {
+    $this->environment->update(['facts' => ['lpod' => $installed ?? LpodVersionData::expected(config('services.pods.lpod_version'))]]);
+    Installation::factory()->for($this->environment)->fromGit()->create(['application' => 'immich', 'reference' => 'v3.1.0']);
+    fakeLpod()
+        ->respond('quadlet fetch *', immichRelease())
+        ->respond('quadlet check --stdin --json', json_encode(['contract' => 1, 'valid' => false, 'errors' => ['Loading source drop-in file immich.pod.d/lpod-ondemand.conf'], 'units' => []]));
+
+    $error = "The files of v3.2.0 don't pass podman quadlet --dryrun: Loading source drop-in file immich.pod.d/lpod-ondemand.conf";
+    $hint = " This host's lpod ({$installed}) isn't the ".config('services.pods.lpod_version')." Pods needs, which can make the check fail: update lpod in the host's settings, then try again.";
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0'])
+        ->assertInertiaFlash('type', 'error')
+        ->assertInertiaFlash('description', $hints ? $error.$hint : $error);
+})->with([
+    'an older lpod' => ['4.0.0-rc.2', true],
+    'the lpod Pods needs' => [null, false],
+]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Applications\Exceptions;
 
+use Domain\Environments\DataObjects\LpodVersionData;
 use RuntimeException;
 
 /**
@@ -24,11 +25,20 @@ class CannotUpdateApplicationException extends RuntimeException
     }
 
     /**
+     * An older lpod can find problems that aren't there (before 4.0.0-rc.3 it counted the generator's
+     * own log lines as errors), so the message says when the host's lpod is behind.
+     *
      * @param  list<string>  $errors
      */
-    public static function invalidFiles(string $tag, array $errors): self
+    public static function invalidFiles(string $tag, array $errors, ?LpodVersionData $lpod = null): self
     {
-        return new self("The files of {$tag} don't pass podman quadlet --dryrun: ".implode(' ', $errors));
+        $message = "The files of {$tag} don't pass podman quadlet --dryrun: ".implode(' ', $errors);
+
+        if ($lpod !== null && $lpod->installed !== null && $lpod->update_available) {
+            $message .= " This host's lpod ({$lpod->installed}) isn't the {$lpod->required} Pods needs, which can make the check fail: update lpod in the host's settings, then try again.";
+        }
+
+        return new self($message);
     }
 
     /**

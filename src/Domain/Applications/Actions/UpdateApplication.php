@@ -7,6 +7,7 @@ namespace Domain\Applications\Actions;
 use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Applications\Exceptions\CannotUpdateApplicationException;
 use Domain\Applications\Models\Installation;
+use Domain\Environments\DataObjects\LpodVersionData;
 use Domain\Quadlets\Actions\InstallQuadlets;
 use Domain\Secrets\DataObjects\SecretData;
 use Integrations\Lpod\Exceptions\LpodException;
@@ -66,7 +67,7 @@ class UpdateApplication
         $check = $this->lpod->checkQuadlets($environment, $files);
 
         if (! $check->valid) {
-            throw CannotUpdateApplicationException::invalidFiles($tag, $check->errors);
+            throw CannotUpdateApplicationException::invalidFiles($tag, $check->errors, LpodVersionData::fromEnvironment($environment));
         }
 
         $missingSecrets = $this->missingSecrets($installation, $files);
