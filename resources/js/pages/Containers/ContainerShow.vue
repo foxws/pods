@@ -67,17 +67,7 @@ const { pause: stopFollowing, resume: startFollowing } = useHostReload(['logs'],
   immediate: false,
 })
 
-const toggleFollowing = (): void => {
-  isFollowing.value = !isFollowing.value
-
-  if (isFollowing.value) {
-    startFollowing()
-
-    return
-  }
-
-  stopFollowing()
-}
+watch(isFollowing, (following) => (following ? startFollowing() : stopFollowing()))
 
 const isEditingQuadlet = ref(false)
 
@@ -461,23 +451,21 @@ const memoryHint = computed(() =>
       >
         <template #header>
           <div class="flex flex-wrap items-center gap-2">
-            <UButton
+            <UToggle
+              v-model="isFollowing"
               :label="isFollowing ? 'Following' : 'Follow'"
               :icon="isFollowing ? 'i-lucide-pause' : 'i-lucide-play'"
-              color="neutral"
-              :variant="isFollowing ? 'soft' : 'outline'"
+              variant="outline"
+              active-color="neutral"
               size="sm"
-              :aria-pressed="isFollowing"
-              @click="toggleFollowing"
             />
-            <UButton
+            <UToggle
+              v-model="showsErrorsOnly"
               :label="errorCount ? `Errors · ${errorCount}` : 'Errors'"
               icon="i-lucide-circle-alert"
-              :color="showsErrorsOnly ? 'error' : 'neutral'"
-              :variant="showsErrorsOnly ? 'soft' : 'outline'"
+              variant="outline"
+              active-color="error"
               size="sm"
-              :aria-pressed="showsErrorsOnly"
-              @click="showsErrorsOnly = !showsErrorsOnly"
             />
             <UButton
               label="Open journal"

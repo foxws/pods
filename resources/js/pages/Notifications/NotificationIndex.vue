@@ -6,6 +6,7 @@ import { useNavigation } from '@/composables/navigation'
 import { useNotifications } from '@/composables/notifications'
 import type { NotificationData } from '@/types'
 import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3'
+import type { ToggleGroupItem } from '@nuxt/ui'
 import { computed } from 'vue'
 
 type Filter = 'all' | 'unread'
@@ -22,12 +23,16 @@ const { markAllRead, clearRead } = useNotifications()
 const unread = computed(() => page.props.notifications ?? 0)
 const hasRead = computed(() => props.messages.data.some((notification) => notification.read_at))
 
-const filters: { label: string; value: Filter }[] = [
+const filters = computed<ToggleGroupItem[]>(() => [
   { label: 'All', value: 'all' },
-  { label: 'Unread', value: 'unread' },
-]
+  { label: unread.value > 0 ? `Unread (${unread.value})` : 'Unread', value: 'unread' },
+])
 
-const applyFilter = (filter: Filter): void => {
+const applyFilter = (filter: unknown): void => {
+  if ((filter !== 'all' && filter !== 'unread') || filter === props.filter) {
+    return
+  }
+
   router.get(notificationsLink.value.to, filter === 'unread' ? { filter } : {}, {
     preserveState: true,
     preserveScroll: true,
@@ -82,22 +87,14 @@ const sections = computed(() =>
           </template>
         </PageHeading>
 
-        <div
-          class="flex gap-2"
-          role="group"
+        <UToggleGroup
+          :model-value="filter"
+          :items="filters"
+          size="sm"
+          class="gap-2"
           aria-label="Show"
-        >
-          <UButton
-            v-for="option in filters"
-            :key="option.value"
-            :label="option.value === 'unread' && unread > 0 ? `${option.label} (${unread})` : option.label"
-            :aria-pressed="filter === option.value"
-            :color="filter === option.value ? 'primary' : 'neutral'"
-            :variant="filter === option.value ? 'soft' : 'ghost'"
-            size="sm"
-            @click="applyFilter(option.value)"
-          />
-        </div>
+          @update:model-value="applyFilter"
+        />
 
         <UEmpty
           v-if="!sections.length"

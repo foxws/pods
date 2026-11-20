@@ -37,7 +37,7 @@ const handle = async () => {
     <template #body>
       <div class="flex flex-col gap-2">
         <h3>Are you sure you want to delete this passkey?</h3>
-        <p class="text-sm text-neutral-500">
+        <p class="text-sm text-muted">
           You won't be able to sign in with it anymore. Remove it from your device or password manager as well.
         </p>
       </div>
