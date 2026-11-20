@@ -29,6 +29,15 @@ class HostVolumeData extends Data
     ) {}
 
     /**
+     * Only volumes in Podman's own storage: lpod refuses one backed by a folder or device on the
+     * host, or an NFS share, whose archive would be all of it. Bind mounts aren't volumes.
+     */
+    public function isExportable(): bool
+    {
+        return in_array($this->type, ['named', 'anonymous'], true);
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      */
     public static function fromLpod(array $payload): self

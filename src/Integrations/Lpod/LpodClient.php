@@ -443,6 +443,22 @@ class LpodClient
         return array_map(HostVolumeData::fromLpod(...), array_values($payload['volumes'] ?? []));
     }
 
+    /**
+     * Streams the volume's contents as a tar archive into the file at the path. With $stop, lpod
+     * stops the applications whose running containers use the volume first, and starts them
+     * again afterwards. lpod refuses volumes backed by a folder or device on the host, and NFS.
+     */
+    public function exportVolume(Environment $environment, string $volume, string $path, bool $stop = false, int $timeout = 3600): void
+    {
+        $arguments = ['volume', 'export', $volume, ...($stop ? ['--stop'] : []), '--json'];
+
+        $this->verify($environment, $arguments, $this->runner->download($environment, $arguments, $path, $timeout));
+
+        if ($stop) {
+            $this->forget($environment, 'apps', 'host', 'containers', 'pods');
+        }
+    }
+
     public function removeVolume(Environment $environment, string $volume): void
     {
         $this->json($environment, ['volume', 'rm', $volume, '--json']);
@@ -761,9 +777,15 @@ class LpodClient
      */
     protected function execute(Environment $environment, array $arguments, ?string $input = null, int $timeout = 30): HostResult
     {
-        $command = implode(' ', $arguments);
+        return $this->verify($environment, $arguments, $this->runner->run($environment, $arguments, $input, $timeout));
+    }
 
-        $result = $this->runner->run($environment, $arguments, $input, $timeout);
+    /**
+     * @param  list<string>  $arguments
+     */
+    protected function verify(Environment $environment, array $arguments, HostResult $result): HostResult
+    {
+        $command = implode(' ', $arguments);
 
         if ($result->exitCode === 255) {
             throw LpodException::unreachable($environment, $result);

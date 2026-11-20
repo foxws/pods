@@ -39,6 +39,29 @@ class FakeHostRunner implements RunsHostCommands
     {
         $this->recorded[] = compact('environment', 'arguments', 'input');
 
+        return $this->respondTo($arguments);
+    }
+
+    /**
+     * Writes the output of a successful response into the file, as the real runner streams it.
+     */
+    public function download(Environment $environment, array $arguments, string $path, int $timeout = 30): HostResult
+    {
+        $input = null;
+        $this->recorded[] = compact('environment', 'arguments', 'input');
+
+        $result = $this->respondTo($arguments);
+
+        file_put_contents($path, $result->successful() ? $result->output : '');
+
+        return new HostResult($result->exitCode, '', $result->errorOutput);
+    }
+
+    /**
+     * @param  list<string>  $arguments
+     */
+    protected function respondTo(array $arguments): HostResult
+    {
         $command = implode(' ', $arguments);
 
         foreach ($this->responses as $pattern => $response) {

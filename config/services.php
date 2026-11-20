@@ -28,6 +28,10 @@ return [
         // ones to reuse (0 opens one per command). Its socket lives outside the storage volume.
         'ssh_control_persist' => (int) env('PODS_SSH_CONTROL_PERSIST', 300),
         'ssh_control_directory' => env('PODS_SSH_CONTROL_DIRECTORY', sys_get_temp_dir().'/pods-ssh'),
+        // Seconds a volume export may take. The database queue's retry_after must stay longer.
+        'volume_export_timeout' => (int) env('PODS_VOLUME_EXPORT_TIMEOUT', 3600),
+        // How many finished archives of each volume pods:prune-exports keeps.
+        'volume_exports_kept' => (int) env('PODS_VOLUME_EXPORTS_KEPT', 3),
         'local' => [
             'host' => env('PODS_LOCAL_SSH_HOST', 'host.containers.internal'),
             'port' => (int) env('PODS_LOCAL_SSH_PORT', 22),

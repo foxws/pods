@@ -28,6 +28,21 @@ class SshHostRunner implements RunsHostCommands
         );
     }
 
+    public function download(Environment $environment, array $arguments, string $path, int $timeout = 30): HostResult
+    {
+        $command = implode(' ', array_map(escapeshellarg(...), $this->command($environment, $arguments)));
+
+        // The shell writes ssh's output straight into the file, so it never passes through PHP.
+        $result = Process::timeout($timeout)
+            ->run("exec {$command} > ".escapeshellarg($path));
+
+        return new HostResult(
+            exitCode: (int) $result->exitCode(),
+            output: '',
+            errorOutput: $result->errorOutput(),
+        );
+    }
+
     /**
      * sshd hands the remote command to the user's login shell, which may be fish or
      * zsh rather than sh. Only this wrapper reaches that shell: it has no backslash or

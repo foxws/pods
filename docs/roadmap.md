@@ -4,22 +4,17 @@ Pods is still in development. This is what's planned, roughly in order. Nothing 
 
 ## Volume backups and restores
 
-Pods doesn't back up or restore volumes yet. Until it does, back them up on the host yourself (see [Backups in the README](../README.md#backups)).
+Pods exports volumes (see [Backups in the README](../README.md#backups)), but doesn't restore them yet. Next:
 
-The plan is to export volumes from the UI and import them again, without keeping the browser waiting:
-
-1. **lpod.** `lpod volume export NAME` streams `podman volume export` as a tar archive to stdout. `lpod volume import NAME --stdin` reads one into `podman volume import`, and creates the volume first when it doesn't exist. Both take an option to stop the application's units first and start them again afterwards, for a consistent copy.
-2. **Queue.** The Volumes page dispatches a queued job (`ExportVolume` or `ImportVolume`) for one volume or every volume of an application. The job streams the archive over SSH between the host and a Pods disk, so a large volume never sits in memory. It needs a much longer timeout than the 30 seconds that normal lpod calls get.
-3. **Notify.** When an export is ready, the job sends the owner a notification (in the app and by mail) with a temporary signed download link. An import, or a failed export or import, sends a notification with the result or lpod's error.
-4. **Restore.** An import starts from an archive Pods made, or one the owner uploads. It replaces the volume's contents, so the UI asks for confirmation, shows which units it stops, and offers to export the current contents first.
-5. **Retention.** Old archives are pruned on a schedule, with a configurable number of archives kept per volume.
+1. **lpod.** `lpod volume import NAME --stdin [--stop] --json` reads an archive into `podman volume import`, creates the volume first when it doesn't exist, and refuses `device` and NFS volumes, like `volume export`.
+2. **Restore.** An import starts from an archive Pods made, or one the owner uploads. It replaces the volume's contents, so the UI asks for confirmation, shows which applications it stops, and offers to export the current contents first. It runs in `pods-queue` like an export, streaming the archive over SSH from the backups disk, and sends the same kind of notification.
 
 Open questions:
 
-- **Bind-backed volumes.** Some volumes only point at a folder on the host: a `.volume` unit with `Type=none`, `Options=bind` and `Device=`, such as a `media.volume` for a media library. `podman volume export` archives the whole folder for those, and an import would overwrite it. lpod should report them (from the volume's driver options), and Pods should leave them out of "export every volume" and refuse to import into them.
 - **Plain bind mounts** (such as `Volume=/var/mnt/photos:/photos`) aren't Podman volumes, so `podman volume export` doesn't cover them. They may need a separate `tar` path, or stay out of scope.
 - **Databases** are safer to back up with their own dump tool. A per-application hook, such as a `Label=` with a dump and a restore command, could handle that.
-- **Where the archives go:** the Pods data volume, or an S3-compatible disk.
+- **One stop for an application.** Exporting every volume of an application with its applications stopped stops and starts them once per volume.
+- **Another disk**, such as an S3-compatible one, for the archives.
 - **Scheduled backups**, with the same retention.
 
 ## Proxy
@@ -32,7 +27,7 @@ Still open for the optional per-host proxy (see [Proxy in the README](../README.
 
 ## More of pods.yml
 
-1. **Backups.** `backups` lists the volumes to leave out (such as bind-backed ones) and a database dump command. See [Volume backups and restores](#volume-backups-and-restores).
+1. **Backups.** `backups` lists the volumes to leave out of "export every volume" and a database dump command. See [Volume backups and restores](#volume-backups-and-restores).
 2. **Linking to Git.** Pick the source from the repository's `pods.yml` in the "Link to Git" dialog, as the install page does, instead of typing its path.
 3. **Timers.** Edit a timer's schedule on the application page, kept over updates like a drop-in.
 

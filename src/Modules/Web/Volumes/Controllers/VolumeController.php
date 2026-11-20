@@ -6,6 +6,7 @@ namespace Modules\Web\Volumes\Controllers;
 
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
+use Domain\Volumes\DataObjects\VolumeExportData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
@@ -36,6 +37,7 @@ class VolumeController implements HasMiddleware
         return Inertia::render('Volumes/VolumeIndex', [
             'environment' => EnvironmentData::fromModel($environment),
             'volumes' => $this->deferFromHost(fn (): array => $lpod->volumes($environment), live: $environment),
+            'exports' => fn (): array => VolumeExportData::collect($environment->volumeExports()->latest('id')->limit(25)->get())->all(),
         ]);
     }
 
