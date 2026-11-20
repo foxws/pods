@@ -92,6 +92,7 @@ function fakeLpod(): FakeHostRunner
         'image rm * --json' => $fixture('ok'),
         'images prune --json' => $fixture('image-prune'),
         'auto-update --dry-run --json' => $fixture('ok'),
+        'volumes sizes --json' => $fixture('volume-sizes'),
         'volumes --json' => $fixture('volumes'),
         'volume rm * --json' => $fixture('ok'),
         // Not JSON: the archive streams into a file.

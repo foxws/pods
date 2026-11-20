@@ -28,8 +28,18 @@ import type { SortableColumn } from '@/utils/sorting'
 const props = defineProps<{
   environment: EnvironmentData
   volumes?: HostProperty<HostVolumeData[]>
+  /** Bytes by volume name; lpod leaves out volumes backed by a folder, a device or an NFS share. */
+  sizes?: HostProperty<Record<string, number | null>>
   exports: VolumeExportData[]
 }>()
+
+/** Only named and anonymous volumes have a size lpod works out. */
+const isMeasured = (volume: HostVolumeData): boolean => volume.type === 'named' || volume.type === 'anonymous'
+
+const sizeOf = (volume: HostVolumeData): number | null => volume.size ?? props.sizes?.data?.[volume.name] ?? null
+
+/** Sizes load after the list, so their cells wait for them. */
+const isSizing = (volume: HostVolumeData): boolean => !props.sizes && isMeasured(volume)
 
 const list = computed(() => props.volumes?.data ?? [])
 
@@ -73,7 +83,7 @@ const columns: TableColumn<HostVolumeData>[] = [
 const sortable: SortableColumn<HostVolumeData>[] = [
   { column: 'name', label: 'Volume', value: (row) => row.name },
   { column: 'driver', label: 'Driver', value: (row) => row.driver },
-  { column: 'size', label: 'Size', value: (row) => row.size, descendingFirst: true },
+  { column: 'size', label: 'Size', value: (row) => sizeOf(row), descendingFirst: true },
   { column: 'containers', label: 'Containers', value: (row) => row.containers.length, descendingFirst: true },
   { column: 'applications', label: 'Application', value: (row) => row.applications[0] },
   { column: 'type', label: 'Type', value: (row) => row.type },
@@ -238,7 +248,10 @@ const searchText = (volume: HostVolumeData): string =>
           <div class="flex min-h-16 items-center gap-3 px-3 py-2.5">
             <span class="flex min-w-0 flex-1 flex-col">
               <span class="truncate font-mono text-sm text-highlighted">{{ displayName(row) }}</span>
-              <span class="truncate text-xs text-muted">{{ row.containers.join(', ') || 'no containers' }}</span>
+              <span class="dot-separated truncate text-xs text-muted">
+                <span>{{ row.containers.join(', ') || 'no containers' }}</span>
+                <span v-if="sizeOf(row) !== null">{{ formatBytes(sizeOf(row)) }}</span>
+              </span>
             </span>
             <StateBadge v-bind="typeOf(row)" />
           </div>
@@ -260,7 +273,17 @@ const searchText = (volume: HostVolumeData): string =>
         </template>
 
         <template #size-cell="{ row }">
-          <span class="text-muted">{{ formatBytes(row.original.size) }}</span>
+          <USkeleton
+            v-if="isSizing(row.original)"
+            class="h-4 w-14"
+          />
+          <span
+            v-else
+            class="text-muted"
+            :title="isMeasured(row.original) ? undefined : 'Not measured: it can be a whole folder, device or share'"
+          >
+            {{ formatBytes(sizeOf(row.original)) }}
+          </span>
         </template>
 
         <template #containers-cell="{ row }">
