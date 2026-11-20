@@ -16,7 +16,7 @@ import { useTableSort } from '@/composables/tables'
 import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, ImageData } from '@/types'
 import { describeApplication, describeUnits, quadletName } from '@/utils/application'
 import { missingSecretIn } from '@/utils/attention'
-import { formatBytes, formatPort, formatRelative } from '@/utils/format'
+import { formatBytes, formatPort, formatRelative, percentOf } from '@/utils/format'
 import { applicationsWithUpdates } from '@/utils/images'
 import type { SortableColumn } from '@/utils/sorting'
 import { isTransitioning } from '@/utils/status'
@@ -157,8 +157,6 @@ const columns: TableColumn<ApplicationData>[] = [
   { accessorKey: 'memory', header: 'Memory' },
   { id: 'actions', header: '' },
 ]
-
-const percentage = (used: number, total: number): number => (total > 0 ? Math.round((used / total) * 100) : 0)
 </script>
 
 <template>
@@ -220,7 +218,7 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
               <span class="text-sm font-normal text-muted">of {{ formatBytes(host.data.memory_total) }}</span>
             </p>
             <UProgress
-              :model-value="percentage(host.data.memory_used, host.data.memory_total)"
+              :model-value="percentOf(host.data.memory_used, host.data.memory_total)"
               size="xs"
               class="mt-2"
             />
@@ -233,7 +231,7 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
               <span class="text-sm font-normal text-muted">of {{ formatBytes(host.data.disk_total) }}</span>
             </p>
             <UProgress
-              :model-value="percentage(host.data.disk_used, host.data.disk_total)"
+              :model-value="percentOf(host.data.disk_used, host.data.disk_total)"
               size="xs"
               class="mt-2"
             />

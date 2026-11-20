@@ -16,9 +16,10 @@ import { useHostAction } from '@/composables/hostActions'
 import type { EnvironmentData, HostContainerData, HostProperty, NetworkData } from '@/types'
 import { pluralize } from '@/utils/application'
 import { Head, Link } from '@inertiajs/vue3'
-import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
+import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, ref } from 'vue'
 import type { SortableColumn } from '@/utils/sorting'
+import { isBuiltInNetwork, isIdleNetwork, networkStatus } from '@/utils/networks'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -33,22 +34,7 @@ const publishedPortCount = computed(() =>
 
 const list = computed(() => props.networks?.data ?? [])
 
-const isBuiltIn = (network: NetworkData): boolean =>
-  network.default || network.driver === 'host' || network.driver === 'none'
-const isIdle = (network: NetworkData): boolean => !isBuiltIn(network) && network.containers === 0
-const idle = computed(() => list.value.filter(isIdle))
-
-const status = (network: NetworkData): { label: string; color: BadgeProps['color'] } => {
-  if (network.default) {
-    return { label: 'Default', color: 'neutral' }
-  }
-
-  if (isBuiltIn(network)) {
-    return { label: 'Built-in', color: 'neutral' }
-  }
-
-  return network.containers ? { label: 'Active', color: 'success' } : { label: 'Idle', color: 'warning' }
-}
+const idle = computed(() => list.value.filter(isIdleNetwork))
 
 const filters: DataTableFilter<NetworkData>[] = [
   { label: 'All', value: 'all' },
@@ -58,7 +44,7 @@ const filters: DataTableFilter<NetworkData>[] = [
     value: 'macvlan',
     match: (network) => network.driver === 'macvlan' || network.driver === 'ipvlan',
   },
-  { label: 'Idle', value: 'idle', match: isIdle },
+  { label: 'Idle', value: 'idle', match: isIdleNetwork },
 ]
 
 const columns: TableColumn<NetworkData>[] = [
@@ -100,7 +86,7 @@ const actions = (network: NetworkData): DropdownMenuItem[] => [
     label: 'Remove',
     icon: 'i-lucide-trash-2',
     color: 'error',
-    disabled: isBuiltIn(network) || network.containers > 0,
+    disabled: isBuiltInNetwork(network) || network.containers > 0,
     onSelect: () => {
       removing.value = network
     },
@@ -200,7 +186,7 @@ const searchText = (network: NetworkData): string =>
               <span class="truncate font-mono text-sm text-highlighted">{{ row.name }}</span>
               <span class="truncate text-xs text-muted">{{ row.driver }} · {{ row.subnet ?? 'no subnet' }}</span>
             </span>
-            <StateBadge v-bind="status(row)" />
+            <StateBadge v-bind="networkStatus(row)" />
           </div>
         </template>
 
@@ -246,7 +232,7 @@ const searchText = (network: NetworkData): string =>
         </template>
 
         <template #status-cell="{ row }">
-          <StateBadge v-bind="status(row.original)" />
+          <StateBadge v-bind="networkStatus(row.original)" />
         </template>
 
         <template #actions-cell="{ row }">

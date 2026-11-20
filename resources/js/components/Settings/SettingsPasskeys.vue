@@ -2,7 +2,7 @@
 import PasskeyCreateModal from '@/components/Passkeys/PasskeyCreateModal.vue'
 import PasskeyDeleteModal from '@/components/Passkeys/PasskeyDeleteModal.vue'
 import PasswordConfirmModal from '@/components/Passkeys/PasswordConfirmModal.vue'
-import { usePasskeys } from '@/composables/passkeys'
+import { usePasskeys, usePasswordConfirmation } from '@/composables/passkeys'
 import type { Passkey } from '@/types'
 import { Passkeys } from '@laravel/passkeys'
 import { formatTimeAgo } from '@vueuse/core'
@@ -10,31 +10,17 @@ import { onMounted, ref } from 'vue'
 
 const { passkeys, loaded, refresh, remove, isPasswordConfirmed } = usePasskeys()
 
+const { confirmOpen, withConfirmedPassword, onConfirmed } = usePasswordConfirmation(isPasswordConfirmed)
+
 const supported = ref(false)
-const confirmOpen = ref(false)
 const createOpen = ref(false)
 const deleteOpen = ref(false)
 const deleteTarget = ref<Passkey>()
 
-let pendingAction: (() => void) | null = null
-
-const withConfirmedPassword = async (action: () => void) => {
-  if (await isPasswordConfirmed()) {
-    action()
-
-    return
-  }
-
-  pendingAction = action
-  confirmOpen.value = true
-}
-
-const onConfirmed = () => {
-  pendingAction?.()
-  pendingAction = null
-}
-
-const onCreate = () => withConfirmedPassword(() => (createOpen.value = true))
+const onCreate = () =>
+  withConfirmedPassword(() => {
+    createOpen.value = true
+  })
 
 const onDelete = (passkey: Passkey) =>
   withConfirmedPassword(() => {

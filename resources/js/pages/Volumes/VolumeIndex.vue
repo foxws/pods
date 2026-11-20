@@ -22,9 +22,9 @@ import type { EnvironmentData, HostProperty, HostVolumeData, VolumeExportData } 
 import { pluralize } from '@/utils/application'
 import { formatBytes } from '@/utils/format'
 import type { SortableColumn } from '@/utils/sorting'
-import { displayName, isInPodmanStorage } from '@/utils/volumes'
+import { displayName, isInPodmanStorage, isUnusedVolume, volumeBadge } from '@/utils/volumes'
 import { Head, Link } from '@inertiajs/vue3'
-import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
+import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
@@ -39,27 +39,15 @@ const { sizeOf, isSizing } = useVolumeSizes(() => props.sizes)
 
 const list = computed(() => props.volumes?.data ?? [])
 
-const isUnused = (volume: HostVolumeData): boolean => volume.containers.length === 0
-const unused = computed(() => list.value.filter(isUnused))
+const unused = computed(() => list.value.filter(isUnusedVolume))
 const remote = computed(() => list.value.filter((volume) => volume.type === 'nfs'))
-
-const types: Record<string, { label: string; color: BadgeProps['color'] }> = {
-  named: { label: 'Named', color: 'neutral' },
-  bind: { label: 'Bind', color: 'info' },
-  device: { label: 'Host folder', color: 'info' },
-  nfs: { label: 'NFS', color: 'primary' },
-  anonymous: { label: 'Anonymous', color: 'warning' },
-}
-
-const typeOf = (volume: HostVolumeData) =>
-  isUnused(volume) ? { label: 'Unused', color: 'warning' as const } : (types[volume.type] ?? types.named!)
 
 const filters: DataTableFilter<HostVolumeData>[] = [
   { label: 'All', value: 'all' },
   { label: 'Named', value: 'named', match: (volume) => volume.type === 'named' },
   { label: 'Bind', value: 'bind', match: (volume) => volume.type === 'bind' },
   { label: 'NFS', value: 'nfs', match: (volume) => volume.type === 'nfs' },
-  { label: 'Unused', value: 'unused', match: isUnused },
+  { label: 'Unused', value: 'unused', match: isUnusedVolume },
 ]
 
 const columns: TableColumn<HostVolumeData>[] = [
@@ -146,7 +134,7 @@ const actions = (volume: HostVolumeData): DropdownMenuItem[] => [
     label: 'Remove',
     icon: 'i-lucide-trash-2',
     color: 'error',
-    disabled: volume.type === 'bind' || !isUnused(volume),
+    disabled: volume.type === 'bind' || !isUnusedVolume(volume),
     onSelect: () => {
       removing.value = volume
     },
@@ -240,7 +228,7 @@ const searchText = (volume: HostVolumeData): string =>
                 <span v-if="sizeOf(row) !== null">{{ formatBytes(sizeOf(row)) }}</span>
               </span>
             </span>
-            <StateBadge v-bind="typeOf(row)" />
+            <StateBadge v-bind="volumeBadge(row)" />
           </div>
         </template>
 
@@ -316,7 +304,7 @@ const searchText = (volume: HostVolumeData): string =>
         </template>
 
         <template #type-cell="{ row }">
-          <StateBadge v-bind="typeOf(row.original)" />
+          <StateBadge v-bind="volumeBadge(row.original)" />
         </template>
 
         <template #actions-cell="{ row }">

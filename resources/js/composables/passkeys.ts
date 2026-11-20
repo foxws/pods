@@ -83,3 +83,33 @@ export function usePasskeyLogin(remember: MaybeRefOrGetter<boolean>) {
     verify,
   }
 }
+
+/**
+ * Runs an action that needs a recently confirmed password: at once when it is, or once the user
+ * confirms it in the PasswordConfirmModal, which `confirmOpen` opens and whose `confirmed` event
+ * calls `onConfirmed`.
+ */
+export function usePasswordConfirmation(isPasswordConfirmed: () => Promise<boolean>) {
+  const confirmOpen = ref(false)
+  let pendingAction: (() => Promise<void> | void) | null = null
+
+  const withConfirmedPassword = async (action: () => Promise<void> | void): Promise<void> => {
+    if (await isPasswordConfirmed()) {
+      await action()
+
+      return
+    }
+
+    pendingAction = action
+    confirmOpen.value = true
+  }
+
+  const onConfirmed = async (): Promise<void> => {
+    const action = pendingAction
+    pendingAction = null
+
+    await action?.()
+  }
+
+  return { confirmOpen, withConfirmedPassword, onConfirmed }
+}

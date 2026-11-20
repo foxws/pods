@@ -1,5 +1,5 @@
 import type { HostVolumeData } from '@/types'
-import { displayName, isInPodmanStorage } from '@/utils/volumes'
+import { displayName, isInPodmanStorage, volumeBadge } from '@/utils/volumes'
 import { describe, expect, it } from 'vite-plus/test'
 
 const volume = (type: string, name = 'immich-library'): HostVolumeData => ({
@@ -28,5 +28,13 @@ describe('displayName', () => {
       '4f2a91c0e7b3…',
     )
     expect(displayName(volume('named'))).toBe('immich-library')
+  })
+})
+
+describe('volumeBadge', () => {
+  it('says a volume is unused before what type it is', () => {
+    expect(volumeBadge(volume('nfs')).label).toBe('Unused')
+    expect(volumeBadge({ ...volume('nfs'), containers: ['jellyfin'] }).label).toBe('NFS')
+    expect(volumeBadge({ ...volume('something-new'), containers: ['jellyfin'] }).label).toBe('Named')
   })
 })

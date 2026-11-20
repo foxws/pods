@@ -18,9 +18,10 @@ import type { EnvironmentData, HostProperty, ImageData } from '@/types'
 import { pluralize } from '@/utils/application'
 import { formatBytes, formatRelative } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
-import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
+import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, ref } from 'vue'
 import { timeOf, type SortableColumn } from '@/utils/sorting'
+import { imageName, imageRegistry, imageStatus, isUnusedTagged, totalSize, unusedImages } from '@/utils/images'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -29,32 +30,13 @@ const props = defineProps<{
 
 const list = computed(() => props.images?.data ?? [])
 
-const isUnused = (image: ImageData): boolean => !image.dangling && image.containers === 0
-const unused = computed(() => list.value.filter((image) => image.dangling || isUnused(image)))
+const unused = computed(() => unusedImages(list.value))
 const updates = computed(() => list.value.filter((image) => image.update))
-
-const sizeOf = (images: ImageData[]): number => images.reduce((total, image) => total + (image.size ?? 0), 0)
-
-const imageName = (image: ImageData): string => image.repository?.split('/').pop() ?? '<none>'
-const registry = (image: ImageData): string =>
-  image.repository ? image.repository.split('/').slice(0, -1).join('/') : 'untagged layer'
-
-const status = (image: ImageData): { label: string; color: BadgeProps['color'] } => {
-  if (image.dangling) {
-    return { label: 'Dangling', color: 'warning' }
-  }
-
-  if (image.update) {
-    return { label: 'Update available', color: 'info' }
-  }
-
-  return image.containers ? { label: 'In use', color: 'success' } : { label: 'Unused', color: 'neutral' }
-}
 
 const filters: DataTableFilter<ImageData>[] = [
   { label: 'All', value: 'all' },
   { label: 'In use', value: 'used', match: (image) => image.containers > 0 },
-  { label: 'Unused', value: 'unused', match: isUnused },
+  { label: 'Unused', value: 'unused', match: isUnusedTagged },
   { label: 'Dangling', value: 'dangling', match: (image) => image.dangling },
 ]
 
@@ -159,12 +141,12 @@ const searchText = (image: ImageData): string => [image.repository, image.tag, i
         />
         <StatCard
           label="Disk"
-          :value="formatBytes(sizeOf(list))"
+          :value="formatBytes(totalSize(list))"
           hint="image store"
         />
         <StatCard
           label="Reclaimable"
-          :value="formatBytes(sizeOf(unused))"
+          :value="formatBytes(totalSize(unused))"
           :hint="pluralize(unused.length, 'image')"
         />
         <StatCard
@@ -200,14 +182,14 @@ const searchText = (image: ImageData): string => [image.repository, image.tag, i
                 >{{ formatBytes(row.size) }} · {{ row.used_by.join(', ') || 'unused' }}</span
               >
             </span>
-            <StateBadge v-bind="status(row)" />
+            <StateBadge v-bind="imageStatus(row)" />
           </div>
         </template>
 
         <template #repository-cell="{ row }">
           <span class="flex flex-col">
             <span class="font-medium text-highlighted">{{ imageName(row.original) }}</span>
-            <span class="font-mono text-xs text-muted">{{ registry(row.original) }}</span>
+            <span class="font-mono text-xs text-muted">{{ imageRegistry(row.original) }}</span>
           </span>
         </template>
 
@@ -256,7 +238,7 @@ const searchText = (image: ImageData): string => [image.repository, image.tag, i
         </template>
 
         <template #status-cell="{ row }">
-          <StateBadge v-bind="status(row.original)" />
+          <StateBadge v-bind="imageStatus(row.original)" />
         </template>
 
         <template #auto_update-cell="{ row }">
@@ -303,7 +285,7 @@ const searchText = (image: ImageData): string => [image.repository, image.tag, i
         </ul>
         <p class="flex justify-between text-sm">
           <span class="text-muted">Space freed</span>
-          <span class="font-medium text-highlighted">{{ formatBytes(sizeOf(unused)) }}</span>
+          <span class="font-medium text-highlighted">{{ formatBytes(totalSize(unused)) }}</span>
         </p>
       </ConfirmModal>
 

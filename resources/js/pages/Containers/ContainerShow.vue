@@ -23,8 +23,8 @@ import type {
   JournalEntryData,
   QuadletFileData,
 } from '@/types'
-import { containerState } from '@/utils/containers'
-import { formatBytes, formatPercent, formatPort, formatRelative, formatUptime } from '@/utils/format'
+import { containerState, ratePerSecond, type ContainerCounter } from '@/utils/containers'
+import { formatBytes, formatPercent, formatPort, formatRate, formatRelative, formatUptime } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
@@ -112,20 +112,8 @@ watch(
   { immediate: true },
 )
 
-const rate = (key: 'net_in' | 'net_out' | 'block_in' | 'block_out'): number | null => {
-  const current = props.stats?.data
-  const previous = previousStats.value
-
-  if (!current || !previous || current[key] === null || previous[key] === null) {
-    return null
-  }
-
-  const seconds = (Date.parse(current.sampled_at ?? '') - Date.parse(previous.sampled_at ?? '')) / 1000
-
-  return seconds > 0 ? Math.max(0, ((current[key] as number) - (previous[key] as number)) / seconds) : null
-}
-
-const formatRate = (bytes: number | null): string => (bytes === null ? '–' : `${formatBytes(bytes)}/s`)
+const rate = (counter: ContainerCounter): number | null =>
+  ratePerSecond(props.stats?.data, previousStats.value, counter)
 
 const breadcrumb = computed<BreadcrumbItem[]>(() => [
   { label: 'Containers', to: containersIndex.url(props.environment.id) },

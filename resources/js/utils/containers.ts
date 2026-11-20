@@ -1,4 +1,4 @@
-import type { HostContainerData } from '@/types'
+import type { ContainerStatsData, HostContainerData } from '@/types'
 import type { BadgeProps } from '@nuxt/ui'
 
 type ContainerState = {
@@ -35,4 +35,27 @@ export function containerState(container: Pick<HostContainerData, 'state' | 'exi
  */
 export function shortImage(image: string | null | undefined): string {
   return image?.split('/').pop() ?? '–'
+}
+
+export type ContainerCounter = 'net_in' | 'net_out' | 'block_in' | 'block_out'
+
+/**
+ * Bytes per second of a counter between two stats samples, or null without two samples that have
+ * it. A counter that went down (the container restarted) counts as 0.
+ */
+export function ratePerSecond(
+  current: ContainerStatsData | null | undefined,
+  previous: ContainerStatsData | null | undefined,
+  counter: ContainerCounter,
+): number | null {
+  const now = current?.[counter]
+  const before = previous?.[counter]
+
+  if (!current || !previous || now === null || now === undefined || before === null || before === undefined) {
+    return null
+  }
+
+  const seconds = (Date.parse(current.sampled_at ?? '') - Date.parse(previous.sampled_at ?? '')) / 1000
+
+  return seconds > 0 ? Math.max(0, (now - before) / seconds) : null
 }
