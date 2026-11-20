@@ -2,24 +2,24 @@
 # Installs or updates Pods on this host, as rootless Podman Quadlets for the
 # current user:
 #
-#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.7/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.8/install.sh | bash
 #
 # With a Caddy proxy in front, routing a hostname to Pods:
 #
-#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.7/install.sh | bash -s -- --proxy --host pods.example.com
+#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.8/install.sh | bash -s -- --proxy --host pods.example.com
 #
 # Or only prepare this host for a Pods that runs elsewhere, or as another
 # user (lpod and Pods' SSH key, no Pods):
 #
-#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.7/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA... pods'
+#   curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.8/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA... pods'
 #
 # Run it again to update. "--help" lists every option.
 set -euo pipefail
 
 # The release this install.sh belongs to, and the lpod release it needs.
 # Set PODS_REF=main and LPOD_REF=main to follow development instead.
-PODS_REF="${PODS_REF:-v1.0.0-rc.7}"
-LPOD_REF="${LPOD_REF:-v4.0.0-rc.6}"
+PODS_REF="${PODS_REF:-v1.0.0-rc.8}"
+LPOD_REF="${LPOD_REF:-v4.0.0-rc.7}"
 
 REPOSITORY="https://github.com/foxws/pods"
 LPOD_REPOSITORY="https://github.com/foxws/lpod"
@@ -76,7 +76,7 @@ Usage: install.sh [options]
   --purge               With --uninstall, also remove Pods' data and its pods-env secret
   -h, --help            Show this help
 
-Environment: PODS_REF (default v1.0.0-rc.7) and LPOD_REF (default v4.0.0-rc.6) pick the
+Environment: PODS_REF (default v1.0.0-rc.8) and LPOD_REF (default v4.0.0-rc.7) pick the
 versions to install. PODS_OWNER_PASSWORD is the owner's password, with --name
 and --email, for unattended installs.
 
