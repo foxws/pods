@@ -349,12 +349,38 @@ add_reverb_env() {
     rm -f "$file"
 }
 
+# A pods-env secret from before the queue worker ran its jobs in the request
+# (QUEUE_CONNECTION=sync); pods-queue runs them now, such as volume exports.
+use_queue_worker() {
+    local current
+    current="$(podman secret inspect --showsecret --format '{{.SecretData}}' pods-env)"
+
+    if ! grep -q '^QUEUE_CONNECTION=sync$' <<< "$current"; then
+        return
+    fi
+
+    info "Letting pods-queue run Pods' jobs..."
+
+    local file
+    file="$(mktemp)"
+    chmod 600 "$file"
+
+    {
+        grep -v '^QUEUE_CONNECTION=' <<< "$current" || true
+        echo "QUEUE_CONNECTION=database"
+    } > "$file"
+
+    podman secret create --replace pods-env "$file" > /dev/null
+    rm -f "$file"
+}
+
 # The app's .env, as the pods-env secret. It's only created once: run with
 # --uninstall --purge to start over.
 create_env_secret() {
     if podman secret exists pods-env 2> /dev/null; then
         info "The pods-env secret exists; keeping it."
         add_reverb_env
+        use_queue_worker
 
         return
     fi
@@ -382,7 +408,7 @@ DB_CONNECTION=sqlite
 DB_DATABASE=/app/storage/app/private/database.sqlite
 SESSION_DRIVER=database
 CACHE_STORE=database
-QUEUE_CONNECTION=sync
+QUEUE_CONNECTION=database
 SCOUT_DRIVER=database
 MAIL_MAILER=log
 OCTANE_SERVER=frankenphp
@@ -492,7 +518,9 @@ disable_idle() {
 # Like cockpit.socket: lpod's socket listens on 127.0.0.1:PORT and starts
 # Pods on the first request, and Pods (published on 127.0.0.1:PORT+10000 then)
 # stops after 10 minutes without one. The scheduler only runs at 01:00 UTC,
-# when Pods' daily housekeeping is due (routes/console.php).
+# when Pods' daily housekeeping is due (routes/console.php). The queue worker
+# keeps running while Pods sleeps, so an export finishes, and lpod's idle
+# check stops it once the queue is empty.
 #
 # Behind the proxy, the socket listens on every address: the proxy container
 # reaches the host as host.containers.internal, which isn't 127.0.0.1, and
@@ -505,6 +533,8 @@ enable_idle() {
 
     if ! "$LPOD" pods ondemand enable --json \
         ${IDLE_LISTEN:+--listen "$IDLE_LISTEN"} --port "$LOCAL_PORT" --app-port 8000 \
+        --worker pods-queue --idle-container pods-queue --idle-user docker \
+        --idle-command "php -d variables_order=EGPCS /app/artisan pods:queue-idle" \
         --schedule pods-schedule --schedule-at 01:00 \
         --schedule-env "APP_COMMAND=php -d variables_order=EGPCS /app/artisan schedule:run" > /dev/null; then
         warn "Pods runs all the time instead. Update lpod (lpod self-update) and run this again, or pass --no-idle."
@@ -642,7 +672,7 @@ uninstall() {
         "$LPOD" pods ondemand disable --json > /dev/null 2>&1 || true
     fi
 
-    systemctl --user stop pods.service pods-schedule.service pods-reverb.service 2> /dev/null || true
+    systemctl --user stop pods.service pods-schedule.service pods-reverb.service pods-queue.service 2> /dev/null || true
 
     local unit_path
     unit_path="$(podman quadlet list --format json 2> /dev/null | jq -r 'first(.[] | select(.Name == "pods.container") | .Path) // empty' 2> /dev/null || true)"

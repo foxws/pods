@@ -1,0 +1,33 @@
+[Unit]
+Description=Pods queue worker
+# Runs long jobs, such as volume exports, outside a request. It isn't part
+# of pods.container, so an on-demand Pods can sleep while an export runs:
+# lpod's idle check stops the worker once the queue is empty
+# (pods:queue-idle), and Pods starts it again when it wakes.
+After=pods.container
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Container]
+Image=ghcr.io/foxws/pods:1.0.0-rc.6
+AutoUpdate=registry
+HealthCmd=none
+Environment=PUID=%U
+Environment=PGID=%G
+Environment=APP_COMMAND="php -d variables_order=EGPCS /app/artisan queue:work --sleep=3 --tries=1"
+UserNS=keep-id
+# An init reaps the SSH control masters Pods leaves running (ControlPersist),
+# which PHP, as the container's first process, wouldn't.
+RunInit=true
+Secret=pods-env,target=/app/.env,mode=0400,uid=%U,gid=%G
+Volume=pods-data.volume:/app/storage:rw
+Network=pods.network
+# Exports reach the host Pods runs on over SSH, like every other host.
+AddHost=host.containers.internal:host-gateway
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+# A running job finishes first, up to a volume export's timeout.
+TimeoutStopSec=3720

@@ -38,6 +38,15 @@ return [
             'report' => true,
         ],
 
+        // Volume exports (Domain\Volumes\Models\VolumeExport), on Pods' data volume.
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app/backups'),
+            'serve' => false,
+            'throw' => true,
+            'report' => true,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

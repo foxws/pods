@@ -49,7 +49,7 @@ See [docs/architecture.md](docs/architecture.md) for the details.
 - **Applications**: list, start, stop, restart, redeploy and remove; containers, Quadlet files, logs and secrets per application; install from Quadlet files or a Git repository, with a check before installing, reading the repository's [`pods.yml`](#application-manifest-podsyml) when it has one
 - **Containers** and **pods**: list, inspect, logs, stats, start/stop/restart and pruning stopped containers
 - **Images**: pull, remove, prune and check for updates
-- **Volumes** and **networks**: list, remove and prune
+- **Volumes** and **networks**: list, remove and prune, and export volumes as tar archives to download
 - **Secrets**: create, update and delete, and add them to the applications that need them
 - **Journal**: the host's journal, filtered by priority and time
 - **On demand**: let an application sleep until its first request, through a systemd socket (see [On-demand applications](#on-demand-applications))
@@ -371,17 +371,17 @@ The same units work without Pods, from a terminal: `lpod APP ondemand enable --p
 
 ## Backups
 
-Pods doesn't back up anything yet. Until it does, back up your volumes on the host, for example:
+**Volume exports.** On the Volumes page, a volume's actions export it, or every volume of an application that uses it. Pods streams the volume from the host into a tar archive on its own data volume (`podman volume export`, through `lpod volume export`), in the background, so the export can take as long as it needs (up to an hour, `PODS_VOLUME_EXPORT_TIMEOUT`). Tick **Stop … while exporting** for a consistent copy of files that change while the application runs; it starts again afterwards. When the archive is ready, Pods shows a notification with a download link on whichever page you have open, and the Exports card on the Volumes page lists every export of the host with its size or its error. Each night, Pods keeps the newest three archives of each volume (`PODS_VOLUME_EXPORTS_KEPT`), and removes failed exports after a week.
+
+Exports run in `pods-queue`, Pods' queue worker. It keeps running while an on-demand Pods sleeps, until the queue is empty. Only volumes in Podman's own storage can be exported: a volume backed by a folder on the host (`Type=none`, `Options=bind`, `Device=`, such as a media library), an NFS volume and a bind mount (such as `/var/mnt/photos`) are left out. Copy those with your usual tools. Databases are safer to back up with their own dump tool.
+
+Pods doesn't restore archives yet (see the [roadmap](docs/roadmap.md#volume-backups-and-restores)). To restore one on the host:
 
 ```bash
-systemctl --user stop immich.service        # stop the application for a consistent copy
-podman volume export immich-library --output immich-library.tar
+systemctl --user stop immich.service        # stop the application first
+podman volume import immich-library immich-library.tar
 systemctl --user start immich.service
 ```
-
-`podman volume export` only covers named volumes. Copy bind mounts (such as `/var/mnt/photos`) with your usual tools. Databases are safer to back up with their own dump tool.
-
-Volume backups in Pods are planned: export a volume through a queued job and get a notification when the archive is ready to download. See [docs/roadmap.md](docs/roadmap.md#volume-backups).
 
 ## Structure
 
@@ -431,7 +431,7 @@ php artisan test --testsuite=Browser
 
 ## Roadmap
 
-Volume backups, invited users with roles per environment, streaming logs, and an application catalog. See [docs/roadmap.md](docs/roadmap.md).
+Volume restores, invited users with roles per environment, streaming logs, and more of the application catalog. See [docs/roadmap.md](docs/roadmap.md).
 
 ## License
 

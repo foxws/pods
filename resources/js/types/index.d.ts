@@ -84,6 +84,8 @@ export type {
   SecretData,
   TimerData,
   UnitStatus,
+  VolumeExportData,
+  VolumeExportStatus,
 } from '@/types/generated'
 
 /**

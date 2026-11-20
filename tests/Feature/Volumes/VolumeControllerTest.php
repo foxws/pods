@@ -22,8 +22,8 @@ it('lists the volumes', function () {
         ->assertInertia(fn ($page) => $page
             ->component('Volumes/VolumeIndex')
             ->loadDeferredProps(fn ($reload) => $reload
-                ->has('volumes.data', 5)
-                ->where('volumes.data.3.type', 'nfs')->where('volumes.data.4.applications', [])));
+                ->has('volumes.data', 6)
+                ->where('volumes.data.3.type', 'nfs')->where('volumes.data.4.type', 'device')->where('volumes.data.5.applications', [])));
 });
 
 it('removes a volume', function () {

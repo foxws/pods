@@ -6,6 +6,7 @@ namespace Domain\Environments\Models;
 
 use Database\Factories\EnvironmentFactory;
 use Domain\Applications\Models\Installation;
+use Domain\Volumes\Models\VolumeExport;
 use Foxws\Essentials\Casts\AsDateTime;
 use Foxws\Essentials\Concerns\HasUlid;
 use Illuminate\Database\Eloquent\Attributes\RouteKey;
@@ -68,6 +69,14 @@ class Environment extends Model
     public function installations(): HasMany
     {
         return $this->hasMany(Installation::class)->chaperone();
+    }
+
+    /**
+     * @return HasMany<VolumeExport, $this>
+     */
+    public function volumeExports(): HasMany
+    {
+        return $this->hasMany(VolumeExport::class)->chaperone();
     }
 
     public function target(): string

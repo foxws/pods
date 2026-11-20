@@ -65,3 +65,17 @@ it('opens a connection per command when reuse is turned off', function () {
 
     expect($command)->not->toContain('Control');
 });
+
+it('streams a download into the file instead of keeping it', function () {
+    Process::fake();
+    $environment = Environment::factory()->create();
+
+    $result = app(SshHostRunner::class)->download($environment, ['volume', 'export', 'immich-library', '--json'], '/tmp/exports/it\'s.tar', 600);
+
+    expect($result->output)->toBe('');
+
+    Process::assertRan(fn ($process) => is_string($process->command)
+        && str_starts_with($process->command, "exec 'ssh' '-T'")
+        && str_ends_with($process->command, " > '/tmp/exports/it'\\''s.tar'")
+        && $process->timeout === 600);
+});

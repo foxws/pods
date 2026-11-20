@@ -7,6 +7,7 @@ import { useAuth } from '@/composables/auth'
 import { useFlash } from '@/composables/flash'
 import { useNavigation } from '@/composables/navigation'
 import { useHostSearch } from '@/composables/search'
+import { useVolumeExportNotifications } from '@/composables/volumeExports'
 import { index as settingsIndex } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { usePage } from '@inertiajs/vue3'
@@ -37,7 +38,11 @@ const paletteGroups = computed(() => {
   return searchTerm.value.trim() ? [navigation, ...hostSearchGroups.value, ...rest] : searchGroups.value
 })
 
-const { logOut } = useAuth()
+const { logOut, user } = useAuth()
+
+if (user.value) {
+  useVolumeExportNotifications(user.value.id)
+}
 
 const page = usePage()
 

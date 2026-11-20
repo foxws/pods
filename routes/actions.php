@@ -30,6 +30,7 @@ use Modules\Web\Secrets\Controllers\SecretController;
 use Modules\Web\Settings\Controllers\ApplicationSettingsController;
 use Modules\Web\Settings\Controllers\ProxyDefaultsController;
 use Modules\Web\Volumes\Controllers\VolumeController;
+use Modules\Web\Volumes\Controllers\VolumeExportController;
 use Modules\Web\Volumes\Controllers\VolumePruneController;
 
 // Settings
@@ -79,6 +80,11 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     // Volumes
     Route::post('/volumes/prune', VolumePruneController::class)->name('volumes.prune');
     Route::resource('volumes', VolumeController::class)->only(['destroy']);
+    Route::prefix('/volume-exports')->name('volume-exports.')->scopeBindings()->group(function () {
+        Route::post('/', [VolumeExportController::class, 'store'])->name('store');
+        Route::get('/{volumeExport}/download', [VolumeExportController::class, 'download'])->name('download');
+        Route::delete('/{volumeExport}', [VolumeExportController::class, 'destroy'])->name('destroy');
+    });
 
     // Networks
     Route::post('/networks/prune', NetworkPruneController::class)->name('networks.prune');

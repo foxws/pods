@@ -94,6 +94,8 @@ function fakeLpod(): FakeHostRunner
         'auto-update --dry-run --json' => $fixture('ok'),
         'volumes --json' => $fixture('volumes'),
         'volume rm * --json' => $fixture('ok'),
+        // Not JSON: the archive streams into a file.
+        'volume export *' => 'tar archive of the volume',
         'volumes prune --json' => $fixture('volume-prune'),
         'networks --json' => $fixture('networks'),
         'network rm * --json' => $fixture('ok'),

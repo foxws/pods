@@ -13,17 +13,21 @@ import StatCard from '@/components/Ui/StatCard.vue'
 import StatGrid from '@/components/Ui/StatGrid.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import VolumeCreateModal from '@/components/Volumes/VolumeCreateModal.vue'
+import VolumeExportModal from '@/components/Volumes/VolumeExportModal.vue'
+import VolumeExportsCard from '@/components/Volumes/VolumeExportsCard.vue'
 import { useHostAction } from '@/composables/hostActions'
-import type { EnvironmentData, HostProperty, HostVolumeData } from '@/types'
+import { useHostReload } from '@/composables/polling'
+import type { EnvironmentData, HostProperty, HostVolumeData, VolumeExportData } from '@/types'
 import { pluralize } from '@/utils/application'
 import { formatBytes } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
   volumes?: HostProperty<HostVolumeData[]>
+  exports: VolumeExportData[]
 }>()
 
 const list = computed(() => props.volumes?.data ?? [])
@@ -35,6 +39,7 @@ const remote = computed(() => list.value.filter((volume) => volume.type === 'nfs
 const types: Record<string, { label: string; color: BadgeProps['color'] }> = {
   named: { label: 'Named', color: 'neutral' },
   bind: { label: 'Bind', color: 'info' },
+  device: { label: 'Host folder', color: 'info' },
   nfs: { label: 'NFS', color: 'primary' },
   anonymous: { label: 'Anonymous', color: 'warning' },
 }
@@ -78,7 +83,58 @@ const isRemoving = computed({
 
 const { send, processing } = useHostAction()
 
+/**
+ * Only volumes in Podman's own storage: one backed by a folder on the host or NFS would be all of it.
+ * Mirrors HostVolumeData::isExportable().
+ */
+const isExportable = (volume: HostVolumeData): boolean => volume.type === 'named' || volume.type === 'anonymous'
+
+const exporting = ref<{ volume: string | null; application: string | null; applications: string[] } | null>(null)
+const isExporting = computed({
+  get: () => exporting.value !== null,
+  set: (open) => {
+    if (!open) {
+      exporting.value = null
+    }
+  },
+})
+
+const exportItems = (volume: HostVolumeData): DropdownMenuItem[] => {
+  if (!isExportable(volume)) {
+    return []
+  }
+
+  return [
+    {
+      label: 'Export',
+      icon: 'i-lucide-archive',
+      onSelect: () => {
+        exporting.value = { volume: volume.name, application: null, applications: volume.applications }
+      },
+    },
+    ...volume.applications.map((application) => ({
+      label: `Export every volume of ${application}`,
+      icon: 'i-lucide-archive',
+      onSelect: () => {
+        exporting.value = { volume: null, application, applications: [application] }
+      },
+    })),
+  ]
+}
+
+const hasUnfinishedExports = computed(() =>
+  props.exports.some((item) => item.status === 'pending' || item.status === 'running'),
+)
+
+// The notification reloads the list when Reverb is up; this also catches it when it isn't.
+const exportPolling = useHostReload(['exports'], 5000, { immediate: false })
+
+watch(hasUnfinishedExports, (unfinished) => (unfinished ? exportPolling.resume() : exportPolling.pause()), {
+  immediate: true,
+})
+
 const actions = (volume: HostVolumeData): DropdownMenuItem[] => [
+  ...exportItems(volume),
   {
     label: 'Remove',
     icon: 'i-lucide-trash-2',
@@ -258,6 +314,20 @@ const searchText = (volume: HostVolumeData): string =>
           </p>
         </template>
       </DataTable>
+
+      <VolumeExportsCard
+        :environment="environment"
+        :exports="exports"
+        class="mt-6"
+      />
+
+      <VolumeExportModal
+        v-model:open="isExporting"
+        :environment="environment"
+        :volume="exporting?.volume"
+        :application="exporting?.application"
+        :applications="exporting?.applications ?? []"
+      />
 
       <VolumeCreateModal
         v-model:open="isCreating"

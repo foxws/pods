@@ -515,3 +515,15 @@ export type VolumeData = {
   name: string
   size: number | null
 }
+export type VolumeExportData = {
+  id: string
+  volume: string
+  status: VolumeExportStatus
+  stop_applications: boolean
+  size: number | null
+  error: string | null
+  download_url: string | null
+  created_at: string
+  finished_at: string | null
+}
+export type VolumeExportStatus = 'pending' | 'running' | 'completed' | 'failed'

@@ -40,7 +40,9 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Longer than a volume export may take (services.pods.volume_export_timeout), so a
+            // running export is never handed to the worker a second time.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 3720),
             'after_commit' => false,
         ],
 
