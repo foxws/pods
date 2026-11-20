@@ -21,8 +21,7 @@ Pods exports volumes (see [Backups](backups.md)), but doesn't restore them yet. 
 Open questions:
 
 - **Plain bind mounts** (such as `Volume=/var/mnt/photos:/photos`) aren't Podman volumes, so `podman volume export` doesn't cover them. They may need a separate `tar` path, or stay out of scope.
-- **Databases** are safer to back up with their own dump tool. A per-application hook, such as a `Label=` with a dump and a restore command, could handle that.
-- **One stop for an application.** Exporting every volume of an application with its applications stopped stops and starts them once per volume.
+- **Databases** are safer to back up with their own dump tool, named in `pods.yml` (see [More of pods.yml](#more-of-podsyml)).
 - **Another disk**, such as an S3-compatible one, for the archives.
 - **Scheduled backups**, with the same retention.
 
@@ -30,13 +29,12 @@ Open questions:
 
 Still open for the optional per-host proxy (see [Proxy](proxy.md)):
 
-- **A real-host check:** installing the proxy in each mode from Pods, the root certificate download, and `install.sh --proxy` on a host set up by an older install.sh. So far it's only tested against `fakeLpod()` and stubbed binaries.
 - **More DNS providers** for the wildcard mode, each a `--with` line in `containers/runtimes/proxy/Containerfile`, a name in `ProxySettingsData::DnsProviders` and its token variable in lpod.
 - **Routes to sleeping services that aren't `via: main`.** These still get a 502, such as Mailpit or the RustFS console opened on their own. Caddy could start the app's socket service on a 502 and retry.
 
 ## More of pods.yml
 
-1. **Backups.** `backups` lists the volumes to leave out of "export every volume" and a database dump command. See [Volume backups and restores](#volume-backups-and-restores).
+1. **Backups.** `backups` lists the volumes to leave out of "export every volume", and a dump and restore command for a database, run instead of exporting its volume. See [Volume backups and restores](#volume-backups-and-restores).
 2. **Linking to Git.** Pick the source from the repository's `pods.yml` in the "Link to Git" dialog, as the install page does, instead of typing its path.
 3. **Timers.** Edit a timer's schedule on the application page, kept over updates like a drop-in.
 
@@ -48,10 +46,10 @@ Pods installs Quadlets from Git. Development setups, such as a Laravel applicati
 
 - **Invited users.** The owner invites users and gives each a role per environment (viewer, operator or admin), using spatie/laravel-permission. Host routes are already scoped per environment and go through policies, so this doesn't need a rewrite.
 - **Streaming logs** for applications, containers and the journal, instead of polling.
-- **Live host state for changes made outside Pods**, such as a unit that crashed or finished starting, which still need polling. That would take a watcher of `podman events` per host that broadcasts them, which would keep an on-demand Pods awake.
+- **Live host state for changes made outside Pods**, such as a unit that crashed or finished starting. The overview lists the last day of `podman events`, but pages still poll for these. A watcher of `podman events` per host could broadcast them instead, though it would keep an on-demand Pods awake.
 - **More of the application catalog:** brand logos, and more of lerd.sh's services in [foxws/quadlets](https://github.com/foxws/quadlets).
 - **Application metadata on the Applications list**: the label, description and icon of the stored `pods.yml`, as the application page shows them.
-- **Pagination for long lists.** The host lists and the catalog load every row in one lpod call and render them all, which is fine for the tens of applications and containers, or the hundred or so images, a host usually has. Once a list gets long, `DataTable` can show a page at a time with `UPagination` (say 50 rows), after the filter tabs, search and sort, so every list page gets it at once; the applications and secrets pages, which build their own `UTable`, and the catalog grid would need the same. Paging in the browser saves rendering, not host calls: lpod returns the whole list either way, and paging on the host would need offsets in lpod's list commands.
+- **Pagination for long lists.** Once a host's lists get long, `DataTable` and the catalog grid can show a page at a time with `UPagination`. This saves rendering, not host calls: lpod still returns the whole list.
 - **Show the commands.** Each action can show the `lpod …` commands it runs, with a copy button, so they can be run on the host by hand. Multi-step flows (install, update) show the commands in order, and a secret or a password shows as a placeholder on stdin, never its value.
 - **Labels on resources.** Tags, a color and a description for applications, containers, pods, images, volumes, networks and secrets, to filter the lists by. These live on the host, so Pods keeps them in a table of its own keyed by environment, kind and name (not a container's ID, which changes when systemd recreates it), tagged with spatie/laravel-tags, and forgets the rows of resources that are gone, like `pods:sync`. A description of its own shows instead of the one in `pods.yml`.
 - **A terminal.** A shell in a container (`podman exec -it`) or on the host, in the browser with xterm.js. lpod's JSON contract doesn't fit a two-way stream, and Octane workers shouldn't hold one open, so this would be a package of its own: a small bridge between a WebSocket and a PTY over SSH, run as its own Quadlet, that Pods hands a short-lived signed token per session. It needs the invited users' roles first (only an admin of an environment gets a shell), an idle timeout, and a log of who opened which shell.
