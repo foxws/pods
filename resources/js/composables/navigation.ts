@@ -6,10 +6,13 @@ import journal from '@/actions/Modules/Web/Journal/Controllers/JournalController
 import { index as networks } from '@/actions/Modules/Web/Networks/Controllers/NetworkController'
 import { index as pods } from '@/actions/Modules/Web/Pods/Controllers/PodController'
 import { index as secrets } from '@/actions/Modules/Web/Secrets/Controllers/SecretController'
+import { show as settingsShow, showInEnvironment } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import { index as volumes } from '@/actions/Modules/Web/Volumes/Controllers/VolumeController'
 import { usePage } from '@inertiajs/vue3'
 import type { CommandPaletteGroup, NavigationMenuItem } from '@nuxt/ui'
 import { computed } from 'vue'
+
+export type SettingsSection = 'account' | 'security' | 'general' | 'proxy'
 
 export type NavigationLink = {
   label: string
@@ -106,6 +109,12 @@ export function useNavigation() {
       : { label: 'Journal', icon: 'i-lucide-scroll-text', disabled: true },
   )
 
+  /**
+   * Settings stay inside the selected environment, so the sidebar keeps its host; without one they're under /settings.
+   */
+  const settingsUrl = (section: SettingsSection = 'account'): string =>
+    environment.value ? showInEnvironment.url([environment.value.id, section]) : settingsShow.url(section)
+
   const sidebarItems = computed<NavigationMenuItem[][]>(() => [
     links.value.map<NavigationMenuItem>(({ label, icon, to, active }) => ({ label, icon, to, active })),
   ])
@@ -132,5 +141,5 @@ export function useNavigation() {
     },
   ])
 
-  return { environment, links, tabBarLinks, journalLink, sidebarItems, searchGroups }
+  return { environment, links, tabBarLinks, journalLink, settingsUrl, sidebarItems, searchGroups }
 }

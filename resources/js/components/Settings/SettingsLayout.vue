@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { index as environmentsIndex } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentController'
 import { show as environmentSettings } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentSettingsController'
-import { show as settingsShow } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useAuth } from '@/composables/auth'
+import { useNavigation } from '@/composables/navigation'
 import { usePage } from '@inertiajs/vue3'
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { computed } from 'vue'
@@ -16,6 +16,7 @@ defineProps<{
 
 const page = usePage()
 const { hasRole } = useAuth()
+const { settingsUrl } = useNavigation()
 
 const isCurrent = (url: string): boolean => page.url === url || page.url.startsWith(`${url}?`)
 
@@ -29,15 +30,15 @@ const link = (label: string, icon: string, to: string): NavigationMenuItem => ({
 const groups = computed<NavigationMenuItem[][]>(() => [
   [
     { label: 'Your account', type: 'label' },
-    link('Account', 'i-lucide-user', settingsShow.url('account')),
-    link('Security', 'i-lucide-shield', settingsShow.url('security')),
+    link('Account', 'i-lucide-user', settingsUrl('account')),
+    link('Security', 'i-lucide-shield', settingsUrl('security')),
   ],
   [
     { label: 'Pods', type: 'label' },
     ...(hasRole('super-admin')
       ? [
-          link('General', 'i-lucide-sliders-horizontal', settingsShow.url('general')),
-          link('Proxy', 'i-lucide-globe', settingsShow.url('proxy')),
+          link('General', 'i-lucide-sliders-horizontal', settingsUrl('general')),
+          link('Proxy', 'i-lucide-globe', settingsUrl('proxy')),
         ]
       : []),
     link('Hosts', 'i-lucide-server', environmentsIndex.url()),

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { certificate, store, update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentProxyController'
 import { show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
-import { show as settingsShow } from '@/actions/Modules/Web/Settings/Controllers/SettingsController'
 import HostError from '@/components/Environments/HostError.vue'
 import ProxySettingsFields from '@/components/Environments/ProxySettingsFields.vue'
 import { useAuth } from '@/composables/auth'
+import { useNavigation } from '@/composables/navigation'
 import type {
   EnvironmentData,
   HostProperty,
@@ -24,6 +24,7 @@ const props = defineProps<{
 }>()
 
 const { hasRole } = useAuth()
+const { settingsUrl } = useNavigation()
 
 const form = useForm<ProxySettingsFormValues>({
   mode: 'letsencrypt',
@@ -155,7 +156,7 @@ const submit = (): void => {
         Filled in from Pods' proxy defaults. Installing pulls the image and starts the proxy.
         <ULink
           v-if="hasRole('super-admin')"
-          :to="settingsShow.url('proxy')"
+          :to="settingsUrl('proxy')"
           class="text-primary"
         >
           Change the defaults

@@ -33,7 +33,7 @@ Route::resource('passkeys', PasskeyController::class)->only(['index']);
 // Settings
 Route::prefix('/settings')->name('settings.')->group(function () {
     Route::get('/', [SettingsController::class, 'index'])->name('index');
-    Route::get('/{section}', [SettingsController::class, 'show'])->name('show')->whereIn('section', ['account', 'security', 'general', 'proxy']);
+    Route::get('/{section}', [SettingsController::class, 'show'])->name('show')->whereIn('section', SettingsController::Sections);
 });
 
 // Environments
@@ -44,6 +44,7 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     Route::get('/journal', JournalController::class)->name('journal');
     Route::get('/search', EnvironmentSearchController::class)->name('search');
     Route::get('/settings', [EnvironmentSettingsController::class, 'show'])->name('settings');
+    Route::get('/settings/{section}', [SettingsController::class, 'showInEnvironment'])->name('settings.show')->whereIn('section', SettingsController::Sections);
 
     Route::resource('applications', ApplicationController::class)->only(['index', 'create', 'show']);
     Route::resource('containers', ContainerController::class)->only(['index', 'create', 'show']);
