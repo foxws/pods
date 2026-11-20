@@ -23,13 +23,13 @@ For Pods itself: PHP 8.5+, Node with pnpm, and `ssh` and `ssh-keygen` on the mac
 
 ## Install
 
-Pods runs on a host as rootless Podman Quadlets, for the user whose applications it manages. One command installs it, and running it again updates it:
+Pods runs on a host as rootless Podman Quadlets, for the user whose applications it manages. One command installs it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.0.0-rc.9/install.sh | bash
 ```
 
-It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9393` (`--port` picks another; Cockpit has 9090): open it on the host, or through an SSH tunnel (`ssh -L 9393:127.0.0.1:9393 HOST`). Running it again keeps the port, and updates lpod when it's older than the release needs.
+It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9393` (`--port` picks another; Cockpit has 9090): open it on the host, or through an SSH tunnel (`ssh -L 9393:127.0.0.1:9393 HOST`). To update it later, see [Update](#update).
 
 ### Pods only runs while you use it
 
@@ -43,9 +43,21 @@ systemctl --user stop pods-ondemand.socket    # keep it off, even when something
 systemctl --user start pods-ondemand.socket   # let the next request start it again
 ```
 
-Pass `--no-idle` to keep Pods running all the time, and start and stop it as `pods.service` instead.
+Pass `--no-idle` to keep Pods running all the time, and start and stop it as `pods.service` instead. Updates keep it that way; `--idle` lets Pods sleep again.
 
 **Behind the proxy**, with `--proxy` or a route set in Pods (even when `install.sh` runs again without `--proxy`), the proxy container reaches the host as `host.containers.internal`, which isn't `127.0.0.1`. So `pods-ondemand.socket` listens on port 9393 on every address, and lpod points Pods' route at it. That port is then reachable from your network too, so check that the host's firewall blocks it (Fedora Server's default firewalld zone only opens the services it lists, but Fedora Workstation's opens every port from 1025 up), or pass `--no-idle` to keep Pods on `127.0.0.1`. A unix socket for the proxy doesn't work instead: SELinux doesn't let a container connect to a socket the user's systemd holds, and a user's socket units can't limit who connects.
+
+### Update
+
+`install.sh` also installs `pods-update` in `~/.local/bin`. Run it as the same user to update Pods to the newest release:
+
+```bash
+pods-update
+```
+
+It fetches that release's `install.sh` and runs it, which keeps the setup it finds on the host: the port, whether Pods sleeps, and the proxy with Pods' route as you set it in Pods (its ports and certificates live in the Proxy section of the host's settings). Pods' data and its `pods-env` secret stay, and lpod is updated when it's older than the release needs. Options go to `install.sh` and change the setup, such as `pods-update --no-idle`. `PODS_REF=v1.0.0 pods-update` installs that release instead, or `PODS_REF=main` the development branch.
+
+Running a release's `install.sh` again with `curl` does the same, and installs `pods-update` on an install from before it existed.
 
 ### A hostname for Pods
 
