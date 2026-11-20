@@ -75,5 +75,19 @@ it('refuses a refresh interval that is not one of the choices', function (mixed 
         ->patch(action([ApplicationSettingsController::class, 'update']), ['host_refresh' => $interval])
         ->assertSessionHasErrors('host_refresh');
 
-    expect(app(GeneralSettings::class)->host_refresh)->toBe(30);
+    expect(app(GeneralSettings::class)->host_refresh)->toBe(10);
 })->with([1, 45, -30, 'often']);
+
+it('moves a host refresh still on the old default of 30 seconds to 10, and keeps one that was chosen', function (int $stored, int $migrated) {
+    $settings = app(GeneralSettings::class);
+    $settings->host_refresh = $stored;
+    $settings->save();
+
+    (require database_path('settings/2026_11_20_102951_shorten_host_refresh_to_ten_seconds.php'))->up();
+
+    expect(app(GeneralSettings::class)->refresh()->host_refresh)->toBe($migrated);
+})->with([
+    'old default' => [30, 10],
+    'chosen' => [180, 180],
+    'off' => [0, 0],
+]);

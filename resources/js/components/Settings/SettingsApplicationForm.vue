@@ -14,11 +14,15 @@ const form = useForm<ApplicationSettings>(update(), {
   timezone: 'UTC',
   default_locale: 'en-US',
   allow_registration: false,
-  host_refresh: 30,
+  host_refresh: 10,
 })
 
 const hostRefreshChoices = [
   { label: 'Off', value: 0 },
+  { label: 'Every 3 seconds', value: 3 },
+  { label: 'Every 5 seconds', value: 5 },
+  { label: 'Every 10 seconds', value: 10 },
+  { label: 'Every 15 seconds', value: 15 },
   { label: 'Every 30 seconds', value: 30 },
   { label: 'Every minute', value: 60 },
   { label: 'Every 3 minutes', value: 180 },
@@ -115,7 +119,7 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
 
           <UFormField
             label="Refresh host pages"
-            description="How often open host pages reload what changed outside Pods, such as CPU, memory and crashed units. Pods' own changes show at once, and a unit that starts or stops is followed every 5 seconds."
+            description="How often open host pages reload what changed outside Pods, such as CPU, memory and crashed units. Pods' own changes show at once, and a unit that starts or stops is followed every 5 seconds. Each refresh asks the host again, so a short interval means more SSH commands."
             :error="form.errors.host_refresh"
             :class="fieldClass"
           >
