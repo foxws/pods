@@ -27,6 +27,7 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 ## Rules
 
 - **Contract.** Every lpod payload carries `"contract": 1` (`LpodClient::Contract`). Fixtures in `tests/Fixtures/lpod/contract-1/` must match lpod's `tests/fixtures/contract-1/` byte for byte; copy them across instead of editing one side. Pods runs `vp check` over them, so format a new fixture with `pnpm exec vp check --fix` before it goes into the lpod PR.
+- **Connections.** `SshHostRunner` reuses one SSH connection per host through a control master (`services.pods.ssh_control_persist`, 300 seconds, 0 turns it off; sockets in `ssh_control_directory`, outside the storage volume). Every unit that runs Pods (and so ssh) needs `RunInit=true`, since the masters are orphaned to PHP as PID 1; install.sh refuses a host without catatonit. Tests put the control directory in their temporary SSH directory (`tests/Pest.php`).
 - **Arguments.** Pass lpod arguments as a list. `SshHostRunner` escapes each with `escapeshellarg` and wraps the command for fish/zsh login shells; don't build shell strings yourself.
 - **Secrets.** Send secret values as the runner's `$input` (stdin). Never put them in arguments, props, logs, exceptions or the database. The same goes for passwords a setup step asks for.
 - **Caching.** Reads use `$this->cached($environment, 'key', [...])`, or `Cache::flexible` for slow Git reads (catalog, tags). Every write must `forget()` the keys it affects (often `host` too).

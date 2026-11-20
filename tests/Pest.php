@@ -32,7 +32,11 @@ uses(TestCase::class, CreatesApplication::class, RefreshDatabase::class)
         Storage::fake();
 
         // Keep SSH keys and known_hosts files out of the real storage directory
-        config(['services.pods.ssh_directory' => sys_get_temp_dir().'/pods-ssh-'.Str::random(16)]);
+        $sshDirectory = sys_get_temp_dir().'/pods-ssh-'.Str::random(16);
+        config([
+            'services.pods.ssh_directory' => $sshDirectory,
+            'services.pods.ssh_control_directory' => "{$sshDirectory}/control",
+        ]);
 
         // Setup database
         $this->seed();

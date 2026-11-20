@@ -15,6 +15,9 @@ Environment=PUID=%U
 Environment=PGID=%G
 Environment=APP_COMMAND="php -d variables_order=EGPCS /app/artisan schedule:work"
 UserNS=keep-id
+# An init reaps the SSH control masters Pods leaves running (ControlPersist),
+# which PHP, as the container's first process, wouldn't.
+RunInit=true
 Secret=pods-env,target=/app/.env,mode=0400,uid=%U,gid=%G
 Volume=pods-data.volume:/app/storage:rw
 Network=pods.network

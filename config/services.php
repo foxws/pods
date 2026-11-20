@@ -24,6 +24,10 @@ return [
         'lpod_version' => env('PODS_LPOD_VERSION', 'v4.0.0-rc.5'),
         'cache_ttl' => (int) env('PODS_CACHE_TTL', 5),
         'ssh_directory' => env('PODS_SSH_DIRECTORY', storage_path('app/private/ssh')),
+        // Seconds an SSH connection to a host stays open after its last command, for the next
+        // ones to reuse (0 opens one per command). Its socket lives outside the storage volume.
+        'ssh_control_persist' => (int) env('PODS_SSH_CONTROL_PERSIST', 300),
+        'ssh_control_directory' => env('PODS_SSH_CONTROL_DIRECTORY', sys_get_temp_dir().'/pods-ssh'),
         'local' => [
             'host' => env('PODS_LOCAL_SSH_HOST', 'host.containers.internal'),
             'port' => (int) env('PODS_LOCAL_SSH_PORT', 22),
