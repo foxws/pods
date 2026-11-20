@@ -24,6 +24,8 @@ use Modules\Web\Images\Controllers\ImagePruneController;
 use Modules\Web\Images\Controllers\ImageUpdateController;
 use Modules\Web\Networks\Controllers\NetworkController;
 use Modules\Web\Networks\Controllers\NetworkPruneController;
+use Modules\Web\Notifications\Controllers\NotificationBulkController;
+use Modules\Web\Notifications\Controllers\NotificationController;
 use Modules\Web\Quadlets\Controllers\QuadletCheckController;
 use Modules\Web\Quadlets\Controllers\QuadletController;
 use Modules\Web\Quadlets\Controllers\QuadletFetchController;
@@ -38,6 +40,14 @@ use Modules\Web\Volumes\Controllers\VolumePruneController;
 Route::prefix('/settings')->name('settings.')->group(function () {
     Route::singleton('application', ApplicationSettingsController::class)->only(['show', 'update']);
     Route::singleton('proxy', ProxyDefaultsController::class)->only(['show', 'update']);
+});
+
+// Notifications
+Route::prefix('/notifications')->name('notifications.')->group(function () {
+    Route::put('/', [NotificationBulkController::class, 'update'])->name('read');
+    Route::delete('/', [NotificationBulkController::class, 'destroy'])->name('clear');
+    Route::put('/{notification}', [NotificationController::class, 'update'])->name('update');
+    Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
 });
 
 // Environments

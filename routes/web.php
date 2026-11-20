@@ -14,6 +14,7 @@ use Modules\Web\Home\Controllers\HomeController;
 use Modules\Web\Images\Controllers\ImageController;
 use Modules\Web\Journal\Controllers\JournalController;
 use Modules\Web\Networks\Controllers\NetworkController;
+use Modules\Web\Notifications\Controllers\NotificationController;
 use Modules\Web\Pods\Controllers\PodController;
 use Modules\Web\Secrets\Controllers\SecretController;
 use Modules\Web\Settings\Controllers\SettingsController;
@@ -29,6 +30,7 @@ Route::get('/', HomeController::class)->name('home');
 
 // Account
 Route::resource('passkeys', PasskeyController::class)->only(['index']);
+Route::resource('notifications', NotificationController::class)->only(['index']);
 
 // Settings
 Route::prefix('/settings')->name('settings.')->group(function () {
@@ -42,6 +44,7 @@ Route::resource('environments', EnvironmentController::class)->only(['index']);
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
     Route::get('/', EnvironmentOverviewController::class)->name('overview');
     Route::get('/journal', JournalController::class)->name('journal');
+    Route::get('/notifications', [NotificationController::class, 'indexInEnvironment'])->name('notifications.index');
     Route::get('/search', EnvironmentSearchController::class)->name('search');
     Route::get('/settings', [EnvironmentSettingsController::class, 'show'])->name('settings');
     Route::get('/settings/{section}', [SettingsController::class, 'showInEnvironment'])->name('settings.show')->whereIn('section', SettingsController::Sections);

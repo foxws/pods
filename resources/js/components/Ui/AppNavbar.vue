@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import EnvironmentSwitcher from '@/components/Environments/EnvironmentSwitcher.vue'
 import AppLogo from '@/components/Ui/AppLogo.vue'
+import NotificationBell from '@/components/Ui/NotificationBell.vue'
 import UserMenu from '@/components/Ui/UserMenu.vue'
 import { useNavigation } from '@/composables/navigation'
 import { Link } from '@inertiajs/vue3'
@@ -87,6 +88,8 @@ const { environment } = useNavigation()
         />
         {{ environment.last_seen_at ? 'Connected' : 'Not verified' }}
       </span>
+
+      <NotificationBell />
 
       <UserMenu class="hidden lg:inline-flex" />
     </template>

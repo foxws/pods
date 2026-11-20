@@ -70,6 +70,8 @@ export type {
   ManifestSourceData,
   ManifestTimerData,
   NetworkData,
+  NotificationData,
+  NotificationLevel,
   OnDemandData,
   OnDemandSettingsData,
   OnDemandSuggestionData,
