@@ -8,7 +8,7 @@ import { useHostReload } from '@/composables/polling'
 import type { EnvironmentData, HostProperty, JournalEntryData } from '@/types'
 import { Head, router } from '@inertiajs/vue3'
 import type { SelectItem, TabsItem } from '@nuxt/ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -64,17 +64,7 @@ const changeWindow = (since: string | number): void => {
 
 const { pause, resume } = useHostReload(['entries'], 5000)
 
-const toggleFollowing = (): void => {
-  isFollowing.value = !isFollowing.value
-
-  if (isFollowing.value) {
-    resume()
-
-    return
-  }
-
-  pause()
-}
+watch(isFollowing, (following) => (following ? resume() : pause()))
 
 const download = (): void => {
   const text = visible.value.map((entry) => `${entry.time} ${entry.unit} ${entry.message}`).join('\n')
@@ -112,13 +102,11 @@ const download = (): void => {
             :disabled="!visible.length"
             @click="download"
           />
-          <UButton
+          <UToggle
+            v-model="isFollowing"
             :label="isFollowing ? 'Following' : 'Paused'"
             :icon="isFollowing ? 'i-lucide-radio' : 'i-lucide-pause'"
-            :color="isFollowing ? 'primary' : 'neutral'"
-            :variant="isFollowing ? 'soft' : 'outline'"
-            :aria-pressed="isFollowing"
-            @click="toggleFollowing"
+            variant="outline"
           />
         </template>
       </PageHeading>
