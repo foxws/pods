@@ -14,7 +14,16 @@ const form = useForm<ApplicationSettings>(update(), {
   timezone: 'UTC',
   default_locale: 'en-US',
   allow_registration: false,
+  host_refresh: 30,
 })
+
+const hostRefreshChoices = [
+  { label: 'Off', value: 0 },
+  { label: 'Every 30 seconds', value: 30 },
+  { label: 'Every minute', value: 60 },
+  { label: 'Every 3 minutes', value: 180 },
+  { label: 'Every 5 minutes', value: 300 },
+]
 
 const onSubmit = () =>
   form.submit({
@@ -100,6 +109,21 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
             :class="fieldClass"
           >
             <USwitch v-model="form.allow_registration" />
+          </UFormField>
+
+          <USeparator />
+
+          <UFormField
+            label="Refresh host pages"
+            description="How often open host pages reload what changed outside Pods, such as CPU, memory and crashed units. Pods' own changes show at once, and a unit that starts or stops is followed every 5 seconds."
+            :error="form.errors.host_refresh"
+            :class="fieldClass"
+          >
+            <USelect
+              v-model="form.host_refresh"
+              :items="hostRefreshChoices"
+              class="w-56"
+            />
           </UFormField>
         </template>
       </template>

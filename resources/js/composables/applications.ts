@@ -1,8 +1,8 @@
 import ApplicationOperationController from '@/actions/Modules/Web/Applications/Controllers/ApplicationOperationController'
 import type { ApplicationData, ApplicationOperation, EnvironmentData, HostProperty } from '@/types'
 import { useHostReload } from '@/composables/polling'
-import { router } from '@inertiajs/vue3'
-import { computed, toValue, type MaybeRefOrGetter } from 'vue'
+import { router, usePage } from '@inertiajs/vue3'
+import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 const pendingStatus: Record<ApplicationOperation, ApplicationData['status']> = {
   up: 'activating',
@@ -42,14 +42,35 @@ export function useApplicationOperations(environment: MaybeRefOrGetter<Environme
 }
 
 /**
- * Reloads host-backed props: every 5 seconds while a unit is changing state, every 3 minutes otherwise.
- * The changes Pods makes reach the page at once as live props, so the slow poll only catches what
- * changed outside Pods, such as a unit that crashed. `whileBusy` names props only worth a reload
- * while a unit is changing state, such as its logs.
+ * Reloads host-backed props: every 5 seconds while a unit is changing state, and otherwise as often as
+ * Settings, General says (`hostRefresh`, in seconds; 0 stops it). The changes Pods makes reach the page
+ * at once as live props, so the slower reload only catches what changed outside Pods, such as a unit
+ * that crashed, or the host's CPU and memory. `whileBusy` names props only worth a reload while a unit
+ * is changing state, such as its logs.
  */
 export function useHostPolling(only: string[], isBusy: MaybeRefOrGetter<boolean>, whileBusy: string[] = []) {
-  return useHostReload(
+  const page = usePage()
+  const refreshSeconds = computed(() => Number(page.props.hostRefresh ?? 30))
+  const isOff = computed(() => !toValue(isBusy) && refreshSeconds.value <= 0)
+
+  const controls = useHostReload(
     () => (toValue(isBusy) ? [...only, ...whileBusy] : only),
-    computed(() => (toValue(isBusy) ? 5000 : 180_000)),
+    computed(() => (toValue(isBusy) || isOff.value ? 5000 : refreshSeconds.value * 1000)),
   )
+
+  watch(
+    isOff,
+    (off) => {
+      if (off) {
+        controls.pause()
+
+        return
+      }
+
+      controls.resume()
+    },
+    { immediate: true },
+  )
+
+  return controls
 }
