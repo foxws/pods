@@ -17,13 +17,15 @@ import VolumeExportModal from '@/components/Volumes/VolumeExportModal.vue'
 import VolumeExportsCard from '@/components/Volumes/VolumeExportsCard.vue'
 import { useHostAction } from '@/composables/hostActions'
 import { useHostReload } from '@/composables/polling'
+import { useVolumeSizes } from '@/composables/volumeSizes'
 import type { EnvironmentData, HostProperty, HostVolumeData, VolumeExportData } from '@/types'
 import { pluralize } from '@/utils/application'
 import { formatBytes } from '@/utils/format'
+import type { SortableColumn } from '@/utils/sorting'
+import { displayName, isInPodmanStorage } from '@/utils/volumes'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
-import type { SortableColumn } from '@/utils/sorting'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -33,13 +35,7 @@ const props = defineProps<{
   exports: VolumeExportData[]
 }>()
 
-/** Only named and anonymous volumes have a size lpod works out. */
-const isMeasured = (volume: HostVolumeData): boolean => volume.type === 'named' || volume.type === 'anonymous'
-
-const sizeOf = (volume: HostVolumeData): number | null => volume.size ?? props.sizes?.data?.[volume.name] ?? null
-
-/** Sizes load after the list, so their cells wait for them. */
-const isSizing = (volume: HostVolumeData): boolean => !props.sizes && isMeasured(volume)
+const { sizeOf, isSizing } = useVolumeSizes(() => props.sizes)
 
 const list = computed(() => props.volumes?.data ?? [])
 
@@ -57,9 +53,6 @@ const types: Record<string, { label: string; color: BadgeProps['color'] }> = {
 
 const typeOf = (volume: HostVolumeData) =>
   isUnused(volume) ? { label: 'Unused', color: 'warning' as const } : (types[volume.type] ?? types.named!)
-
-const displayName = (volume: HostVolumeData): string =>
-  volume.type === 'anonymous' ? `${volume.name.slice(0, 12)}…` : volume.name
 
 const filters: DataTableFilter<HostVolumeData>[] = [
   { label: 'All', value: 'all' },
@@ -103,12 +96,6 @@ const isRemoving = computed({
 
 const { send, processing } = useHostAction()
 
-/**
- * Only volumes in Podman's own storage: one backed by a folder on the host or NFS would be all of it.
- * Mirrors HostVolumeData::isExportable().
- */
-const isExportable = (volume: HostVolumeData): boolean => volume.type === 'named' || volume.type === 'anonymous'
-
 const exporting = ref<{ volume: string | null; application: string | null; applications: string[] } | null>(null)
 const isExporting = computed({
   get: () => exporting.value !== null,
@@ -120,7 +107,7 @@ const isExporting = computed({
 })
 
 const exportItems = (volume: HostVolumeData): DropdownMenuItem[] => {
-  if (!isExportable(volume)) {
+  if (!isInPodmanStorage(volume)) {
     return []
   }
 
@@ -280,7 +267,9 @@ const searchText = (volume: HostVolumeData): string =>
           <span
             v-else
             class="text-muted"
-            :title="isMeasured(row.original) ? undefined : 'Not measured: it can be a whole folder, device or share'"
+            :title="
+              isInPodmanStorage(row.original) ? undefined : 'Not measured: it can be a whole folder, device or share'
+            "
           >
             {{ formatBytes(sizeOf(row.original)) }}
           </span>
