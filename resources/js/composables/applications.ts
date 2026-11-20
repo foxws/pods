@@ -42,11 +42,14 @@ export function useApplicationOperations(environment: MaybeRefOrGetter<Environme
 }
 
 /**
- * Reloads host-backed props: every 5 seconds while a unit is changing state, every 30 seconds otherwise.
+ * Reloads host-backed props: every 5 seconds while a unit is changing state, every 3 minutes otherwise.
+ * The changes Pods makes reach the page at once as live props, so the slow poll only catches what
+ * changed outside Pods, such as a unit that crashed. `whileBusy` names props only worth a reload
+ * while a unit is changing state, such as its logs.
  */
-export function useHostPolling(only: string[], isBusy: MaybeRefOrGetter<boolean>) {
+export function useHostPolling(only: string[], isBusy: MaybeRefOrGetter<boolean>, whileBusy: string[] = []) {
   return useHostReload(
-    only,
-    computed(() => (toValue(isBusy) ? 5000 : 30000)),
+    () => (toValue(isBusy) ? [...only, ...whileBusy] : only),
+    computed(() => (toValue(isBusy) ? 5000 : 180_000)),
   )
 }
