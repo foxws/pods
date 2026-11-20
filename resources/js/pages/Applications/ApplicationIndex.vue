@@ -8,13 +8,17 @@ import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
+import SortableHeader from '@/components/Ui/SortableHeader.vue'
+import TableSortControls from '@/components/Ui/TableSortControls.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
 import { useHostAction } from '@/composables/hostActions'
+import { useTableSort } from '@/composables/tables'
 import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, ImageData } from '@/types'
 import { describeApplication, describeUnits, quadletName } from '@/utils/application'
 import { missingSecretIn } from '@/utils/attention'
 import { formatBytes, formatPort, formatRelative } from '@/utils/format'
 import { applicationsWithUpdates } from '@/utils/images'
+import type { SortableColumn } from '@/utils/sorting'
 import { isTransitioning } from '@/utils/status'
 import { Head, Link } from '@inertiajs/vue3'
 import type { DropdownMenuItem, TableColumn, TabsItem } from '@nuxt/ui'
@@ -45,8 +49,17 @@ const tabs = computed<TabsItem[]>(() => [
   { label: 'Failed', value: 'failed', badge: countOf('failed') },
 ])
 
+const sortable: SortableColumn<ApplicationData>[] = [
+  { column: 'name', label: 'Application', value: (row) => row.name },
+  { column: 'status', label: 'Status', value: (row) => row.status },
+  { column: 'image', label: 'Image', value: (row) => row.image },
+  { column: 'memory', label: 'Memory', value: (row) => row.memory, descendingFirst: true },
+]
+
+const { sort, sorted, directionOf, toggle } = useTableSort(list, sortable)
+
 const visible = computed(() =>
-  filter.value === 'all' ? list.value : list.value.filter((application) => application.status === filter.value),
+  filter.value === 'all' ? sorted.value : sorted.value.filter((application) => application.status === filter.value),
 )
 
 const failures = computed(() => list.value.filter((application) => application.status === 'failed'))
@@ -274,6 +287,12 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
           color="neutral"
         />
 
+        <TableSortControls
+          v-model="sort"
+          :columns="sortable"
+          class="md:hidden"
+        />
+
         <p
           v-if="host?.data?.auto_update_next_run"
           class="flex items-center gap-1.5 text-sm text-muted"
@@ -338,6 +357,18 @@ const percentage = (used: number, total: number): number => (total > 0 ? Math.ro
         empty="No applications match this filter."
         class="hidden rounded-lg border border-default md:block"
       >
+        <template
+          v-for="column in sortable"
+          :key="column.column"
+          #[`${column.column}-header`]
+        >
+          <SortableHeader
+            :label="column.label"
+            :direction="directionOf(column.column)"
+            @toggle="toggle(column)"
+          />
+        </template>
+
         <template #name-cell="{ row }">
           <Link
             :href="show.url([environment.id, row.original.name])"

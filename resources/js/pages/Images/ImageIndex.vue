@@ -20,6 +20,7 @@ import { formatBytes, formatRelative } from '@/utils/format'
 import { Head, Link } from '@inertiajs/vue3'
 import type { BadgeProps, DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { computed, ref } from 'vue'
+import { timeOf, type SortableColumn } from '@/utils/sorting'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -67,6 +68,14 @@ const columns: TableColumn<ImageData>[] = [
   { id: 'status', header: 'Status' },
   { accessorKey: 'auto_update', header: 'Auto-update' },
   { id: 'actions', header: '' },
+]
+
+const sortable: SortableColumn<ImageData>[] = [
+  { column: 'repository', label: 'Image', value: (row) => row.repository },
+  { column: 'tag', label: 'Tag', value: (row) => row.tag },
+  { column: 'size', label: 'Size', value: (row) => row.size, descendingFirst: true },
+  { column: 'used_by', label: 'Used by', value: (row) => row.used_by.length, descendingFirst: true },
+  { column: 'created_at', label: 'Created', value: (row) => timeOf(row.created_at), descendingFirst: true },
 ]
 
 const isPulling = ref(false)
@@ -174,6 +183,7 @@ const searchText = (image: ImageData): string => [image.repository, image.tag, i
       <DataTable
         :data="images?.data"
         :columns="columns"
+        :sortable="sortable"
         :loading="!images"
         :filters="filters"
         :search-text="searchText"
