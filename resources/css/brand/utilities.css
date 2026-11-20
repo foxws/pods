@@ -21,3 +21,30 @@
     }
   }
 }
+
+/*
+ * Thin scrollbars in the theme's colours, for wide tables and tab lists
+ * that scroll sideways. Chrome and Firefox use the standard properties;
+ * Safari only knows the ::-webkit-scrollbar ones, which the others ignore
+ * once the standard ones are set.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-text-dimmed) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: var(--ui-text-dimmed);
+  }
+}
