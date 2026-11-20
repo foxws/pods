@@ -71,7 +71,7 @@ const open = () => {
       </p>
 
       <p class="text-xs text-muted">
-        <time :datetime="notification.created_at">{{ formatRelative(notification.created_at) }}</time>
+        <time :datetime="notification.created_at ?? undefined">{{ formatRelative(notification.created_at) }}</time>
         <template v-if="notification.environment"> · {{ notification.environment }}</template>
       </p>
     </div>

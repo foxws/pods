@@ -37,6 +37,7 @@ const applyFilter = (filter: Filter): void => {
 }
 
 const isToday = (notification: NotificationData): boolean =>
+  notification.created_at !== null &&
   new Date(notification.created_at.replace(' ', 'T')).toDateString() === new Date().toDateString()
 
 const sections = computed(() =>

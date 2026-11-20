@@ -25,7 +25,7 @@ class NotificationData extends Data
         public ?string $url,
         public ?string $environment,
         public ?string $read_at,
-        public string $created_at,
+        public ?string $created_at,
     ) {}
 
     public static function fromModel(DatabaseNotification $notification): self
@@ -42,7 +42,7 @@ class NotificationData extends Data
             url: isset($data['url']) ? (string) $data['url'] : null,
             environment: isset($data['environment']) ? (string) $data['environment'] : null,
             read_at: $notification->read_at?->toDateTimeString(),
-            created_at: $notification->created_at->toDateTimeString(),
+            created_at: $notification->created_at?->toDateTimeString(),
         );
     }
 }

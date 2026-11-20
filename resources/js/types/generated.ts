@@ -360,7 +360,7 @@ export type NotificationData = {
   url: string | null
   environment: string | null
   read_at: string | null
-  created_at: string
+  created_at: string | null
 }
 export type NotificationLevel = 'success' | 'error' | 'warning' | 'info'
 export type OnDemandData = {
