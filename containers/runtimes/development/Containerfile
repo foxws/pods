@@ -1,48 +1,88 @@
 # The development image of Pods, which containers/quadlets/development
-# builds from your checkout. Built on ghcr.io/foxws/laravel-frankenphp's
-# development image, which has FrankenPHP, the PHP extensions with Xdebug,
-# Composer, Node.js, pnpm, the PostgreSQL client, Playwright's browser deps
-# and the "docker" user (see docs/runtime.md in foxws/laravel-podman, which
-# builds it). Pass --build-arg RUNTIME_IMAGE=... (or add BuildArg= to
-# pods-dev.build) for another one.
-ARG RUNTIME_IMAGE=ghcr.io/foxws/laravel-frankenphp:php-8.5-dev
+# builds from your checkout. Built on the official FrankenPHP image (Debian,
+# glibc), with the PHP extensions Pods uses plus Xdebug and Redis, Composer,
+# Node.js, pnpm, the SSH client and Playwright's browser deps. Pass
+# --build-arg PHP_VERSION=8.5 (or add BuildArg= to pods-dev.build) for
+# another PHP version.
+ARG PHP_VERSION=8.6
+ARG NODE_VERSION=26
 
-FROM ${RUNTIME_IMAGE}
+FROM docker.io/library/node:${NODE_VERSION}-trixie-slim AS node
+
+FROM docker.io/dunglas/frankenphp:1-php${PHP_VERSION}-trixie AS development
 
 ARG UID=1000
 ARG GID=1000
 ARG PHP_EXTENSIONS=""
+ARG PNPM_VERSION=12
 
-WORKDIR /app
-
+ENV TZ=UTC
+ENV LANG=C.UTF-8
+ENV PNPM_HOME="/home/docker/.local/share/pnpm"
+ENV PATH="${PATH}:${PNPM_HOME}"
+ENV PLAYWRIGHT_BROWSERS_PATH=0
 ENV PHP_CLI="php -d variables_order=EGPCS /app/artisan"
 ENV APP_COMMAND="${PHP_CLI} octane:frankenphp --host=0.0.0.0 --port=8000 --admin-port=2019 --watch"
 
-# The runtime image's "docker" user is 1000:1000. Renumber it to the host's
-# UID/GID, which pods-dev.build passes as build args.
-RUN if [ "$(id -u docker)" != "${UID}" ] || [ "$(id -g docker)" != "${GID}" ]; then \
-        groupmod -o -g "${GID}" docker \
-        && usermod -o -u "${UID}" -g "${GID}" docker \
-        && chown -R docker:docker /home/docker /app /config /data; \
-    fi
+WORKDIR /app
 
 # Pods reaches every environment, the local host included, over ssh, and
 # pins host keys with ssh-keyscan
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssh-client \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get -y autoremove \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# The extensions of the production image, plus Xdebug (off until
+# XDEBUG_MODE is set) and Redis for the Valkey container
+RUN install-php-extensions @composer bcmath intl opcache pcntl redis xdebug
 
 # Install additional PHP extensions if specified
 RUN if [ -n "$PHP_EXTENSIONS" ]; then \
     install-php-extensions $PHP_EXTENSIONS; \
 fi
 
+# Node.js from the official image (also Debian), for Vite and the tests
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && npm install -g pnpm@${PNPM_VERSION} \
+    && npm cache clean --force
+
+# Playwright's OS-level browser deps; the browsers are installed per project
+# with "npx playwright install"
+RUN npx -y playwright install-deps \
+    && npm cache clean --force \
+    && apt-get -y autoremove \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.npm
+
+RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone \
+    && cp ${PHP_INI_DIR}/php.ini-development ${PHP_INI_DIR}/php.ini
+
 # Custom PHP configuration for development
 COPY containers/runtimes/development/php-development.ini ${PHP_INI_DIR}/conf.d/xx-php-user.ini
+
+# The "docker" user has the host's UID/GID, which pods-dev.build passes as
+# build args. /config and /data are where FrankenPHP's Caddy keeps its state
+# (XDG_CONFIG_HOME and XDG_DATA_HOME in the official image).
+RUN groupadd -o -g "${GID}" docker \
+    && useradd -o -u "${UID}" -g docker -d /home/docker -s /bin/bash -m docker \
+    && mkdir -p /app /config /data "${PNPM_HOME}" /home/docker/.cache/composer /home/docker/.cache/pnpm \
+    && chown -R docker:docker /app /config /data /home/docker
 
 # Entrypoint
 COPY --chmod=755 containers/runtimes/development/entrypoint.sh /usr/local/bin/entrypoint.sh
 
+# The official image's health check polls Caddy's admin port, which the
+# queue, Reverb, scheduler and Vite containers don't serve. The quadlets
+# set their own.
+HEALTHCHECK NONE
+
 USER docker
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD []

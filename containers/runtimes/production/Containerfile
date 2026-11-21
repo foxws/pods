@@ -1,30 +1,77 @@
 # The production image of Pods, published by CI to ghcr.io/foxws/pods.
-# Built on ghcr.io/foxws/laravel-frankenphp:php-8.5, which has FrankenPHP,
-# the PHP extensions, Composer, Node.js, pnpm and the "docker" user. Build
-# it from the repository root:
+# Built on the official FrankenPHP image (Debian, glibc), with only what
+# Pods needs: a few PHP extensions, the SSH client and the "docker" user.
+# Composer, Node.js and pnpm only live in the build stage, so they don't
+# ship. Build it from the repository root:
 #
+#   cp containers/runtimes/production/dockerignore .dockerignore
 #   podman build -f containers/runtimes/production/Containerfile -t pods .
-ARG RUNTIME_IMAGE=ghcr.io/foxws/laravel-frankenphp:php-8.5
+#
+# Pass --build-arg PHP_VERSION=8.5 for another PHP version.
+ARG PHP_VERSION=8.6
+ARG NODE_VERSION=26
 
-FROM ${RUNTIME_IMAGE} AS production
+FROM docker.io/library/node:${NODE_VERSION}-trixie-slim AS node
 
-WORKDIR /app
+FROM docker.io/dunglas/frankenphp:1-php${PHP_VERSION}-trixie AS base
 
+ENV TZ=UTC
+ENV LANG=C.UTF-8
 ENV PHP_CLI="php -d variables_order=EGPCS /app/artisan"
 # Octane's "auto" starts two workers per CPU core, each holding a booted
 # Laravel app. Pods has one owner, so four workers are plenty and keep its
 # idle memory low on hosts with many cores.
 ENV APP_COMMAND="${PHP_CLI} octane:frankenphp --host=0.0.0.0 --port=8000 --workers=4"
 
-# Pods reaches every host, the local one included, over SSH.
+WORKDIR /app
+
+# Pods reaches every host, the local one included, over SSH, and the
+# entrypoint drops from root to the "docker" user with gosu. The image
+# already has curl, which the quadlets' health checks use.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssh-client \
+    && apt-get install -y --no-install-recommends openssh-client gosu \
     && apt-get -y autoremove \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# The extensions beyond PHP's own that Octane, Reverb, the queue and Laravel use.
+RUN install-php-extensions bcmath intl opcache pcntl
+
+# The official image lets frankenphp bind ports below 1024 through a file
+# capability, which can't start in a container without capabilities
+# (--cap-drop=all). Pods listens on 8000, so drop it. libcap2-bin is only
+# needed for setcap, so it's installed and purged in this one layer.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libcap2-bin \
+    && setcap -r /usr/local/bin/frankenphp \
+    && apt-get purge -y --auto-remove libcap2-bin \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone \
+    && cp ${PHP_INI_DIR}/php.ini-production ${PHP_INI_DIR}/php.ini
+
 COPY containers/runtimes/production/php-production.ini ${PHP_INI_DIR}/conf.d/xx-php-user.ini
-COPY --chmod=755 containers/runtimes/production/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# The entrypoint renumbers it to the host user's PUID/PGID. /config and
+# /data are where FrankenPHP's Caddy keeps its state (XDG_CONFIG_HOME and
+# XDG_DATA_HOME in the official image).
+RUN groupadd -g 1000 docker \
+    && useradd -u 1000 -g docker -d /home/docker -s /bin/bash -m docker \
+    && mkdir -p /app /config /data \
+    && chown -R docker:docker /app /config /data /home/docker
+
+FROM base AS build
+
+ARG PNPM_VERSION=12
+
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && npm install -g pnpm@${PNPM_VERSION} \
+    && npm cache clean --force \
+    && install-php-extensions @composer
 
 COPY --chown=docker:docker . /app
 
@@ -43,21 +90,34 @@ RUN ${PHP_CLI} key:generate && ${PHP_CLI} storage:link
 
 # Installs Octane's worker script into public/, which "octane:frankenphp" would
 # otherwise do on start. At runtime the "docker" user may be renumbered to the
-# host's UID, which can't write to the image's public/. The binary is the base
-# image's, and the config/octane.php of the repository is kept.
+# host's UID, which can't write to the image's public/. The binary is the
+# official image's, and the config/octane.php of the repository is kept.
 RUN ${PHP_CLI} octane:install --server=frankenphp --no-interaction
 
-# Build the frontend and prune the devDependencies in one layer, so they
-# don't stay in the image.
 RUN --mount=type=cache,target=/home/docker/.local/share/pnpm/store,uid=1000,gid=1000 \
-    --mount=type=cache,target=/home/docker/.cache/pnpm,uid=1000,gid=1000 \
-    pnpm install --frozen-lockfile \
-    && pnpm build \
-    && pnpm prune --prod
+    pnpm install --frozen-lockfile --store-dir /home/docker/.local/share/pnpm/store \
+    && pnpm build
 
-RUN rm -f .env
+# Production doesn't run Node, so the packages go too.
+RUN rm -rf node_modules .env
+
+FROM base AS production
+
+# Production serves the client-side build only: no SSR server runs, so
+# Inertia shouldn't try to reach one. A variable of the container wins over
+# .env.
+ENV INERTIA_SSR_ENABLED=false
+
+COPY --from=build --chown=docker:docker /app /app
+COPY --chmod=755 containers/runtimes/production/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# The official image's health check polls Caddy's admin port, which the
+# queue, Reverb and scheduler containers don't serve. The quadlets set
+# their own.
+HEALTHCHECK NONE
 
 # Root, so the entrypoint can renumber the "docker" user to PUID/PGID first.
 USER root
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD []
