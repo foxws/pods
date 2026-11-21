@@ -96,3 +96,15 @@ it('only syncs the environment it is given', function () {
     $this->assertModelExists($installation);
     expect($other->installations()->count())->toBe(0);
 });
+
+it('does not count local drop-ins as changes', function () {
+    $installation = Installation::factory()->for($this->environment)->withFiles(lpodFixtureFiles())->create(['application' => 'immich']);
+    fakeLpod()->respond('immich files --json', lpodFiles([
+        ...lpodFixtureFiles(),
+        'immich-server.container.d/memory.local.conf' => "[Container]\nMemory=4g\n",
+    ]));
+
+    $this->artisan('pods:sync')->assertSuccessful();
+
+    expect($installation->refresh()->changes)->toBeNull();
+});

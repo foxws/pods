@@ -193,6 +193,26 @@ it('removes the files Pods installed that the tag no longer has, before starting
         ->toBeLessThan($commands->search(['quadlet', 'install', 'immich', '--replace', '--start', '--stdin', '--json']));
 });
 
+it('leaves local drop-ins alone, without listing them as files the tag no longer has', function () {
+    $lpod = fakeLpod()
+        ->respond('quadlet fetch *', immichRelease())
+        ->respond('immich files --json', lpodFiles([
+            ...lpodFixtureFiles(),
+            'immich-server.container.d/memory.local.conf' => "[Container]\nMemory=4g\n",
+        ]))
+        ->respond('immich down --json', lpodFixture('ok'));
+    Installation::factory()->for($this->environment)->fromGit()->withFiles([
+        ...lpodFixtureFiles(),
+        'immich-server.container.d/memory.local.conf' => "[Container]\nMemory=4g\n",
+    ])->create(['application' => 'immich', 'reference' => 'v3.1.0']);
+
+    $this->actingAs($this->owner)
+        ->post(action([ApplicationUpdateController::class, 'store'], [$this->environment, 'immich']), ['tag' => 'v3.2.0', 'remove_old_files' => true])
+        ->assertInertiaFlash('description', 'Its units are starting with the new files. Run its setup steps again if the release needs it.');
+
+    expect(collect($lpod->recorded())->pluck('arguments')->contains(fn (array $arguments): bool => in_array('remove', $arguments, true)))->toBeFalse();
+});
+
 it('keeps the files the tag no longer has when asked to', function () {
     $lpod = fakeLpod()
         ->respond('quadlet fetch *', immichRelease())

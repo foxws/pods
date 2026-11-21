@@ -92,3 +92,9 @@ Push it, then in Pods:
 3. Press **Install hello**. Open the hostname, and whoami answers. You can change the hostname later on the application's **Routes** card.
 
 The files stay plain Quadlets, so `podman quadlet install --application=hello quadlets` installs the same thing without Pods. Installed from a branch, the application's page offers its newest commit as an update. Installed from a tag, it offers newer tags. For secrets, setup steps and on-demand, see [pods.yml](manifest.md). [foxws/quadlets](https://github.com/foxws/quadlets) has more examples.
+
+## Changing an application with drop-ins
+
+A drop-in changes some keys of a Quadlet without editing the file itself, such as a memory limit for a container from the catalog. On the application's **Quadlet files** tab, **Add drop-in** picks the Quadlet and a name, and Pods saves it next to it as `hello.container.d/NAME.local.conf`. **Edit** and **Remove** work on every drop-in except lpod's own (`lpod-*.conf`), which come from the application's settings, such as on-demand. systemd only applies a drop-in when the unit restarts, so Pods offers to restart the application afterwards.
+
+A local drop-in (`*.local.conf`) belongs to you rather than the application's source. It never counts as a change outside Pods, and updates leave it on the host as it is. That makes it the place for overrides you want to keep over updates, instead of editing a file Pods installed.

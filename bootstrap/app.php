@@ -64,9 +64,9 @@ return Application::configure(basePath: $basePath)
             'role' => RoleMiddleware::class,
         ]);
 
-        // Quadlet files travel to the host byte for byte
+        // Quadlet files and drop-ins travel to the host byte for byte
         $middleware->trimStrings(except: [
-            fn (Request $request): bool => $request->is('actions/environments/*/quadlets', 'actions/environments/*/quadlets/*'),
+            fn (Request $request): bool => $request->is('actions/environments/*/quadlets', 'actions/environments/*/quadlets/*', 'actions/environments/*/applications/*/drop-ins'),
         ]);
 
         // Configure web middleware
