@@ -1,10 +1,16 @@
 import {
   describeQuadlet,
+  dropInQuadlet,
+  dropInTemplate,
+  isLocalDropIn,
+  isLpodDropIn,
   isQuadletFile,
+  localDropInName,
   renderQuadlet,
   secretsIn,
   selectedByDefault,
   splitQuadlets,
+  takesDropIns,
 } from '@/utils/quadlet'
 import { expect, test } from 'vite-plus/test'
 
@@ -129,4 +135,21 @@ test('skips the sections of a .quadlets file that podman would refuse', () => {
   expect(splitQuadlets([{ name: 'empty.quadlets', content: '---\n\n---\n' }]).errors).toEqual([
     'empty.quadlets: has no Quadlet sections.',
   ])
+})
+
+test("tells drop-ins from Quadlets, and lpod's own and local ones from the rest", () => {
+  expect(dropInQuadlet('hello.container.d/memory.conf')).toBe('hello.container')
+  expect(dropInQuadlet('hello.container')).toBeNull()
+  expect(isLpodDropIn('hello.container.d/lpod-ondemand.conf')).toBe(true)
+  expect(isLpodDropIn('hello.container.d/memory.conf')).toBe(false)
+  expect(isLocalDropIn('hello.container.d/memory.local.conf')).toBe(true)
+  expect(isLocalDropIn('hello.container.d/memory.conf')).toBe(false)
+  expect(takesDropIns('hello.pod')).toBe(true)
+  expect(takesDropIns('hello.env')).toBe(false)
+})
+
+test('names a new drop-in as a local one, and starts it with the section of its Quadlet', () => {
+  expect(localDropInName('hello.container', 'memory')).toBe('hello.container.d/memory.local.conf')
+  expect(localDropInName('hello.container', 'memory.local.conf')).toBe('hello.container.d/memory.local.conf')
+  expect(dropInTemplate('hello.pod')).toBe('[Pod]\n')
 })

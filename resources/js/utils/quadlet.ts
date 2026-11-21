@@ -193,3 +193,60 @@ export function splitQuadlets(files: QuadletFile[]): SplitQuadlets {
 
   return result
 }
+
+/**
+ * The Quadlet types whose units take drop-ins, with the section a drop-in for each fills in.
+ */
+const dropInSections: Record<string, string> = {
+  container: 'Container',
+  pod: 'Pod',
+  volume: 'Volume',
+  network: 'Network',
+  kube: 'Kube',
+  image: 'Image',
+  build: 'Build',
+}
+
+/**
+ * The Quadlet a drop-in belongs to, as lpod names it (hello.container.d/memory.conf), or null for any other file.
+ */
+export function dropInQuadlet(name: string): string | null {
+  return /^([^/]+\.([a-z]+))\.d\/[^/]+\.conf$/.exec(name)?.[1] ?? null
+}
+
+/**
+ * Drop-ins lpod writes itself (lpod-ondemand.conf), which only its own settings change.
+ */
+export function isLpodDropIn(name: string): boolean {
+  return /\.d\/lpod-[^/]+\.conf$/.test(name)
+}
+
+/**
+ * Drop-ins that belong to the host (memory.local.conf): Pods never tracks them, and updates leave them alone.
+ */
+export function isLocalDropIn(name: string): boolean {
+  return /\.d\/[^/]+\.local\.conf$/.test(name)
+}
+
+/**
+ * Whether a Quadlet takes drop-ins, so one can be added for it.
+ */
+export function takesDropIns(name: string): boolean {
+  return (name.split('.').pop() ?? '') in dropInSections && !name.includes('/')
+}
+
+/**
+ * The name of a local drop-in for a Quadlet: hello.container and memory give hello.container.d/memory.local.conf.
+ */
+export function localDropInName(quadlet: string, name: string): string {
+  return `${quadlet}.d/${name.replace(/(\.local)?\.conf$/, '')}.local.conf`
+}
+
+/**
+ * What a new drop-in for a Quadlet starts with: the section of its type.
+ */
+export function dropInTemplate(quadlet: string): string {
+  const section = dropInSections[quadlet.split('.').pop() ?? '']
+
+  return section ? `[${section}]\n` : ''
+}

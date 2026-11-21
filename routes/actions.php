@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Web\Applications\Controllers\ApplicationController;
+use Modules\Web\Applications\Controllers\ApplicationDropInController;
 use Modules\Web\Applications\Controllers\ApplicationInstallationController;
 use Modules\Web\Applications\Controllers\ApplicationOnDemandController;
 use Modules\Web\Applications\Controllers\ApplicationOperationController;
@@ -73,6 +74,8 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     Route::delete('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'destroy'])->name('applications.ondemand.destroy');
     Route::put('/applications/{application}/source', [ApplicationSourceController::class, 'update'])->name('applications.source.update');
     Route::put('/applications/{application}/routes', [ApplicationRoutesController::class, 'update'])->name('applications.routes.update');
+    Route::put('/applications/{application}/drop-ins', [ApplicationDropInController::class, 'update'])->name('applications.drop-ins.update');
+    Route::delete('/applications/{application}/drop-ins', [ApplicationDropInController::class, 'destroy'])->name('applications.drop-ins.destroy');
     Route::post('/applications/{application}/update', [ApplicationUpdateController::class, 'store'])->name('applications.update.store');
     Route::post('/applications/{application}/setup/{step}', [ApplicationSetupController::class, 'store'])->name('applications.setup.store');
     Route::post('/applications/{application}/timers/{timer}/run', [ApplicationTimerController::class, 'store'])->name('applications.timers.run');

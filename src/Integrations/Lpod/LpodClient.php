@@ -204,6 +204,28 @@ class LpodClient
     }
 
     /**
+     * Writes a drop-in next to one of the application's Quadlets, replacing the one with that name.
+     * The content travels on stdin. Running units pick it up when they restart. An lpod without
+     * "files write" ignores it and lists the files instead, so there's no file in its reply.
+     *
+     * @param  string  $name  as files() names it, such as hello.container.d/memory.local.conf
+     *
+     * @throws LpodException
+     */
+    public function writeFile(Environment $environment, string $application, string $name, string $content): QuadletFileData
+    {
+        $payload = $this->json($environment, [$application, 'files', 'write', $name, '--stdin', '--json'], input: $content);
+
+        if (! is_array($payload['file'] ?? null)) {
+            throw LpodException::unsupportedCommand("{$application} files write");
+        }
+
+        $this->forget($environment, 'apps', "apps.{$application}", 'host', 'containers', 'pods', 'volumes', 'networks', 'secrets');
+
+        return QuadletFileData::fromLpod($payload['file']);
+    }
+
+    /**
      * @return list<JournalEntryData>
      */
     public function logs(Environment $environment, string $application, int $lines = 100): array

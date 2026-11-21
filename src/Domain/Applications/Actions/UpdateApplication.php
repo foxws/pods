@@ -130,18 +130,15 @@ class UpdateApplication
     }
 
     /**
-     * The application's files on the host, without the drop-ins lpod writes itself.
+     * The application's files on the host, without lpod's own drop-ins and local ones.
      *
      * @return list<string>
      */
     protected function installedFileNames(Installation $installation): array
     {
-        return array_values(array_map(
-            fn (QuadletFileData $file): string => $file->name,
-            array_filter(
-                $this->lpod->files($installation->environment, $installation->application),
-                fn (QuadletFileData $file): bool => preg_match(SyncInstallation::ManagedDropInPattern, $file->name) !== 1,
-            ),
+        return array_values(array_filter(
+            array_map(fn (QuadletFileData $file): string => $file->name, $this->lpod->files($installation->environment, $installation->application)),
+            SyncInstallation::isTracked(...),
         ));
     }
 }

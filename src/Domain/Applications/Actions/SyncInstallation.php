@@ -16,6 +16,12 @@ class SyncInstallation
      */
     public const string ManagedDropInPattern = '#\.d/lpod-[^/]+\.conf$#';
 
+    /**
+     * Drop-ins that belong to the host, such as memory.local.conf, aren't either: they're the owner's
+     * own overrides, which Pods writes when asked but never tracks, and which updates leave alone.
+     */
+    public const string LocalDropInPattern = '#\.d/[^/]+\.local\.conf$#';
+
     public function __construct(
         protected LpodClient $lpod,
     ) {}
@@ -59,11 +65,19 @@ class SyncInstallation
      */
     public static function checksumsOnHost(array $files): array
     {
-        $files = array_filter($files, fn (QuadletFileData $file): bool => preg_match(self::ManagedDropInPattern, $file->name) !== 1);
+        $files = array_filter($files, fn (QuadletFileData $file): bool => self::isTracked($file->name));
 
         return Installation::checksumsOf(array_map(fn (QuadletFileData $file): array => [
             'name' => $file->name,
             'content' => $file->content,
         ], $files));
+    }
+
+    /**
+     * Whether Pods keeps a checksum of the file: not for lpod's own drop-ins, nor local ones.
+     */
+    public static function isTracked(string $name): bool
+    {
+        return preg_match(self::ManagedDropInPattern, $name) !== 1 && preg_match(self::LocalDropInPattern, $name) !== 1;
     }
 }

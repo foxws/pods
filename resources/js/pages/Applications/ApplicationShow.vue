@@ -2,6 +2,8 @@
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { show as containerShow } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import { destroy as disableOnDemand } from '@/actions/Modules/Web/Applications/Controllers/ApplicationOnDemandController'
+import { destroy as removeDropIn } from '@/actions/Modules/Web/Applications/Controllers/ApplicationDropInController'
+import ApplicationDropInModal from '@/components/Applications/ApplicationDropInModal.vue'
 import ApplicationRoutesCard from '@/components/Applications/ApplicationRoutesCard.vue'
 import ApplicationSetupCard from '@/components/Applications/ApplicationSetupCard.vue'
 import ApplicationSourceCard from '@/components/Applications/ApplicationSourceCard.vue'
@@ -35,6 +37,7 @@ import type {
   TimerData,
 } from '@/types'
 import { containerState, shortImage } from '@/utils/containers'
+import { dropInQuadlet, isLocalDropIn, isLpodDropIn, takesDropIns } from '@/utils/quadlet'
 import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
 import { Head, Link, router } from '@inertiajs/vue3'
@@ -126,6 +129,55 @@ const isEditingFile = computed({
     }
   },
 })
+
+const editingDropIn = ref<QuadletFileData | null>(null)
+
+const isAddingDropIn = ref(false)
+
+const isEditingDropIn = computed({
+  get: () => editingDropIn.value !== null || isAddingDropIn.value,
+  set: (isOpen: boolean) => {
+    if (!isOpen) {
+      editingDropIn.value = null
+      isAddingDropIn.value = false
+    }
+  },
+})
+
+const dropInQuadlets = computed(() => (props.files?.data ?? []).map((file) => file.name).filter(takesDropIns))
+
+const onEditFile = (file: QuadletFileData): void => {
+  if (dropInQuadlet(file.name)) {
+    editingDropIn.value = file
+  } else {
+    editingFile.value = file
+  }
+}
+
+const removingDropIn = ref<string | null>(null)
+
+const isRemovingDropIn = computed({
+  get: () => removingDropIn.value !== null,
+  set: (isOpen: boolean) => {
+    if (!isOpen) {
+      removingDropIn.value = null
+    }
+  },
+})
+
+const shouldRestartAfterRemoving = ref(true)
+
+const isRemovingDropInNow = ref(false)
+
+const onRemoveDropIn = (close: () => void): void => {
+  router.delete(removeDropIn.url([props.environment.id, props.name]), {
+    data: { name: removingDropIn.value, restart: shouldRestartAfterRemoving.value },
+    preserveScroll: true,
+    onStart: () => (isRemovingDropInNow.value = true),
+    onFinish: () => (isRemovingDropInNow.value = false),
+    onSuccess: () => close(),
+  })
+}
 
 const breadcrumb = computed<BreadcrumbItem[]>(() => [
   { label: 'Applications', to: applicationsIndex.url(props.environment.id) },
@@ -704,25 +756,77 @@ const isRemoving = ref(false)
           :error="files.error"
         />
 
+        <div
+          v-if="dropInQuadlets.length"
+          class="flex flex-wrap items-center justify-between gap-3"
+        >
+          <p class="text-sm text-muted">
+            Change a Quadlet's keys with a drop-in. Local ones (NAME.local.conf) stay yours through updates.
+          </p>
+          <UButton
+            label="Add drop-in"
+            icon="i-lucide-file-plus"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="isAddingDropIn = true"
+          />
+        </div>
+
         <UCard
           v-for="file in files?.data ?? []"
           :key="file.path"
           :ui="{ body: 'p-0 sm:p-0' }"
         >
           <template #header>
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
               <div class="flex min-w-0 flex-1 flex-col">
-                <span class="font-mono text-sm font-medium text-highlighted">{{ file.name }}</span>
+                <span class="flex items-center gap-2">
+                  <span class="truncate font-mono text-sm font-medium text-highlighted">{{ file.name }}</span>
+                  <UBadge
+                    v-if="isLpodDropIn(file.name)"
+                    label="lpod"
+                    color="neutral"
+                    variant="subtle"
+                    size="sm"
+                  />
+                  <UBadge
+                    v-else-if="isLocalDropIn(file.name)"
+                    label="Local"
+                    color="primary"
+                    variant="subtle"
+                    size="sm"
+                  />
+                </span>
                 <span class="truncate font-mono text-xs text-muted">{{ file.path }}</span>
               </div>
-              <UButton
-                label="Edit"
-                icon="i-lucide-pencil"
-                color="neutral"
-                variant="outline"
-                size="sm"
-                @click="editingFile = file"
-              />
+              <span
+                v-if="isLpodDropIn(file.name)"
+                class="text-xs text-muted"
+                >Written by lpod from this page's settings</span
+              >
+              <div
+                v-else
+                class="flex gap-2"
+              >
+                <UButton
+                  label="Edit"
+                  icon="i-lucide-pencil"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="onEditFile(file)"
+                />
+                <UButton
+                  v-if="dropInQuadlet(file.name)"
+                  label="Remove"
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="outline"
+                  size="sm"
+                  @click="removingDropIn = file.name"
+                />
+              </div>
             </div>
           </template>
 
@@ -764,6 +868,28 @@ const isRemoving = ref(false)
         :application="name"
         :file="editingFile"
       />
+
+      <ApplicationDropInModal
+        v-model:open="isEditingDropIn"
+        :environment="environment"
+        :application="name"
+        :quadlets="dropInQuadlets"
+        :file="editingDropIn"
+      />
+
+      <ConfirmModal
+        v-model:open="isRemovingDropIn"
+        :title="`Remove ${removingDropIn}?`"
+        description="Its keys no longer apply once the unit restarts."
+        confirm-label="Remove drop-in"
+        :processing="isRemovingDropInNow"
+        @confirm="onRemoveDropIn"
+      >
+        <USwitch
+          v-model="shouldRestartAfterRemoving"
+          :label="`Restart ${name} afterwards`"
+        />
+      </ConfirmModal>
 
       <SecretCreateModal
         v-if="summary"
