@@ -12,7 +12,7 @@ tags:
 A quick look at what Pods looks like.
 
 :::note
-Pods is still in development, so the screenshots may be out of date. The current version can look different.
+The screenshots can be a release or two behind, so the current version can look different.
 :::
 
 ## Overview
