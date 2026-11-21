@@ -6,14 +6,11 @@ tags:
     - documentation
     - index
 metadata:
-    type: App
+    kind: personal
     status: active
-    role: Containers
-    eyebrow: 'Podman Quadlet · Laravel · Inertia'
     desc: A self-hosted web UI for Podman Quadlet, made for homelabs.
-    runtime: 'Podman (Quadlet)'
-    licence: MIT
     image: https://raw.githubusercontent.com/francoism90/.github/main/assets/pods/overview-hero.webp
+    technologies: [Laravel, Inertia.js, Vue, Nuxt UI, Podman Quadlet]
 ---
 
 # Documentation

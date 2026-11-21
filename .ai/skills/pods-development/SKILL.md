@@ -13,7 +13,7 @@ metadata:
 
 # Pods development
 
-Pods is still in development. Read `docs/architecture.md` before you change how Pods talks to hosts, and `docs/roadmap.md` before you build a planned feature. The user documentation is in `docs/` (`manifest.md` for `pods.yml`, `proxy.md`, `ondemand.md`, `backups.md` and others), with front matter for foxws/laravel-docs (`title`, `section`, `order`, `tags`; the project's `metadata` on `docs/index.md`), so link between pages as `page.md`. The README is a short overview that links to them.
+Pods is still in development. Read `docs/architecture.md` before you change how Pods talks to hosts, and `docs/roadmap.md` before you build a planned feature. The user documentation is in `docs/` (`manifest.md` for `pods.yml`, `proxy.md`, `ondemand.md`, `backups.md` and others), with front matter for foxws/laravel-docs (`title`, `section`, `order`, `tags`; the project's `metadata` on `docs/index.md`, where `kind: personal` lists Pods as a project rather than a Composer package), so link between pages as `page.md`. The README is a short overview that links to them.
 
 ## How Pods reaches a host
 
