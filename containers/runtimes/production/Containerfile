@@ -103,11 +103,6 @@ RUN rm -rf node_modules .env
 
 FROM base AS production
 
-# Production serves the client-side build only: no SSR server runs, so
-# Inertia shouldn't try to reach one. A variable of the container wins over
-# .env.
-ENV INERTIA_SSR_ENABLED=false
-
 COPY --from=build --chown=docker:docker /app /app
 COPY --chmod=755 containers/runtimes/production/entrypoint.sh /usr/local/bin/entrypoint.sh
 
