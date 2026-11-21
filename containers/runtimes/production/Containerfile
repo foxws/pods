@@ -34,8 +34,9 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# The extensions beyond PHP's own that Octane, Reverb, the queue and Laravel use.
-RUN install-php-extensions bcmath intl opcache pcntl
+# The extensions beyond those the official image builds in (it has no
+# mbstring) that Octane, Reverb, the queue and Laravel use.
+RUN install-php-extensions bcmath intl mbstring opcache pcntl
 
 # The official image lets frankenphp bind ports below 1024 through a file
 # capability, which can't start in a container without capabilities
