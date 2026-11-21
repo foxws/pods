@@ -36,7 +36,15 @@ Still open for the optional per-host proxy (see [Proxy](proxy.md)):
 
 1. **Backups.** `backups` lists the volumes to leave out of "export every volume", and a dump and restore command for a database, run instead of exporting its volume. See [Volume backups and restores](#volume-backups-and-restores).
 2. **Linking to Git.** Pick the source from the repository's `pods.yml` in the "Link to Git" dialog, as the install page does, instead of typing its path.
-3. **Timers.** Edit a timer's schedule on the application page, kept over updates like a drop-in.
+3. **Timers.** Edit a timer's schedule on the application page, as a local drop-in (`APP-NAME.timer.d/schedule.local.conf`), so it's kept over updates. `lpod APP files` only lists Quadlets, and a timer is a plain systemd unit, so lpod has to list and write timer drop-ins too.
+
+## Drop-ins
+
+The application page adds, edits and removes drop-ins (see [Getting started](getting-started.md#changing-an-application-with-drop-ins)). Next:
+
+1. **Check before saving.** The Quadlet editor shows the generator's check as you type, but the drop-in dialog can't: `lpod quadlet check` only takes plain file names. It should also take `QUADLET.d/FILE.conf` and check it against the installed Quadlet, so a wrong section or a typo shows up before the restart.
+2. **On-demand suggestions.** `SuggestOnDemandSettings` leaves every drop-in out, so a port moved in a local drop-in isn't seen. It should read `*.local.conf` and only leave out lpod's own.
+3. **Drop-ins from a source.** Fetching from Git only takes plain Quadlet file names, so a repository's `x.container.d/*.conf` isn't installed. Open question: whether `podman quadlet install` takes `.d` directories, or lpod should write them after the install.
 
 ## Installing applications from a checkout
 
