@@ -25,6 +25,7 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 - **Updating Pods.** `install.sh` writes `~/.local/bin/pods-update`, which runs the newest release's `install.sh` (GitHub's releases API, or `PODS_REF`) with its options. A rerun keeps the setup it finds (`keep_setup()`): the port (`installed_port()`), on demand when `lpod pods ondemand status` says so (`--idle` and `--no-idle` change it), and an installed `pods-proxy.container` with the host of Pods' main route, without rewriting the routes, which belong to Pods after the first install. A new install option should be read back from the host the same way, so `pods-update` needs no options.
 - **Host facts.** `VerifyEnvironment` stores `lpod version --json` as the environment's `facts` (lpod, Podman and systemd versions, scope, user, hostname) and `last_seen_at`, which pages show instead of asking the host. It runs when a host is added, after Update lpod, daily through `pods:verify` (01:00, with `pods:sync`), and from Check again on `LpodVersionCard.vue` (`POST environments/{environment}/verification`, `EnvironmentVerificationController`, toast with the versions).
 - Podman 6+ and systemd only. Don't add Docker or Podman Compose paths.
+- Load the `quadlet` skill for how Quadlet keys, drop-ins and the systemd settings around them behave, before writing or suggesting unit content.
 
 ## Rules
 

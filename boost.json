@@ -42,6 +42,7 @@
         "spatie-security",
         "spatie-version-control",
         "health-checks-development",
-        "pods-development"
+        "pods-development",
+        "quadlet"
     ]
 }
