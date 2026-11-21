@@ -38,6 +38,18 @@ systemctl --user start pods-dev
 
 The first start builds the image from `containers/runtimes/development/Containerfile`, on the official FrankenPHP image with PHP 8.6, which takes a while. Add `BuildArg=PHP_VERSION=8.5` to `pods-dev.build` for another PHP version. The units publish no ports. Reach them through the Pods proxy: copy `containers/proxy/sites/pods-dev.Caddyfile` to `~/.config/pods-proxy/sites/`, and `containers/proxy/pods-proxy.container.d/pods-dev.conf` to `~/.config/containers/systemd/pods-proxy.container.d/` with your hostnames. Then set `APP_URL`, `VITE_HMR_HOST` and `REVERB_HOST` (with `REVERB_PORT=443` and `REVERB_SCHEME=https`) in `.env` to match, and restart the proxy. Without the proxy, publish the app with a drop-in instead (see the comment in `pods-dev.container`). Vite's hot reload then won't reach the browser.
 
+## VS Code Dev Containers
+
+`containers/devcontainer/devcontainer.json` is a config for the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), so you can develop Pods inside a container. This is separate from the units above, which run Pods as a service. It joins the `systemd-pods-dev` network, reaches the host as `host.containers.internal` (for `PODS_LOCAL_SSH_HOST`), and gives you PHP IntelliSense, debugging, a terminal and the Claude Code and Codex CLIs. Its image is the `devcontainer` stage of `containers/runtimes/development/Containerfile`: the development image plus Git, the GitHub CLI, Claude Code, Codex and Laravel LSP. The first start builds it, which takes a while. Symlink the config, so it stays up to date when you pull:
+
+```bash
+mkdir -p .devcontainer
+ln -sf ../containers/devcontainer/devcontainer.json .devcontainer/devcontainer.json
+code ~/projects/pods
+```
+
+To change it, for example to mount your Git or Claude Code login, copy it to `.devcontainer/devcontainer.json` instead and edit the copy. `.devcontainer/` isn't tracked by Git. `~/.claude.json` must exist as a file on your machine before the first launch; otherwise Podman creates an empty directory with that name. After changing it, run **Dev Containers: Rebuild Container**.
+
 ## Structure
 
 ```text
