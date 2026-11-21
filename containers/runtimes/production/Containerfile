@@ -11,7 +11,10 @@ FROM ${RUNTIME_IMAGE} AS production
 WORKDIR /app
 
 ENV PHP_CLI="php -d variables_order=EGPCS /app/artisan"
-ENV APP_COMMAND="${PHP_CLI} octane:frankenphp --host=0.0.0.0 --port=8000"
+# Octane's "auto" starts two workers per CPU core, each holding a booted
+# Laravel app. Pods has one owner, so four workers are plenty and keep its
+# idle memory low on hosts with many cores.
+ENV APP_COMMAND="${PHP_CLI} octane:frankenphp --host=0.0.0.0 --port=8000 --workers=4"
 
 # Pods reaches every host, the local one included, over SSH.
 RUN apt-get update \
