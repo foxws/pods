@@ -1,0 +1,41 @@
+{
+    "name": "pods-devcontainer",
+    "initializeCommand": "podman network create --ignore systemd-pods-dev",
+    // The "devcontainer" stage of the development image. The first start
+    // builds it, which takes a while; Rebuild Container builds it again.
+    "build": {
+        "dockerfile": "${localWorkspaceFolder}/containers/runtimes/development/Containerfile",
+        "context": "${localWorkspaceFolder}",
+        "target": "devcontainer",
+        "options": ["--ignorefile=${localWorkspaceFolder}/containers/runtimes/development/dockerignore"]
+    },
+    "remoteUser": "docker",
+    "containerUser": "docker",
+    "runArgs": [
+        "--security-opt=label=disable",
+        "--network=systemd-pods-dev",
+        "--userns=keep-id:uid=1000,gid=1000",
+        // Pods reaches the host it runs on over SSH, like every other host
+        "--add-host=host.containers.internal:host-gateway",
+        // An init reaps the SSH control masters Pods leaves running
+        "--init"
+    ],
+    "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind",
+    "workspaceFolder": "/app",
+    "mounts": [
+        // Uncomment the host folders you want in the container. Podman won't
+        // start the container if a source folder doesn't exist on your host.
+        //
+        // GitHub CLI login:
+        // "source=${localEnv:HOME}/.config/gh,target=/home/docker/.config/gh,type=bind",
+        // Other projects, e.g. packages you develop alongside this app:
+        // "source=${localEnv:HOME}/workspace,target=/workspace,type=bind",
+        // Claude Code login (create ~/.claude.json with "touch" first):
+        // "source=${localEnv:HOME}/.claude,target=/home/docker/.claude,type=bind",
+        // "source=${localEnv:HOME}/.claude.json,target=/home/docker/.claude.json,type=bind",
+        // OpenAI Codex CLI login:
+        // "source=${localEnv:HOME}/.codex,target=/home/docker/.codex,type=bind",
+        // SSH keys for Git, read-only:
+        "source=${localEnv:HOME}/.ssh,target=/home/docker/.ssh,type=bind,ro=true"
+    ]
+}
