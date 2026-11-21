@@ -6,15 +6,16 @@ on:
             - main
     release:
         types: [published]
-    # Weekly, the newest release is built again under the same tags, for
-    # Debian and PHP security updates. The units set AutoUpdate=registry, so
+    # Weekly, the latest stable release (or the newest pre-release while
+    # there's none) is built again under the same tags, for Debian and PHP
+    # security updates. The units set AutoUpdate=registry, so
     # "podman auto-update" picks it up without a new release.
     schedule:
         - cron: '0 4 * * 1'
     workflow_dispatch:
         inputs:
             rebuild-release:
-                description: Rebuild the newest release under its own tags, as the weekly run does
+                description: Rebuild the latest stable release under its own tags, as the weekly run does
                 type: boolean
                 default: false
 
@@ -42,7 +43,7 @@ jobs:
             prerelease: ${{ steps.pick.outputs.prerelease }}
 
         steps:
-            - name: Pick the newest release for a rebuild, or the event's ref
+            - name: Pick the release to rebuild, or the event's ref
               id: pick
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -55,12 +56,24 @@ jobs:
                     exit 0
                   fi
 
-                  release="$(gh release list --repo "${{ github.repository }}" --exclude-drafts --limit 1 --json tagName,isPrerelease --jq '.[0]')"
-                  tag="$(jq -r '.tagName' <<< "${release}")"
+                  # The latest stable release, which the major and "latest"
+                  # tags point at, or the newest pre-release while there's none.
+                  prerelease=false
+                  tag="$(gh release view --repo "${{ github.repository }}" --json tagName --jq '.tagName' 2>/dev/null || true)"
+
+                  if [ -z "${tag}" ]; then
+                    prerelease=true
+                    tag="$(gh release list --repo "${{ github.repository }}" --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // empty')"
+                  fi
+
+                  if [ -z "${tag}" ]; then
+                    echo "::error::There's no release to rebuild."
+                    exit 1
+                  fi
 
                   echo "ref=refs/tags/${tag}" >> "$GITHUB_OUTPUT"
                   echo "version=${tag}" >> "$GITHUB_OUTPUT"
-                  echo "prerelease=$(jq -r '.isPrerelease' <<< "${release}")" >> "$GITHUB_OUTPUT"
+                  echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
 
     build:
         name: Build (${{ matrix.platform }})

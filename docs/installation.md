@@ -59,7 +59,7 @@ It fetches that release's `install.sh` and runs it, which keeps the setup it fin
 
 Running a release's `install.sh` again with `curl` does the same, and installs `pods-update` on an install from before it existed.
 
-The image of the newest release is rebuilt every week with the latest Debian and PHP security updates, under the same tag. The units set `AutoUpdate=registry`, so `podman auto-update` (enable `podman-auto-update.timer` to run it daily) picks those up without a new release.
+The image of the latest stable release (the newest pre-release before 1.0) is rebuilt every week with the latest Debian and PHP security updates, under the same tags. The units set `AutoUpdate=registry`, so `podman auto-update` (enable `podman-auto-update.timer` to run it daily) picks those up without a new release.
 
 ### A hostname for Pods
 
