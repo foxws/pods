@@ -21,7 +21,7 @@ return [
     'pods' => [
         'lpod_binary' => env('PODS_LPOD_BINARY', 'lpod'),
         // The lpod release this Pods needs, which Update lpod installs; keep it the LPOD_REF of install.sh. A branch such as main installs that branch.
-        'lpod_version' => env('PODS_LPOD_VERSION', 'v4.0.0-rc.7'),
+        'lpod_version' => env('PODS_LPOD_VERSION', 'v4.0.0'),
         'cache_ttl' => (int) env('PODS_CACHE_TTL', 5),
         'ssh_directory' => env('PODS_SSH_DIRECTORY', storage_path('app/private/ssh')),
         // Seconds an SSH connection to a host stays open after its last command, for the next
