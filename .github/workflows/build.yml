@@ -6,10 +6,20 @@ on:
             - main
     release:
         types: [published]
+    # Weekly, the newest release is built again under the same tags, for
+    # Debian and PHP security updates. The units set AutoUpdate=registry, so
+    # "podman auto-update" picks it up without a new release.
+    schedule:
+        - cron: '0 4 * * 1'
     workflow_dispatch:
+        inputs:
+            rebuild-release:
+                description: Rebuild the newest release under its own tags, as the weekly run does
+                type: boolean
+                default: false
 
 concurrency:
-    group: docker-${{ github.workflow }}-${{ github.ref }}
+    group: docker-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
     cancel-in-progress: true
 
 env:
@@ -22,8 +32,39 @@ permissions:
     contents: read
 
 jobs:
+    release:
+        name: Pick the source
+        runs-on: ubuntu-latest
+        outputs:
+            ref: ${{ steps.pick.outputs.ref }}
+            rebuild: ${{ steps.pick.outputs.rebuild }}
+            version: ${{ steps.pick.outputs.version }}
+            prerelease: ${{ steps.pick.outputs.prerelease }}
+
+        steps:
+            - name: Pick the newest release for a rebuild, or the event's ref
+              id: pick
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  REBUILD: ${{ github.event_name == 'schedule' || inputs.rebuild-release == true }}
+              run: |
+                  echo "rebuild=${REBUILD}" >> "$GITHUB_OUTPUT"
+
+                  if [ "${REBUILD}" != "true" ]; then
+                    echo "ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+
+                  release="$(gh release list --repo "${{ github.repository }}" --exclude-drafts --limit 1 --json tagName,isPrerelease --jq '.[0]')"
+                  tag="$(jq -r '.tagName' <<< "${release}")"
+
+                  echo "ref=refs/tags/${tag}" >> "$GITHUB_OUTPUT"
+                  echo "version=${tag}" >> "$GITHUB_OUTPUT"
+                  echo "prerelease=$(jq -r '.isPrerelease' <<< "${release}")" >> "$GITHUB_OUTPUT"
+
     build:
         name: Build (${{ matrix.platform }})
+        needs: release
         runs-on: ${{ matrix.runner }}
         timeout-minutes: 30
         permissions:
@@ -42,6 +83,8 @@ jobs:
         steps:
             - name: Checkout code
               uses: actions/checkout@v7
+              with:
+                  ref: ${{ needs.release.outputs.ref }}
 
             - name: Install dockerignore
               run: cp containers/runtimes/production/dockerignore .dockerignore
@@ -61,7 +104,13 @@ jobs:
                   {
                     echo "args<<EOF"
                     echo "--target=production"
-                    echo "--cache-from=${CACHE_IMAGE}"
+                    # A rebuild of a release skips the layer cache, so apt and
+                    # the PHP extensions install their newest versions.
+                    if [ "${{ needs.release.outputs.rebuild }}" = "true" ]; then
+                      echo "--pull=always"
+                    else
+                      echo "--cache-from=${CACHE_IMAGE}"
+                    fi
                     echo "--cache-to=${CACHE_IMAGE}"
                     echo "EOF"
                   } >> "$GITHUB_OUTPUT"
@@ -100,7 +149,7 @@ jobs:
 
     merge:
         name: Merge & push manifest
-        needs: build
+        needs: [release, build]
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -124,12 +173,15 @@ jobs:
                   flavor: |
                       latest=false
                   tags: |
-                      type=ref,event=branch
-                      type=sha,format=long,prefix=commit-
+                      type=ref,event=branch,enable=${{ needs.release.outputs.rebuild != 'true' }}
+                      type=sha,format=long,prefix=commit-,enable=${{ needs.release.outputs.rebuild != 'true' }}
                       type=semver,pattern={{version}}
                       type=semver,pattern={{major}}.{{minor}}
                       type=semver,pattern={{major}}
-                      type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+                      type=semver,pattern={{version}},value=${{ needs.release.outputs.version }},enable=${{ needs.release.outputs.rebuild == 'true' }}
+                      type=semver,pattern={{major}}.{{minor}},value=${{ needs.release.outputs.version }},enable=${{ needs.release.outputs.rebuild == 'true' && needs.release.outputs.prerelease != 'true' }}
+                      type=semver,pattern={{major}},value=${{ needs.release.outputs.version }},enable=${{ needs.release.outputs.rebuild == 'true' && needs.release.outputs.prerelease != 'true' }}
+                      type=raw,value=latest,enable=${{ (github.event_name == 'release' && !github.event.release.prerelease) || (needs.release.outputs.rebuild == 'true' && needs.release.outputs.prerelease != 'true') }}
 
             - name: Create and push manifest list
               run: |

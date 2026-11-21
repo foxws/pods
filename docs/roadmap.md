@@ -9,7 +9,7 @@ tags:
 
 # Roadmap
 
-Pods is still in development. This is what's planned, roughly in order. Nothing here is a promise, and the order can change.
+This is what's planned after 1.0, roughly in order. Nothing here is a promise, and the order can change.
 
 ## Volume backups and restores
 

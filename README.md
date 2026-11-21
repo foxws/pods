@@ -12,8 +12,8 @@
 
 A self-hosted web UI for [Podman Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html), made for homelabs. Pods manages the applications, containers, pods, images, volumes, networks, secrets and journal of one or more Podman hosts, over SSH.
 
-> [!WARNING]
-> **Pods is still in development.** Expect breaking changes, incomplete features and rough edges. The lpod JSON contract, the database schema and the routes can change between commits, and some lpod commands have not been tested on a real Podman host yet. Don't point Pods at a host you can't afford to lose, and **back up your volumes yourself** (see [Backups](docs/backups.md)). Pods doesn't do that yet.
+> [!NOTE]
+> Upgrades within Pods 1.x keep your data: `pods-update` migrates the database and keeps your setup, and Pods 1.x stays on version 1 of lpod's JSON contract. An install has one owner. Pods exports volumes but doesn't restore them yet. See [Backups](docs/backups.md) to restore an archive on the host.
 
 ## Why Pods
 
