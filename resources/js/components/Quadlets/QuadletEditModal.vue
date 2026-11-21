@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import QuadletCheckStatus from '@/components/Quadlets/QuadletCheckStatus.vue'
 import FormModal from '@/components/Ui/FormModal.vue'
-import { useApplicationOperations } from '@/composables/applications'
 import { useQuadletCheck, useQuadletInstall } from '@/composables/quadlets'
 import type { EnvironmentData, QuadletFileData } from '@/types'
 import { computed, ref, watch } from 'vue'
@@ -33,8 +32,6 @@ const { result, checking } = useQuadletCheck(() => props.environment, edited)
 
 const { form, install } = useQuadletInstall(() => props.environment)
 
-const { run } = useApplicationOperations(() => props.environment)
-
 const isUnchanged = computed(() => content.value === props.file?.content)
 
 const contentError = computed(() => form.errors['files.0.content' as keyof typeof form.errors])
@@ -51,14 +48,9 @@ const onSubmit = (close: () => void): void => {
   form.start = false
   form.replace = true
   form.edit = true
+  form.restart = shouldRestart.value
 
-  install(() => {
-    close()
-
-    if (shouldRestart.value) {
-      run(props.application, 'restart')
-    }
-  })
+  install(() => close())
 }
 </script>
 

@@ -40,6 +40,7 @@ class QuadletController implements HasMiddleware
 
         $application = $request->string('application')->toString();
         $start = $request->boolean('start', true);
+        $edit = $request->boolean('edit');
         $previousManifest = $environment->installations()->firstWhere('application', $application)?->manifest();
 
         $installed = $this->toHost(
@@ -51,18 +52,32 @@ class QuadletController implements HasMiddleware
                 start: $start,
                 replace: $request->boolean('replace'),
                 source: $request->source(),
-                edit: $request->boolean('edit'),
+                edit: $edit,
             ),
-            success: __(':application installed', ['application' => $application]),
-            description: $start ? __('systemd is starting its units.') : __('Its units are ready to start.'),
-            failure: __(':application not installed', ['application' => $application]),
+            success: $edit ? __(':application saved', ['application' => $application]) : __(':application installed', ['application' => $application]),
+            description: match (true) {
+                $edit => __(':application picks the change up when it restarts.', ['application' => $application]),
+                $start => __('systemd is starting its units.'),
+                default => __('Its units are ready to start.'),
+            },
+            failure: $edit ? __(':application not saved', ['application' => $application]) : __(':application not installed', ['application' => $application]),
         );
 
         if (! $installed) {
             return back();
         }
 
-        if (! $request->boolean('edit')) {
+        // The edit is saved by now, so a failed restart says so rather than that it wasn't.
+        if ($edit && $request->boolean('restart')) {
+            $this->toHost(
+                fn () => $lpod->restart($environment, $application),
+                success: __(':application saved', ['application' => $application]),
+                description: __('systemd is restarting :application.', ['application' => $application]),
+                failure: __(':application saved, but it didn\'t restart', ['application' => $application]),
+            );
+        }
+
+        if (! $edit) {
             try {
                 $applyManifestTimers($environment, $application, $environment->installations()->firstWhere('application', $application)?->manifest(), $previousManifest);
             } catch (LpodException $exception) {

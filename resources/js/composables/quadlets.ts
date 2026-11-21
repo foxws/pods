@@ -43,6 +43,7 @@ export function useQuadletInstall(environment: MaybeRefOrGetter<EnvironmentData>
     replace: boolean
     source: InstallSourceInput | null
     edit: boolean
+    restart: boolean
     routes: RouteInput[]
   }>({
     application: '',
@@ -53,6 +54,7 @@ export function useQuadletInstall(environment: MaybeRefOrGetter<EnvironmentData>
     replace: false,
     source: null,
     edit: false,
+    restart: false,
     routes: [],
   })
 

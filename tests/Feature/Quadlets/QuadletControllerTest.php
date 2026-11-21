@@ -114,6 +114,46 @@ it('only updates the checksum of a file edited in Pods', function () {
         ->changes->toBe(['modified' => ['uptime-kuma-data.volume'], 'added' => [], 'removed' => []]);
 });
 
+it('restarts the application after an edit when asked, and says when only the restart failed', function (?HostResult $restart, string $type, string $title) {
+    $lpod = fakeLpod();
+
+    if ($restart !== null) {
+        $lpod->respond('uptime-kuma restart --no-block --json', $restart);
+    }
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => [$this->files[0]],
+        'start' => false,
+        'replace' => true,
+        'edit' => true,
+        'restart' => true,
+    ])
+        ->assertInertiaFlash('type', $type)
+        ->assertInertiaFlash('title', $title);
+
+    $lpod->assertRan(['quadlet', 'install', 'uptime-kuma', '--replace', '--stdin', '--json']);
+    $commands = collect($lpod->recorded())->pluck('arguments');
+    expect($commands->search(['uptime-kuma', 'restart', '--no-block', '--json']))
+        ->toBeGreaterThan($commands->search(['quadlet', 'install', 'uptime-kuma', '--replace', '--stdin', '--json']));
+})->with([
+    'restarted' => [null, 'success', 'uptime-kuma saved'],
+    'the restart failed' => [new HostResult(1, '', 'Unit uptime-kuma.service not found.'), 'error', 'uptime-kuma saved, but it didn\'t restart'],
+]);
+
+it('only restarts for an edit', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)->post(action([QuadletController::class, 'store'], $this->environment), [
+        'application' => 'uptime-kuma',
+        'files' => $this->files,
+        'start' => false,
+        'restart' => true,
+    ])->assertInertiaFlash('title', 'uptime-kuma installed');
+
+    expect(collect($lpod->recorded())->pluck('arguments')->contains(['uptime-kuma', 'restart', '--no-block', '--json']))->toBeFalse();
+});
+
 it('does not start tracking an application by editing one of its files', function () {
     fakeLpod();
 

@@ -39,6 +39,7 @@ class InstallQuadletsRequest extends QuadletFilesRequest
             'start' => ['boolean'],
             'replace' => ['boolean'],
             'edit' => ['boolean'],
+            'restart' => ['boolean', 'exclude_unless:edit,true'],
             'source' => ['nullable', 'array', 'prohibited_if_accepted:edit'],
             'source.repository' => ['required_with:source', 'string', 'max:2048'],
             'source.reference' => ['required_with:source', 'string', 'max:255'],
