@@ -73,6 +73,19 @@ resources/js/wayfinder
 skills-lock.json
 storage/**/*.php
 storage/debugbar/*
+# What a working copy keeps there: the SSH key, database, sessions and exports
+storage/app/backups
+storage/app/cache/*
+!storage/app/cache/.gitignore
+storage/app/private/*
+!storage/app/private/.gitignore
+storage/framework/cache/*
+!storage/framework/cache/.gitignore
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+storage/framework/testing/*
+!storage/framework/testing/.gitignore
+**/*.sqlite*
 storage/pail
 tests
 Thumbs.db

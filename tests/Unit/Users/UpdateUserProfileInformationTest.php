@@ -17,6 +17,7 @@ it('updates the user name and email', function (): void {
     $action->update($user, [
         'name' => 'New Name',
         'email' => 'new@example.com',
+        'current_password' => 'password',
     ]);
 
     $user->refresh();
@@ -24,6 +25,18 @@ it('updates the user name and email', function (): void {
     expect($user->name)->toBe('New Name');
     expect($user->email)->toBe('new@example.com');
 });
+
+it('refuses a new email without the current password', function (?string $password): void {
+    $user = User::factory()->create(['email' => 'mine@example.com']);
+
+    expect(fn () => (new UpdateUserProfileInformation)->update($user, [
+        'name' => $user->name,
+        'email' => 'new@example.com',
+        'current_password' => $password,
+    ]))->toThrow(ValidationException::class, 'Enter your current password to change your email address.');
+
+    expect($user->refresh()->email)->toBe('mine@example.com');
+})->with(['none' => null, 'a wrong one' => 'wrong-password']);
 
 it('allows resubmitting the same email without failing unique validation', function (): void {
     $user = User::factory()->create([

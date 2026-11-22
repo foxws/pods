@@ -27,6 +27,8 @@ class UpdateApplicationOnDemandRequest extends FormRequest
             // lpod gives the app the socket's port + 10000 on 127.0.0.1.
             'port' => ['required', 'integer', 'between:1,55535'],
             'app_port' => ['required', 'integer', 'between:1,65535'],
+            // Present, so leaving it out never means every address
+            'listen' => ['present', 'nullable', 'string', 'ip'],
             'idle_timeout' => ['required', 'string', 'max:32', 'regex:'.OnDemandSettingsData::TimeSpanPattern],
             'workers' => ['array', 'max:20', 'required_with:idle_container'],
             'workers.*' => ['string', 'distinct', 'regex:'.OnDemandSettingsData::ContainerPattern],
@@ -48,6 +50,7 @@ class UpdateApplicationOnDemandRequest extends FormRequest
     {
         return [
             'port.between' => __('The socket port must be 55535 or lower, since the app gets that port + 10000 on 127.0.0.1.'),
+            'listen.ip' => __('Use an IP address, such as 127.0.0.1, or leave it empty for every address.'),
             'idle_timeout.regex' => __('Use a systemd time span, such as 10min or 1h.'),
             'workers.required_with' => __('The idle check stops the workers, so pick at least one.'),
             'schedule_at.*.regex' => __('Use *:MM (every hour) or HH:MM (every day), in UTC.'),
@@ -61,6 +64,7 @@ class UpdateApplicationOnDemandRequest extends FormRequest
         $idleContainer = $this->string('idle_container')->toString();
         $idleUser = $this->string('idle_user')->toString();
         $schedule = $this->string('schedule')->toString();
+        $listen = $this->string('listen')->toString();
 
         /** @var list<string> $workers */
         $workers = array_values($this->array('workers'));
@@ -74,7 +78,7 @@ class UpdateApplicationOnDemandRequest extends FormRequest
         return new OnDemandSettingsData(
             port: $this->integer('port'),
             app_port: $this->integer('app_port'),
-            listen: null,
+            listen: $listen !== '' ? $listen : null,
             idle_timeout: $this->string('idle_timeout')->toString(),
             workers: $workers,
             idle_check: $idleContainer !== '' ? new OnDemandIdleCheckData(

@@ -17,6 +17,7 @@ const props = defineProps<{
 const form = useForm({
   port: null as number | null,
   app_port: null as number | null,
+  listen: '',
   idle_timeout: '10min',
   workers: [] as string[],
   idle_container: '',
@@ -49,6 +50,7 @@ watch(open, (isOpen) => {
   form.defaults({
     port: settings?.port ?? null,
     app_port: settings?.app_port ?? null,
+    listen: settings?.listen ?? '',
     idle_timeout: settings?.idle_timeout ?? '10min',
     workers: [...(settings?.workers ?? [])],
     idle_container: settings?.idle_check?.container ?? '',
@@ -77,7 +79,7 @@ const onSubmit = (close: () => void): void => {
   form
     .transform((data) => {
       if (!isLaravel.value) {
-        return { port: data.port, app_port: data.app_port, idle_timeout: data.idle_timeout }
+        return { port: data.port, app_port: data.app_port, listen: data.listen, idle_timeout: data.idle_timeout }
       }
 
       const hasIdleCheck = data.workers.length > 0 && data.idle_command.trim() !== ''
@@ -151,6 +153,19 @@ const onSubmit = (close: () => void): void => {
             />
           </UFormField>
         </div>
+
+        <UFormField
+          label="Listen address"
+          description="127.0.0.1 keeps the socket on the host, where the proxy can't wake the application. Empty is every address, so your network reaches the port unless the firewall blocks it."
+          :error="form.errors.listen"
+        >
+          <UInput
+            v-model="form.listen"
+            :model-modifiers="{ trim: true }"
+            placeholder="Every address"
+            class="w-full font-mono"
+          />
+        </UFormField>
 
         <UFormField
           label="Idle timeout"

@@ -2,8 +2,12 @@
 
 declare(strict_types=1);
 
+use Domain\Applications\Actions\SuggestOnDemandSettings;
+use Domain\Applications\DataObjects\ApplicationData;
+use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
+use Domain\Quadlets\DataObjects\ManifestData;
 use Domain\Users\Models\User;
 use Integrations\Ssh\HostResult;
 use Modules\Web\Applications\Controllers\ApplicationController;
@@ -182,6 +186,7 @@ it('turns on demand on for an application', function () {
         ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'immich']), [
             'port' => 2283,
             'app_port' => 2283,
+            'listen' => null,
             'idle_timeout' => '10min',
         ])
         ->assertRedirect()
@@ -197,6 +202,7 @@ it('passes the workers, idle check and scheduler of a Laravel application', func
         ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'hello']), [
             'port' => 8000,
             'app_port' => 8000,
+            'listen' => null,
             'idle_timeout' => '1h',
             'workers' => ['hello-horizon'],
             'idle_container' => 'hello-horizon',
@@ -225,6 +231,7 @@ it('refuses settings lpod would refuse or misread', function (array $settings, s
         ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'hello']), [
             'port' => 8000,
             'app_port' => 8000,
+            'listen' => null,
             'idle_timeout' => '10min',
             ...$settings,
         ])
@@ -232,6 +239,7 @@ it('refuses settings lpod would refuse or misread', function (array $settings, s
 
     $lpod->assertNothingRan();
 })->with([
+    'a listen address that is no IP address' => [['listen' => '--help'], 'listen'],
     'a socket port without room for the local port' => [['port' => 60000], 'port'],
     'an idle timeout that is no time span' => [['idle_timeout' => '--help'], 'idle_timeout'],
     'an idle check without workers' => [['idle_container' => 'hello-horizon', 'idle_command' => 'true'], 'workers'],
@@ -248,6 +256,7 @@ it('shows the error when lpod cannot turn on demand on', function () {
         ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'hello']), [
             'port' => 8000,
             'app_port' => 8000,
+            'listen' => null,
             'idle_timeout' => '10min',
         ])
         ->assertInertiaFlash('type', 'error')
@@ -270,7 +279,7 @@ it('forbids users who are not the owner to change on demand', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'hello']), ['port' => 8000, 'app_port' => 8000, 'idle_timeout' => '10min'])
+        ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'hello']), ['port' => 8000, 'app_port' => 8000, 'listen' => null, 'idle_timeout' => '10min'])
         ->assertForbidden();
 
     $this->actingAs($user)
@@ -279,3 +288,51 @@ it('forbids users who are not the owner to change on demand', function () {
 
     $lpod->assertNothingRan();
 });
+
+it('keeps the socket on the address it is given', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'immich']), [
+            'port' => 2283,
+            'app_port' => 2283,
+            'listen' => '127.0.0.1',
+            'idle_timeout' => '10min',
+        ])
+        ->assertInertiaFlash('type', 'success');
+
+    $lpod->assertRan(['immich', 'ondemand', 'enable', '--port', '2283', '--app-port', '2283', '--listen', '127.0.0.1', '--idle-timeout', '10min', '--json']);
+});
+
+it('refuses settings that leave the listen address out', function () {
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'immich']), ['port' => 2283, 'app_port' => 2283, 'idle_timeout' => '10min'])
+        ->assertSessionHasErrors('listen');
+
+    $lpod->assertNothingRan();
+});
+
+it('suggests the address the main unit publishes on', function (string $published, ?string $manifest, ?string $listen) {
+    $application = new ApplicationData(...[
+        ...ApplicationData::fromLpod(json_decode(lpodFixture('app-status'), true)['application'])->all(),
+        'kind' => 'container',
+        'unit' => 'hello.service',
+    ]);
+    $files = [new QuadletFileData('hello.container', '/units/hello.container', "[Container]\n{$published}")];
+
+    $suggestion = app(SuggestOnDemandSettings::class)($application, $files, $manifest === null ? null : ManifestData::fromYaml($manifest));
+
+    expect($suggestion->settings->listen)->toBe($listen);
+})->with([
+    'loopback' => ["PublishPort=127.0.0.1:8080:80\n", null, '127.0.0.1'],
+    'loopback over IPv6' => ["PublishPort=[::1]:8080:80\n", null, '::1'],
+    'loopback with a random port' => ["PublishPort=127.0.0.1::80/tcp\n", null, '127.0.0.1'],
+    'every address' => ["PublishPort=8080:80\n", null, null],
+    'every address, named' => ["PublishPort=0.0.0.0:8080:80\n", null, null],
+    'one of two on every address' => ["PublishPort=127.0.0.1:8080:80\nPublishPort=8443:443\n", null, null],
+    'nothing published' => ["ExposeHostPort=80\n", null, null],
+    'a pods.yml over the unit' => ["PublishPort=8080:80\n", "ondemand:\n  listen: 127.0.0.1\n", '127.0.0.1'],
+    'a pods.yml without an address' => ["PublishPort=127.0.0.1:8080:80\n", "ondemand:\n  port: 8080\n", '127.0.0.1'],
+]);

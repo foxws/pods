@@ -8,6 +8,7 @@ use Domain\Environments\Models\Environment;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Integrations\Ssh\Contracts\RunsHostCommands;
+use SensitiveParameter;
 
 class SshHostRunner implements RunsHostCommands
 {
@@ -15,7 +16,7 @@ class SshHostRunner implements RunsHostCommands
         protected SshIdentity $identity,
     ) {}
 
-    public function run(Environment $environment, array $arguments, ?string $input = null, int $timeout = 30): HostResult
+    public function run(Environment $environment, array $arguments, #[SensitiveParameter] ?string $input = null, int $timeout = 30): HostResult
     {
         $result = Process::timeout($timeout)
             ->input($input)

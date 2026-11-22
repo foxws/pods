@@ -7,6 +7,7 @@ namespace Domain\Users\Actions;
 use Domain\Users\Models\User;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
+use SensitiveParameter;
 
 /**
  * A new Pods instance has no owner, and its setup page creates one. So that whoever reaches
@@ -53,7 +54,7 @@ class OwnerSetup
     /**
      * Compares case-insensitively and ignores spaces, as people type codes from a terminal.
      */
-    public function matches(string $code): bool
+    public function matches(#[SensitiveParameter] string $code): bool
     {
         if (! $this->disk()->exists(self::Path)) {
             return false;

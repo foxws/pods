@@ -6,6 +6,7 @@ namespace Domain\Secrets\Actions;
 
 use Domain\Environments\Models\Environment;
 use Integrations\Lpod\LpodClient;
+use SensitiveParameter;
 
 class ReplaceSecret
 {
@@ -18,7 +19,7 @@ class ReplaceSecret
      *
      * @param  list<string>  $restart
      */
-    public function __invoke(Environment $environment, string $name, string $driver, string $value, array $restart = []): void
+    public function __invoke(Environment $environment, string $name, string $driver, #[SensitiveParameter] string $value, array $restart = []): void
     {
         $this->lpod->createSecret($environment, $name, $driver, $value, replace: true);
 

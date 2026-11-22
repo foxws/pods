@@ -6,6 +6,7 @@ namespace Domain\Secrets\Actions;
 
 use Domain\Environments\Models\Environment;
 use Integrations\Lpod\LpodClient;
+use SensitiveParameter;
 
 class CreateSecret
 {
@@ -23,7 +24,7 @@ class CreateSecret
         Environment $environment,
         string $name,
         string $driver,
-        string $value,
+        #[SensitiveParameter] string $value,
         array $attachments = [],
         bool $restart = false,
     ): void {

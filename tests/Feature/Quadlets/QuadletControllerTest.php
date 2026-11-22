@@ -460,6 +460,8 @@ it('forbids users who are not the owner', function () {
         ->post(action([QuadletController::class, 'store'], $this->environment), ['application' => 'uptime-kuma', 'files' => $this->files])
         ->assertForbidden();
 
+    // Someone else, with a session of their own
+    $this->flushSession();
     $this->actingAs(User::factory()->create())
         ->postJson(action(QuadletCheckController::class, $this->environment), ['files' => $this->files])
         ->assertForbidden();
@@ -576,4 +578,26 @@ it('refuses a pods.yml with timers lpod could not set up', function (string $man
     'two lines' => ["timers:\n  cron:\n    container: nextcloud-cron\n    on_calendar: \"hourly\\nOnBootSec=1\"\n", 'isn\'t a calendar event'],
     'one container twice' => ["timers:\n  a:\n    container: nextcloud-cron\n    on_calendar: hourly\n  b:\n    container: nextcloud-cron\n    on_calendar: daily\n", 'timers.a.container'],
     'invalid timeout' => ["timers:\n  cron:\n    container: nextcloud-cron\n    on_calendar: hourly\n    timeout_start_sec: forever\n", 'timers.cron.timeout_start_sec'],
+]);
+
+it('refuses a repository with credentials in its URL', function (string $repository) {
+    $lpod = fakeLpod();
+    $error = 'Leave credentials out of the URL.';
+
+    $this->actingAs($this->owner)
+        ->post(action(QuadletFetchController::class, $this->environment), ['repository' => $repository, 'reference' => 'main'])
+        ->assertInvalid(['repository' => $error]);
+
+    $this->actingAs($this->owner)
+        ->post(action([QuadletController::class, 'store'], $this->environment), [
+            'application' => 'uptime-kuma',
+            'files' => $this->files,
+            'source' => ['repository' => $repository, 'reference' => 'main'],
+        ])
+        ->assertInvalid(['source.repository' => $error]);
+
+    expect($lpod->recorded())->toBeEmpty();
+})->with([
+    'a token' => 'https://token@example.com/apps',
+    'a password over SSH' => 'ssh://git:password@example.com/apps',
 ]);

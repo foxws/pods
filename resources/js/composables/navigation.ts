@@ -16,7 +16,7 @@ import { usePage } from '@inertiajs/vue3'
 import type { CommandPaletteGroup, NavigationMenuItem } from '@nuxt/ui'
 import { computed } from 'vue'
 
-export type SettingsSection = 'account' | 'security' | 'general' | 'proxy'
+export type SettingsSection = 'account' | 'security' | 'general' | 'proxy' | 'catalog'
 
 export type NavigationLink = {
   label: string

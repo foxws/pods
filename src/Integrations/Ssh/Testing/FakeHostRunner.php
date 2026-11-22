@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Integrations\Ssh\Contracts\RunsHostCommands;
 use Integrations\Ssh\HostResult;
 use PHPUnit\Framework\Assert;
+use SensitiveParameter;
 
 /**
  * Answers lpod commands with canned responses, and records what was run.
@@ -35,7 +36,7 @@ class FakeHostRunner implements RunsHostCommands
         return $this;
     }
 
-    public function run(Environment $environment, array $arguments, ?string $input = null, int $timeout = 30): HostResult
+    public function run(Environment $environment, array $arguments, #[SensitiveParameter] ?string $input = null, int $timeout = 30): HostResult
     {
         $this->recorded[] = compact('environment', 'arguments', 'input');
 

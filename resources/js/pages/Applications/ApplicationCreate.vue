@@ -5,6 +5,7 @@ import HostError from '@/components/Environments/HostError.vue'
 import QuadletCheckStatus from '@/components/Quadlets/QuadletCheckStatus.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
+import { useNavigation } from '@/composables/navigation'
 import {
   useQuadletCheck,
   useQuadletInstall,
@@ -155,6 +156,12 @@ const chooseSource = (name: string | undefined): void => {
 
 const catalogEntry = ref<CatalogApplicationData | null>(null)
 const catalogSearch = ref('')
+const { settingsUrl } = useNavigation()
+
+// Two repositories can offer the same application, so a card then says where it's from.
+const hasSeveralRepositories = computed(
+  () => new Set(props.catalog?.data?.applications.map((entry) => entry.repository)).size > 1,
+)
 
 const catalogResults = computed(() => {
   const query = catalogSearch.value.trim().toLowerCase()
@@ -446,16 +453,34 @@ const serverErrors = computed(() =>
                 v-if="source === 'catalog' && !catalogEntry"
                 class="flex flex-col gap-3"
               >
-                <UInput
-                  v-model="catalogSearch"
-                  icon="i-lucide-search"
-                  placeholder="Search the catalog"
-                  aria-label="Search the catalog"
-                  class="w-full sm:w-80"
-                />
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <UInput
+                    v-model="catalogSearch"
+                    icon="i-lucide-search"
+                    placeholder="Search the catalog"
+                    aria-label="Search the catalog"
+                    class="w-full sm:w-80"
+                  />
+                  <UButton
+                    :to="settingsUrl('catalog')"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-lucide-settings"
+                    label="Manage repositories"
+                  />
+                </div>
                 <HostError
                   v-if="catalog?.error"
                   :error="catalog.error"
+                />
+                <UAlert
+                  v-if="catalog?.data?.failures.length"
+                  color="warning"
+                  variant="subtle"
+                  icon="i-lucide-cloud-off"
+                  title="Some repositories couldn't be read"
+                  :description="catalog.data.failures.join(' · ')"
+                  :ui="{ description: 'wrap-anywhere' }"
                 />
                 <UAlert
                   v-if="catalog?.data?.errors.length"
@@ -481,7 +506,7 @@ const serverErrors = computed(() =>
                 >
                   <li
                     v-for="entry in catalogResults"
-                    :key="entry.name"
+                    :key="`${entry.repository}#${entry.path}`"
                   >
                     <button
                       type="button"
@@ -504,6 +529,11 @@ const serverErrors = computed(() =>
                             .filter(Boolean)
                             .join(' · ')
                         }}</span>
+                        <span
+                          v-if="hasSeveralRepositories"
+                          class="font-mono text-xs break-all text-dimmed"
+                          >{{ entry.repository.replace('https://', '') }}</span
+                        >
                       </span>
                     </button>
                   </li>
@@ -572,11 +602,13 @@ const serverErrors = computed(() =>
                   <dt class="text-muted">Quadlets</dt>
                   <dd class="min-w-0 truncate font-mono text-xs leading-5">
                     <ULink
+                      v-if="catalogEntry.repository.startsWith('https://')"
                       :to="catalogEntry.repository"
                       target="_blank"
                       class="hover:underline"
                       >{{ catalogEntry.repository }}</ULink
                     >
+                    <span v-else>{{ catalogEntry.repository }}</span>
                     · {{ catalogEntry.reference }} · {{ catalogEntry.path }}/
                   </dd>
                 </dl>

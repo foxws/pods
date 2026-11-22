@@ -26,10 +26,12 @@ it('only shows the sections of the instance to a super-admin', function (string 
         ->get(action([SettingsController::class, 'show'], $section))
         ->assertForbidden();
 
+    // Someone else, with a session of their own
+    $this->flushSession();
     $this->actingAs(User::factory()->create()->assignRole('super-admin'))
         ->get(action([SettingsController::class, 'show'], $section))
         ->assertSuccessful();
-})->with(['general', 'proxy']);
+})->with(['general', 'proxy', 'catalog']);
 
 it('does not route unknown sections', function () {
     $this->actingAs(User::factory()->create())
