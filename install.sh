@@ -21,7 +21,7 @@ set -euo pipefail
 # The release this install.sh belongs to, and the lpod release it needs.
 # Set PODS_REF=main and LPOD_REF=main to follow development instead.
 PODS_REF="${PODS_REF:-v1.1.0}"
-LPOD_REF="${LPOD_REF:-v4.1.0}"
+LPOD_REF="${LPOD_REF:-v4.1.1}"
 
 REPOSITORY="https://github.com/foxws/pods"
 LPOD_REPOSITORY="https://github.com/foxws/lpod"
@@ -80,7 +80,7 @@ Usage: install.sh [options]
   --purge               With --uninstall, also remove Pods' data and its pods-env secret
   -h, --help            Show this help
 
-Environment: PODS_REF (default v1.1.0) and LPOD_REF (default v4.1.0) pick the
+Environment: PODS_REF (default v1.1.0) and LPOD_REF (default v4.1.1) pick the
 versions to install. PODS_OWNER_PASSWORD is the owner's password, with --name
 and --email, for unattended installs.
 
