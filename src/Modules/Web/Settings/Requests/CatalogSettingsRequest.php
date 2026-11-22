@@ -12,11 +12,6 @@ use Modules\Web\Quadlets\Requests\FetchQuadletsRequest;
 
 class CatalogSettingsRequest extends FormRequest
 {
-    /**
-     * An HTTPS URL with a user or token in it, which would be stored, shown and logged.
-     */
-    protected const string CredentialsPattern = '#^https://[^/]*@#';
-
     public function authorize(): bool
     {
         return Gate::allows('manage-application-settings');
@@ -30,7 +25,7 @@ class CatalogSettingsRequest extends FormRequest
         return [
             'repositories' => ['present', 'array', 'list', 'max:'.CatalogSettings::MaxRepositories],
             'repositories.*' => ['array'],
-            'repositories.*.repository' => [...FetchQuadletsRequest::repositoryRules(), 'not_regex:'.self::CredentialsPattern, 'distinct:strict'],
+            'repositories.*.repository' => [...FetchQuadletsRequest::repositoryRules(), 'distinct:strict'],
             'repositories.*.reference' => FetchQuadletsRequest::referenceRules(),
         ];
     }
@@ -52,8 +47,7 @@ class CatalogSettingsRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'repositories.*.repository.regex' => __('Use an https://, ssh:// or git@ repository URL.'),
-            'repositories.*.repository.not_regex' => __('Leave credentials out of the URL. For a private repository, use SSH and a key on each host.'),
+            ...FetchQuadletsRequest::repositoryMessages('repositories.*.repository'),
             'repositories.*.repository.distinct' => __('This repository is listed more than once.'),
         ];
     }

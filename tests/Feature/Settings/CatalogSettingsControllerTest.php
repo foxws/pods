@@ -58,6 +58,7 @@ it('refuses a repository a host should not clone', function (array $source, stri
     'another transport' => [['repository' => 'ext::sh -c id'], 'repository'],
     'plain HTTP' => [['repository' => 'http://example.com/apps'], 'repository'],
     'an option as the host' => [['repository' => 'ssh://-oProxyCommand=id/apps'], 'repository'],
+    'a password over SSH' => [['repository' => 'ssh://git:password@example.com/apps'], 'repository'],
     'a token' => [['repository' => 'https://token@example.com/apps'], 'repository'],
     'a user and password' => [['repository' => 'https://user:password@example.com/apps'], 'repository'],
     'no branch or tag' => [['reference' => ''], 'reference'],
