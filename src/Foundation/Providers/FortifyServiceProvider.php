@@ -90,10 +90,15 @@ class FortifyServiceProvider extends ServiceProvider
      */
     protected function configureResetLinks(): static
     {
-        ResetPassword::createUrlUsing(fn (CanResetPassword $user, string $token): string => rtrim(config()->string('app.url'), '/').route('password.reset', [
-            'token' => $token,
-            'email' => $user->getEmailForPasswordReset(),
-        ], absolute: false));
+        ResetPassword::createUrlUsing(function (CanResetPassword $user, string $token): string {
+            // Not absolute: that takes the host from the request, which anyone can forge
+            $path = route('password.reset', [
+                'token' => $token,
+                'email' => $user->getEmailForPasswordReset(),
+            ], absolute: false);
+
+            return rtrim(config()->string('app.url'), '/').$path;
+        });
 
         return $this;
     }
