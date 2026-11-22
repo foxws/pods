@@ -4,7 +4,7 @@
 # Node.js, pnpm, the SSH client and Playwright's browser deps. Pass
 # --build-arg PHP_VERSION=8.5 (or add BuildArg= to pods-dev.build) for
 # another PHP version.
-ARG PHP_VERSION=8.6
+ARG PHP_VERSION=8.5
 ARG NODE_VERSION=26
 
 FROM docker.io/library/node:${NODE_VERSION}-trixie-slim AS node
