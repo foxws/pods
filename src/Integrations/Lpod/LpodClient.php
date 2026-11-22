@@ -641,14 +641,14 @@ class LpodClient
      * The applications of a catalog repository: every directory at its root with a pods.yml.
      * Kept for a few minutes, because the host clones the repository to read them.
      */
-    public function catalog(Environment $environment, string $repository, string $reference): CatalogData
+    public function catalog(Environment $environment, string $repository, string $reference, int $timeout): CatalogData
     {
         $key = 'catalog.'.hash('xxh128', "{$repository}#{$reference}");
 
         return CatalogData::fromLpod(Cache::flexible(
             $this->cacheKey($environment, $key),
             [300, 3600],
-            fn (): array => $this->json($environment, ['quadlet', 'catalog', $repository, '--ref', $reference, '--json'], timeout: 120),
+            fn (): array => $this->json($environment, ['quadlet', 'catalog', $repository, '--ref', $reference, '--json'], timeout: $timeout),
         ), $repository, $reference);
     }
 

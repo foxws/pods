@@ -124,6 +124,13 @@ export type ProxyDefaults = {
 }
 
 /**
+ * Foundation\Settings\CatalogSettings: the repositories Install application offers applications from.
+ */
+export type CatalogSettings = {
+  repositories: { repository: string; reference: string }[]
+}
+
+/**
  * The fields of a Proxy form, as ProxySettingsFields edits them.
  */
 export type ProxySettingsFormValues = {

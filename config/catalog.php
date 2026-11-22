@@ -7,21 +7,13 @@ declare(strict_types=1);
 | Application Catalog
 |--------------------------------------------------------------------------
 |
-| Git repositories the Install application page offers applications from.
-| Every directory at a repository's root with a pods.yml is one application,
-| described by that pods.yml (its label, description, author, icon, notes
-| and sources). The host clones the repository, like any other fetch.
+| The repositories the Install application page offers applications from
+| are settings (Foundation\Settings\CatalogSettings), edited under
+| Settings, Catalog. Only what's pinned to a release of Pods is kept here.
 |
 */
 
 return [
-
-    'repositories' => [
-        [
-            'repository' => 'https://github.com/foxws/quadlets',
-            'reference' => 'main',
-        ],
-    ],
 
     /*
     |--------------------------------------------------------------------------

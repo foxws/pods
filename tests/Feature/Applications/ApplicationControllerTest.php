@@ -5,8 +5,14 @@ declare(strict_types=1);
 use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
+use Foundation\Settings\CatalogSettings;
+use Illuminate\Contracts\Process\ProcessResult;
+use Illuminate\Process\Exceptions\ProcessTimedOutException;
+use Integrations\Ssh\Contracts\RunsHostCommands;
 use Integrations\Ssh\HostResult;
 use Modules\Web\Applications\Controllers\ApplicationController;
+use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyTimeoutException;
+use Symfony\Component\Process\Process;
 
 beforeEach(function () {
     $this->owner = User::factory()->create()->assignRole('super-admin');
@@ -189,6 +195,114 @@ it('shows why the catalog could not be read', function () {
                 ->whereType('catalog.error', 'string')));
 });
 
+it('reads every repository in the settings, and names the one behind an unreadable pods.yml', function () {
+    saveCatalog('https://example.com/first', 'https://example.com/second');
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps('catalog', fn ($reload) => $reload
+                ->has('catalog.data.applications', 4)
+                ->where('catalog.data.applications.0.repository', 'https://example.com/first')
+                ->where('catalog.data.applications.2.repository', 'https://example.com/second')
+                ->where('catalog.data.failures', [])
+                ->where('catalog.data.errors.1', "https://example.com/second, scratch: pods.yml is ignored: it's version 2, but Pods reads version 1. Update Pods.")));
+
+    $lpod->assertRan(['quadlet', 'catalog', 'https://example.com/first', '--ref', 'main', '--json']);
+    $lpod->assertRan(['quadlet', 'catalog', 'https://example.com/second', '--ref', 'main', '--json']);
+});
+
+it('keeps the other repositories when one cannot be read', function () {
+    saveCatalog('https://example.com/broken', 'https://example.com/working');
+    fakeLpod()->respond('quadlet catalog https://example.com/broken *', new HostResult(1, '', 'fatal: repository not found'));
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps('catalog', fn ($reload) => $reload
+                ->has('catalog.data.applications', 2)
+                ->where('catalog.data.applications.0.repository', 'https://example.com/working')
+                ->where('catalog.data.failures', ['lpod quadlet catalog https://example.com/broken --ref main --json failed: fatal: repository not found'])
+                ->where('catalog.error', null)));
+});
+
+it('shows one error when the host is down for every repository', function () {
+    saveCatalog('https://example.com/first', 'https://example.com/second');
+    fakeLpod()->respond('quadlet catalog *', new HostResult(255, '', 'Connection refused'));
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps('catalog', fn ($reload) => $reload
+                ->where('catalog.data', null)
+                ->where('catalog.error', "Could not connect to {$this->environment->target()}: Connection refused")));
+});
+
+it('gives a hanging repository its share of the time, and reads the next one', function () {
+    $this->freezeSecond();
+    saveCatalog('https://example.com/hanging', 'https://example.com/working');
+    $timeouts = [];
+
+    $this->mock(RunsHostCommands::class)
+        ->shouldReceive('run')
+        ->andReturnUsing(function ($environment, array $arguments, ?string $input, int $timeout) use (&$timeouts): HostResult {
+            $timeouts[$arguments[2]] = $timeout;
+
+            if ($arguments[2] === 'https://example.com/hanging') {
+                $this->travel($timeout)->seconds();
+
+                throw new ProcessTimedOutException(
+                    new SymfonyTimeoutException((new Process(['ssh']))->setTimeout($timeout), SymfonyTimeoutException::TYPE_GENERAL),
+                    Mockery::mock(ProcessResult::class),
+                );
+            }
+
+            return new HostResult(0, lpodFixture('quadlet-catalog'), '');
+        });
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps('catalog', fn ($reload) => $reload
+                ->has('catalog.data.applications', 2)
+                ->where('catalog.data.failures', ["https://example.com/hanging didn't answer within 38 seconds. Reload the page to try again."])));
+
+    expect($timeouts)->toBe(['https://example.com/hanging' => 38, 'https://example.com/working' => 37]);
+});
+
+it('leaves out an application whose pods.yml cannot be sent to the page', function (string $manifest) {
+    fakeLpod()->respond('quadlet catalog *', json_encode(['contract' => 1, 'applications' => [
+        ['path' => 'broken', 'manifest' => $manifest],
+        ['path' => 'hello', 'manifest' => 'label: Hello'],
+    ]]));
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps('catalog', fn ($reload) => $reload
+                ->has('catalog.data.applications', 1)
+                ->where('catalog.data.applications.0.name', 'hello')
+                ->has('catalog.data.errors', 1)));
+})->with([
+    'binary text' => 'label: !!binary //4=',
+    'a binary version' => 'version: !!binary //4=',
+]);
+
+it('asks the host for nothing when the catalog has no repositories', function () {
+    saveCatalog();
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'create'], $this->environment))
+        ->assertInertia(fn ($page) => $page
+            ->loadDeferredProps('catalog', fn ($reload) => $reload
+                ->where('catalog.data.applications', [])
+                ->where('catalog.error', null)));
+
+    $lpod->assertNothingRan();
+});
+
 it('removes an application and the data it owns once confirmed', function () {
     $lpod = fakeLpod();
 
@@ -245,3 +359,13 @@ it('forbids users who are not the owner to remove an application', function () {
 
     $lpod->assertNothingRan();
 });
+
+function saveCatalog(string ...$repositories): void
+{
+    $settings = app(CatalogSettings::class);
+    $settings->repositories = array_map(
+        fn (string $repository): array => ['repository' => $repository, 'reference' => 'main'],
+        $repositories,
+    );
+    $settings->save();
+}

@@ -41,13 +41,24 @@ class InstallQuadletsRequest extends QuadletFilesRequest
             'edit' => ['boolean'],
             'restart' => ['boolean', 'exclude_unless:edit,true'],
             'source' => ['nullable', 'array', 'prohibited_if_accepted:edit'],
-            'source.repository' => ['required_with:source', 'string', 'max:2048'],
+            'source.repository' => FetchQuadletsRequest::repositoryRules('required_with:source'),
             'source.reference' => ['required_with:source', 'string', 'max:255'],
             'source.path' => ['nullable', 'string', 'max:1024'],
             'source.commit' => ['nullable', 'string', 'regex:/^[0-9a-f]{4,64}$/'],
             'source.manifest' => ['nullable', 'string', 'max:65536'],
             'source.manifest_path' => ['nullable', 'string', 'max:1024'],
             ...RouteData::rules('routes'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            ...parent::messages(),
+            ...FetchQuadletsRequest::repositoryMessages('source.repository'),
         ];
     }
 

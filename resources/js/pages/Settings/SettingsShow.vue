@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import SettingsAccountForm from '@/components/Settings/SettingsAccountForm.vue'
 import SettingsApplicationForm from '@/components/Settings/SettingsApplicationForm.vue'
+import SettingsCatalogForm from '@/components/Settings/SettingsCatalogForm.vue'
 import SettingsLayout from '@/components/Settings/SettingsLayout.vue'
 import SettingsProxyForm from '@/components/Settings/SettingsProxyForm.vue'
 import SettingsSecurityForm from '@/components/Settings/SettingsSecurityForm.vue'
 import { Head } from '@inertiajs/vue3'
 import { computed, type Component } from 'vue'
 
-type Section = 'account' | 'security' | 'general' | 'proxy'
+type Section = 'account' | 'security' | 'general' | 'proxy' | 'catalog'
 
 const props = defineProps<{
   section: Section
@@ -33,6 +34,11 @@ const sections: Record<Section, { title: string; description: string; component:
     title: 'Proxy',
     description: 'Defaults for the Pods proxy on your hosts, and the domain hostnames are suggested under.',
     component: SettingsProxyForm,
+  },
+  catalog: {
+    title: 'Catalog',
+    description: 'The Git repositories Install application offers applications from.',
+    component: SettingsCatalogForm,
   },
 }
 

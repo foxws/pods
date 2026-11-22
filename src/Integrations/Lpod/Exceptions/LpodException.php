@@ -64,6 +64,21 @@ class LpodException extends RuntimeException
         return new self("{$application} has no container from {$quadlet}.container on the host.");
     }
 
+    public static function catalogTimedOut(string $repository, int $seconds): self
+    {
+        return new self("{$repository} didn't answer within {$seconds} seconds. Reload the page to try again.");
+    }
+
+    /**
+     * Every catalog repository failed, often for the same reason, such as a host that is down.
+     *
+     * @param  list<string>  $failures
+     */
+    public static function catalogUnavailable(array $failures): self
+    {
+        return new self(implode(' · ', array_unique($failures)));
+    }
+
     public static function invalidJson(string $command): self
     {
         return new self("lpod {$command} did not return valid JSON. Is lpod 4 or newer installed on the host?");

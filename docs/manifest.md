@@ -108,4 +108,8 @@ The applications in [foxws/quadlets](https://github.com/foxws/quadlets) each hav
 
 ## Catalog
 
-The Install application page lists the applications of the repositories in `config/catalog.php`, [foxws/quadlets](https://github.com/foxws/quadlets) by default. Every directory at such a repository's root with a `pods.yml` is one application, such as `mariadb/pods.yml` with `production` and `development` sources next to it. The host clones the repository to read them, and Pods keeps the list for a few minutes.
+The Install application page lists the applications of the repositories under **Settings**, **Catalog**, [foxws/quadlets](https://github.com/foxws/quadlets) by default. Every directory at such a repository's root with a `pods.yml` is one application, such as `mariadb/pods.yml` with `production` and `development` sources next to it. The host clones the repository to read them, and Pods keeps the list for a few minutes.
+
+The owner adds, changes and removes repositories there (up to 10), each an `https://`, `ssh://` or `git@` URL with a branch or tag. The list is the same for every host. For a private repository, use an SSH URL, and give each host's user a key that can read it and the Git server's host key: Pods doesn't take credentials in an HTTPS URL, and git can't ask for them. A repository that can't be read is named on the Install application page, next to the applications of the others. Removing a repository doesn't touch what was installed from it.
+
+Only add repositories you trust: their Quadlets and setup steps run as your user on the host.
