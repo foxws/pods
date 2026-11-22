@@ -10,6 +10,7 @@ use Domain\Containers\DataObjects\HostContainerData;
 use Domain\Quadlets\DataObjects\ManifestSetupStepData;
 use Integrations\Lpod\Exceptions\LpodException;
 use Integrations\Lpod\LpodClient;
+use SensitiveParameter;
 
 class RunSetupStep
 {
@@ -26,7 +27,7 @@ class RunSetupStep
      *
      * @throws LpodException when the container isn't there, or lpod couldn't run the command
      */
-    public function __invoke(Installation $installation, ManifestSetupStepData $step, array $values): ContainerExecResultData
+    public function __invoke(Installation $installation, ManifestSetupStepData $step, #[SensitiveParameter] array $values): ContainerExecResultData
     {
         $environment = $installation->environment;
 

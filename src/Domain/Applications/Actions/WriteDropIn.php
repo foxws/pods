@@ -8,6 +8,7 @@ use Domain\Applications\DataObjects\QuadletFileData;
 use Domain\Environments\Models\Environment;
 use Integrations\Lpod\Exceptions\LpodException;
 use Integrations\Lpod\LpodClient;
+use SensitiveParameter;
 
 class WriteDropIn
 {
@@ -23,7 +24,7 @@ class WriteDropIn
      *
      * @throws LpodException
      */
-    public function __invoke(Environment $environment, string $application, string $name, string $content): QuadletFileData
+    public function __invoke(Environment $environment, string $application, string $name, #[SensitiveParameter] string $content): QuadletFileData
     {
         $file = $this->lpod->writeFile($environment, $application, $name, $content);
 

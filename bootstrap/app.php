@@ -93,8 +93,12 @@ return Application::configure(basePath: $basePath)
         $middleware->redirectGuestsTo(fn () => route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Secret values are never stored, not even as old input after a failed validation
-        $exceptions->dontFlash(['value', 'secrets']);
+        // Secret values are never stored, not even as old input after a failed validation. Files and
+        // drop-ins can hold them too, and so can a repository URL that was refused for its credentials
+        $exceptions->dontFlash([
+            'value', 'secrets', 'inputs', 'dns_token', 'code', 'recovery_code', 'token',
+            'files', 'content', 'source', 'repository', 'repositories',
+        ]);
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
