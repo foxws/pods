@@ -38,8 +38,9 @@ it('keeps a secret out of the stack trace when the host fails', function () {
         }
     });
 
-    // As on a host without Pods' php.ini
+    // As on a host without a php.ini, where traces show the first 15 characters of each argument
     $ignoresArguments = ini_set('zend.exception_ignore_args', '0');
+    $argumentLength = ini_set('zend.exception_string_param_max_len', '15');
     $trace = '';
 
     try {
@@ -48,6 +49,7 @@ it('keeps a secret out of the stack trace when the host fails', function () {
         $trace = $exception->getTraceAsString();
     } finally {
         ini_set('zend.exception_ignore_args', (string) $ignoresArguments);
+        ini_set('zend.exception_string_param_max_len', (string) $argumentLength);
     }
 
     expect($trace)->toContain('db-password')->not->toContain('hunter2');
