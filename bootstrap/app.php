@@ -41,15 +41,15 @@ return Application::configure(basePath: $basePath)
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust Proxies configuration
+        // Whom to trust is in config/trustedproxy.php. X-Forwarded-Host is left out: a client could choose the host
         $middleware->trustProxies(
-            at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR |
-                Request::HEADER_X_FORWARDED_HOST |
                 Request::HEADER_X_FORWARDED_PORT |
-                Request::HEADER_X_FORWARDED_PROTO |
-                Request::HEADER_X_FORWARDED_AWS_ELB,
+                Request::HEADER_X_FORWARDED_PROTO,
         );
+
+        // A new password signs every other session out
+        $middleware->authenticateSessions();
 
         // Global middleware aliases for convenient usage in routes and controllers
         $middleware->alias([
@@ -93,8 +93,12 @@ return Application::configure(basePath: $basePath)
         $middleware->redirectGuestsTo(fn () => route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Secret values are never stored, not even as old input after a failed validation
-        $exceptions->dontFlash(['value', 'secrets']);
+        // Secret values are never stored, not even as old input after a failed validation. Files and
+        // drop-ins can hold them too, and so can a repository URL that was refused for its credentials
+        $exceptions->dontFlash([
+            'value', 'secrets', 'inputs', 'dns_token', 'code', 'recovery_code', 'token',
+            'files', 'content', 'source', 'repository', 'repositories',
+        ]);
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

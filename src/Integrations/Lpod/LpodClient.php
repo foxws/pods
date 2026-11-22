@@ -40,6 +40,7 @@ use Integrations\Lpod\Exceptions\UnsupportedCommandException;
 use Integrations\Lpod\Exceptions\UnsupportedContractException;
 use Integrations\Ssh\Contracts\RunsHostCommands;
 use Integrations\Ssh\HostResult;
+use SensitiveParameter;
 
 /**
  * Talks to lpod on an environment's host, through its JSON contract.
@@ -117,7 +118,7 @@ class LpodClient
      * @param  array{mode: string, email: ?string, domain: ?string, dns_provider: ?string, resolvers: ?string, http_port: int, https_port: ?int, image: ?string}  $settings
      * @return string|null where lpod kept the hand-written Caddyfile it replaced
      */
-    public function updateProxySettings(Environment $environment, array $settings, ?string $dnsToken = null): ?string
+    public function updateProxySettings(Environment $environment, array $settings, #[SensitiveParameter] ?string $dnsToken = null): ?string
     {
         $input = $dnsToken !== null ? [...$settings, 'dns_token' => $dnsToken] : $settings;
 
@@ -212,7 +213,7 @@ class LpodClient
      *
      * @throws LpodException
      */
-    public function writeFile(Environment $environment, string $application, string $name, string $content): QuadletFileData
+    public function writeFile(Environment $environment, string $application, string $name, #[SensitiveParameter] string $content): QuadletFileData
     {
         $payload = $this->json($environment, [$application, 'files', 'write', $name, '--stdin', '--json'], input: $content);
 
@@ -250,7 +251,7 @@ class LpodClient
         ];
     }
 
-    public function createSecret(Environment $environment, string $name, string $driver, string $value, bool $replace = false): void
+    public function createSecret(Environment $environment, string $name, string $driver, #[SensitiveParameter] string $value, bool $replace = false): void
     {
         $this->json($environment, [
             'secret', 'create', $name, '--driver', $driver, ...($replace ? ['--replace'] : []), '--stdin', '--json',
@@ -394,7 +395,7 @@ class LpodClient
      *
      * @param  list<string>  $command
      */
-    public function exec(Environment $environment, string $container, array $command, ?string $input = null, ?string $user = null, ?string $workdir = null, int $timeout = 600): ContainerExecResultData
+    public function exec(Environment $environment, string $container, array $command, #[SensitiveParameter] ?string $input = null, ?string $user = null, ?string $workdir = null, int $timeout = 600): ContainerExecResultData
     {
         return ContainerExecResultData::fromLpod($this->json($environment, [
             'container', $container, 'exec',
@@ -798,7 +799,7 @@ class LpodClient
      * @param  list<string>  $arguments
      * @return array<string, mixed>
      */
-    protected function json(Environment $environment, array $arguments, ?string $input = null, int $timeout = 30): array
+    protected function json(Environment $environment, array $arguments, #[SensitiveParameter] ?string $input = null, int $timeout = 30): array
     {
         $command = implode(' ', $arguments);
 
@@ -824,7 +825,7 @@ class LpodClient
      *
      * @param  list<string>  $arguments
      */
-    protected function execute(Environment $environment, array $arguments, ?string $input = null, int $timeout = 30): HostResult
+    protected function execute(Environment $environment, array $arguments, #[SensitiveParameter] ?string $input = null, int $timeout = 30): HostResult
     {
         return $this->verify($environment, $arguments, $this->runner->run($environment, $arguments, $input, $timeout));
     }

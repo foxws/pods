@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Quadlets\DataObjects;
 
+use SensitiveParameter;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
@@ -54,7 +55,7 @@ class ManifestSetupStepData extends Data
      * @param  array<string, string>  $values
      * @return list<string>
      */
-    public function arguments(array $values): array
+    public function arguments(#[SensitiveParameter] array $values): array
     {
         $arguments = preg_split('/\s+/', trim($this->command), flags: PREG_SPLIT_NO_EMPTY) ?: [];
 
@@ -72,7 +73,7 @@ class ManifestSetupStepData extends Data
      *
      * @param  array<string, string>  $values
      */
-    public function stdin(array $values): ?string
+    public function stdin(#[SensitiveParameter] array $values): ?string
     {
         foreach ($this->inputs as $input) {
             if ($input->option === null) {

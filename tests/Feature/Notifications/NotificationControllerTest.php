@@ -123,6 +123,8 @@ it('does not touch the notifications of another user', function () {
         ->put(action([NotificationController::class, 'update'], $notification->id), ['read' => true])
         ->assertNotFound();
 
+    // Someone else, with a session of their own
+    $this->flushSession();
     $this->actingAs(User::factory()->create())
         ->delete(action([NotificationController::class, 'destroy'], $notification->id))
         ->assertNotFound();

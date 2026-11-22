@@ -28,6 +28,8 @@ Pods installs `containers/proxy` from this repository as the application `pods-p
 
 Once the proxy is installed, Pods manages the routes: the install page asks for a hostname for each route an application's `pods.yml` names, and the Routes card on the application page adds, changes and removes them. lpod writes them to `~/.config/pods-proxy/sites/`, with a drop-in that joins the application's networks, then reloads Caddy, or restarts the proxy when it joins a new network. The main route of an on-demand application goes to its socket, so a request wakes it.
 
+**Forwarded headers.** Pods believes `X-Forwarded-For`, `-Port` and `-Proto` from private addresses only (`TRUSTED_PROXIES` in the `pods-env` secret picks others), and never `X-Forwarded-Host`, so a proxy in front has to pass the `Host` header on (Caddy does, nginx needs `proxy_set_header Host $host;`). Links in password reset mails use `APP_URL`, as passkeys do, so set it to the address you reach Pods at.
+
 To install it by hand instead:
 
 ```bash

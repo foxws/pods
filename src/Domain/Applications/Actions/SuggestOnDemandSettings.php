@@ -15,7 +15,8 @@ use Illuminate\Support\Str;
 /**
  * The on-demand settings to offer for an application. Its stored pods.yml says them in its ondemand
  * section. Without one, Pods reads its Quadlet files: the port its main unit listens on, and for a
- * Laravel application, its queue workers and its scheduler.
+ * Laravel application, its queue workers and its scheduler. The socket stays on the address the main
+ * unit publishes on, unless the pods.yml names one.
  */
 class SuggestOnDemandSettings
 {
@@ -70,7 +71,7 @@ class SuggestOnDemandSettings
             settings: new OnDemandSettingsData(
                 port: null,
                 app_port: $main !== null ? $this->appPort($main->content) : null,
-                listen: null,
+                listen: $main !== null ? $this->listenAddress($main->content) : null,
                 idle_timeout: '10min',
                 workers: array_map(strval(...), $workers),
                 idle_check: null,
@@ -96,7 +97,7 @@ class SuggestOnDemandSettings
             settings: new OnDemandSettingsData(
                 port: $settings->port,
                 app_port: $settings->app_port ?? ($main !== null ? $this->appPort($main->content) : null),
-                listen: $settings->listen,
+                listen: $settings->listen ?? ($main !== null ? $this->listenAddress($main->content) : null),
                 idle_timeout: $settings->idle_timeout,
                 workers: $settings->workers,
                 idle_check: $settings->idle_check,
@@ -132,6 +133,29 @@ class SuggestOnDemandSettings
         }
 
         return null;
+    }
+
+    /**
+     * The address the application publishes on, as in PublishPort=127.0.0.1:9393:8000, or null for every address:
+     * when a port is published on all of them, or none is published.
+     */
+    protected function listenAddress(string $content): ?string
+    {
+        preg_match_all('/^\s*PublishPort\s*=\s*(\S+)/m', $content, $matches);
+
+        $addresses = [];
+
+        foreach ($matches[1] as $published) {
+            $address = preg_match('/^\[?(.+?)\]?:\d*:\d+/', $published, $parts) === 1 ? $parts[1] : '';
+
+            if (filter_var($address, FILTER_VALIDATE_IP) === false || in_array($address, ['0.0.0.0', '::'], true)) {
+                return null;
+            }
+
+            $addresses[] = $address;
+        }
+
+        return $addresses[0] ?? null;
     }
 
     /**

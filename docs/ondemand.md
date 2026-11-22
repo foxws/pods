@@ -22,6 +22,8 @@ An application you don't use all day doesn't have to run all day. Turn on **On d
 
 The first request after a sleep waits for the application to start, so it's best for applications that start in a few seconds. **Start** becomes **Wake** while an application sleeps, and **Stop** puts it to sleep. Pods suggests the ports, workers and scheduler from the Quadlet files, or from the `ondemand:` section of its [`pods.yml`](manifest.md), and everything stays editable.
 
+**The listen address** starts as the one `pods.yml` names (`ondemand.listen`), or else the one the application publishes on, so an application on `127.0.0.1` stays there. The proxy can't reach a socket on a loopback address: routes then go to the container, and only work while the application is awake. Clear the address to let the proxy wake it, and block the port in the firewall, since the socket then listens on every address.
+
 **Behind the proxy**, the main route of an on-demand application goes to its socket, so opening its hostname wakes it. Routes with `via: main` go the same way. Other routes, such as an admin UI on a container of its own, get an error while the application sleeps, until it's woken another way. The proxy itself always runs.
 
 The same units work without Pods, from a terminal: `lpod APP ondemand enable --port PORT --app-port PORT` (see `lpod APP ondemand` in lpod's `docs/commands.md`).
