@@ -15,7 +15,7 @@ This is what's planned after 1.0, roughly in order. Nothing here is a promise, a
 
 Pods exports volumes (see [Backups](backups.md)), but doesn't restore them yet. Next:
 
-1. **lpod.** `lpod volume import NAME --stdin [--stop] --json` reads an archive into `podman volume import`, creates the volume first when it doesn't exist, and refuses `device` and NFS volumes, like `volume export`.
+1. **lpod.** `lpod volume import NAME --stdin [--stop] --json` replaces a volume's contents with an archive, drafted in [lpod#56](https://github.com/foxws/lpod/pull/56) and not yet tried with real Podman. It can't just call `podman volume import`, which merges: files newer than the archive would stay among the restored ones, such as a database's write-ahead log. It checks the whole archive first, for its end marker too (`tar` lists some cut-off archives without an error), sets the old contents aside and puts them back when anything fails. Try it on a rootless host with SELinux before it's released.
 2. **Restore.** An import starts from an archive Pods made, or one the owner uploads. It replaces the volume's contents, so the UI asks for confirmation, shows which applications it stops, and offers to export the current contents first. It runs in `pods-queue` like an export, streaming the archive over SSH from the backups disk, and sends the same kind of notification.
 
 Open questions:
