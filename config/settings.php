@@ -1,5 +1,6 @@
 <?php
 
+use Foundation\Settings\CatalogSettings;
 use Foundation\Settings\GeneralSettings;
 use Foundation\Settings\ProxySettings;
 use Spatie\LaravelSettings\SettingsCasts\DateTimeInterfaceCast;
@@ -14,6 +15,7 @@ return [
      * put them (manually) here.
      */
     'settings' => [
+        CatalogSettings::class,
         GeneralSettings::class,
         ProxySettings::class,
     ],

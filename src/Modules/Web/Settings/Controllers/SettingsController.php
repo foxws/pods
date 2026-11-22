@@ -18,7 +18,7 @@ class SettingsController implements HasMiddleware
     /**
      * @var list<string>
      */
-    public const array Sections = ['account', 'security', 'general', 'proxy'];
+    public const array Sections = ['account', 'security', 'general', 'proxy', 'catalog'];
 
     public static function middleware(): array
     {
@@ -50,7 +50,7 @@ class SettingsController implements HasMiddleware
 
     protected function render(string $section, ?Environment $environment = null): Response
     {
-        if (in_array($section, ['general', 'proxy'], true)) {
+        if (in_array($section, ['general', 'proxy', 'catalog'], true)) {
             Gate::authorize('manage-application-settings');
         }
 

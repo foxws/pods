@@ -56,6 +56,8 @@ Page → Inertia controller in `src/Modules/Web` → action in `src/Domain/*/Act
 
 ## pods.yml (ManifestData)
 
+Catalog repositories are `CatalogSettings` (Settings, Catalog; `CatalogSettingsController`, admins only), seeded with foxws/quadlets by a settings migration. `config('catalog')` only has the release-pinned proxy source. They're third-party input: `ListCatalog` shares one time budget between them and puts a repository it can't read in `CatalogData::$failures` (it only throws when all fail), so a bad one doesn't hide the others. Key catalog entries by repository and path, since names repeat.
+
 `Domain\Quadlets\DataObjects\ManifestData::fromYaml($yaml, $directory)` parses and validates it; invalid manifests throw `InvalidManifestException` and are ignored (shown as `manifest_error`). Keys:
 
 - Catalog metadata (`name`, `label`, `description`, `author`, `icon`, `category`, `website`, `repository`, `notes`) and `sources` (paths relative to the manifest's directory).

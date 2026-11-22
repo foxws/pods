@@ -39,6 +39,7 @@ const groups = computed<NavigationMenuItem[][]>(() => [
       ? [
           link('General', 'i-lucide-sliders-horizontal', settingsUrl('general')),
           link('Proxy', 'i-lucide-globe', settingsUrl('proxy')),
+          link('Catalog', 'i-lucide-layout-grid', settingsUrl('catalog')),
         ]
       : []),
     link('Hosts', 'i-lucide-server', environmentsIndex.url()),

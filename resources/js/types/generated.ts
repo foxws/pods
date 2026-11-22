@@ -41,6 +41,7 @@ export type CatalogApplicationData = {
 export type CatalogData = {
   applications: CatalogApplicationData[]
   errors: string[]
+  failures: string[]
 }
 export type ContainerData = {
   name: string

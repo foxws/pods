@@ -11,7 +11,8 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * The applications of one or more catalog repositories. An application whose pods.yml Pods
- * can't read is left out and named in $errors, so the rest can still be installed.
+ * can't read is left out and named in $errors, and a repository the host can't read in
+ * $failures, so the rest can still be installed.
  */
 #[TypeScript]
 class CatalogData extends Data
@@ -19,10 +20,12 @@ class CatalogData extends Data
     /**
      * @param  list<CatalogApplicationData>  $applications
      * @param  list<string>  $errors
+     * @param  list<string>  $failures
      */
     public function __construct(
         public array $applications,
         public array $errors,
+        public array $failures = [],
     ) {}
 
     /**
@@ -42,7 +45,14 @@ class CatalogData extends Data
             try {
                 $manifest = ManifestData::fromYaml((string) $entry['manifest'], $path);
             } catch (InvalidManifestException $exception) {
-                $errors[] = "{$path}: {$exception->getMessage()}";
+                $errors[] = mb_scrub("{$path}: {$exception->getMessage()}");
+
+                continue;
+            }
+
+            // YAML's !!binary and .inf parse, but would fail the JSON response with every repository in it.
+            if (json_encode($manifest->toArray()) === false) {
+                $errors[] = "{$path}: pods.yml is ignored: it has values that can't be shown as text.";
 
                 continue;
             }
@@ -57,6 +67,17 @@ class CatalogData extends Data
         }
 
         return new self($applications, $errors);
+    }
+
+    /**
+     * Names the repository in each error, for a catalog of several.
+     */
+    public function withSourceInErrors(string $repository): self
+    {
+        return new self(
+            $this->applications,
+            array_map(fn (string $error): string => "{$repository}, {$error}", $this->errors),
+        );
     }
 
     public function merge(self $other): self
