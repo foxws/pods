@@ -130,6 +130,8 @@ it('forbids users who are not the owner', function () {
         ->post(action(ContainerOperationController::class, [$this->environment, 'immich-server', 'stop']))
         ->assertForbidden();
 
+    // Someone else, with a session of their own
+    $this->flushSession();
     $this->actingAs(User::factory()->create())
         ->get(action([ContainerController::class, 'index'], $this->environment))
         ->assertForbidden();

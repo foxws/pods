@@ -39,7 +39,7 @@ HealthRetries=3
 
 [Service]
 ExecStartPre=/usr/bin/mkdir -p %h/.config/pods-proxy/sites
-ExecStartPre=/bin/sh -c 'test -f %h/.config/pods-proxy/Caddyfile || printf "%%s\\n" "# Pods proxy. Each application adds its routes in sites/." "{" "    admin unix//config/admin.sock|0600" "    servers {" "        trusted_proxies static private_ranges" "    }" "}" "" "import sites/*.Caddyfile" > %h/.config/pods-proxy/Caddyfile'
+ExecStartPre=/bin/sh -c 'test -f %h/.config/pods-proxy/Caddyfile || printf "%%s\\n" "# Pods proxy. Each application adds its routes in sites/." "{" "    admin unix//config/admin.sock|0600" "}" "" "import sites/*.Caddyfile" > %h/.config/pods-proxy/Caddyfile'
 Restart=always
 RestartSec=5
 TimeoutStartSec=300

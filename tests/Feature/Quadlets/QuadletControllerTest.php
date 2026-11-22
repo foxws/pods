@@ -460,6 +460,8 @@ it('forbids users who are not the owner', function () {
         ->post(action([QuadletController::class, 'store'], $this->environment), ['application' => 'uptime-kuma', 'files' => $this->files])
         ->assertForbidden();
 
+    // Someone else, with a session of their own
+    $this->flushSession();
     $this->actingAs(User::factory()->create())
         ->postJson(action(QuadletCheckController::class, $this->environment), ['files' => $this->files])
         ->assertForbidden();

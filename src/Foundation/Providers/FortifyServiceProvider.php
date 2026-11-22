@@ -9,7 +9,9 @@ use Domain\Users\Actions\ResetUserPassword;
 use Domain\Users\Actions\UpdateUserPassword;
 use Domain\Users\Actions\UpdateUserProfileInformation;
 use Foundation\Settings\GeneralSettings;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -34,6 +36,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         $this->configureActions();
         $this->configureRateLimits();
+        $this->configureResetLinks();
         $this->configureViews();
     }
 
@@ -50,9 +53,25 @@ class FortifyServiceProvider extends ServiceProvider
     protected function configureRateLimits(): static
     {
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $account = Str::transliterate(Str::lower($request->string(Fortify::username())->value()));
 
-            return Limit::perMinute(5)->by($throttleKey);
+            // The address can be spoofed behind the on-demand socket, so the account has a limit of its own
+            return [
+                Limit::perMinute(5)->by("address:{$account}|{$request->ip()}"),
+                Limit::perMinute(20)->by("account:{$account}"),
+            ];
+        });
+
+        // Fortify's routes that check the password of the signed in user
+        RateLimiter::for('password-checks', function (Request $request) {
+            $checksPassword = $request->routeIs('password.confirm.store', 'user-password.update')
+                || ($request->routeIs('user-profile-information.update') && $request->input('email') !== $request->user()?->email);
+
+            if (! $checksPassword) {
+                return Limit::none();
+            }
+
+            return Limit::perMinute(6)->by($request->user()?->getAuthIdentifier() ?? $request->ip());
         });
 
         RateLimiter::for('two-factor', function (Request $request) {
@@ -62,6 +81,19 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('passkeys', function (Request $request) {
             return Limit::perMinute(10)->by($request->user()?->getAuthIdentifier() ?? $request->ip());
         });
+
+        return $this;
+    }
+
+    /**
+     * Reset links are mailed, so their host is APP_URL's and never the request's, which anyone can choose.
+     */
+    protected function configureResetLinks(): static
+    {
+        ResetPassword::createUrlUsing(fn (CanResetPassword $user, string $token): string => rtrim(config()->string('app.url'), '/').route('password.reset', [
+            'token' => $token,
+            'email' => $user->getEmailForPasswordReset(),
+        ], absolute: false));
 
         return $this;
     }
