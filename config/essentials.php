@@ -14,6 +14,7 @@ use Foxws\Essentials\Configurables\ModelShouldBeStrict;
 use Foxws\Essentials\Configurables\PreventStrayRequests;
 use Foxws\Essentials\Configurables\ProhibitDestructiveCommands;
 use Foxws\Essentials\Configurables\ResourceWithoutWrapping;
+use Foxws\Essentials\Configurables\SetTrustedProxies;
 use Spatie\Tags\Tag;
 
 return [
@@ -42,7 +43,22 @@ return [
         PreventStrayRequests::class,
         ProhibitDestructiveCommands::class,
         ResourceWithoutWrapping::class,
+        SetTrustedProxies::class,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Whose X-Forwarded-For, -Port and -Proto headers Pods believes: addresses
+    | or networks, separated by commas. The Pods proxy reaches it from a
+    | private address, through Podman's network or the on-demand socket.
+    | X-Forwarded-Host is never trusted.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES', 'private_ranges'),
 
     /*
     |--------------------------------------------------------------------------
