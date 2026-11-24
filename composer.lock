@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1e89710f72231ddbbcc31115d21211d4",
+    "content-hash": "7719841fe0dcba23354ebce75daf8bc7",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -910,16 +910,16 @@
         },
         {
             "name": "foxws/laravel-ddd",
-            "version": "2.0.0",
+            "version": "2.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/foxws/laravel-ddd.git",
-                "reference": "d0c8eda1161e6969b4315946e9798708d542141f"
+                "reference": "83f434d097df9e37e76b4474d99a836034b9a3ab"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/foxws/laravel-ddd/zipball/d0c8eda1161e6969b4315946e9798708d542141f",
-                "reference": "d0c8eda1161e6969b4315946e9798708d542141f",
+                "url": "https://api.github.com/repos/foxws/laravel-ddd/zipball/83f434d097df9e37e76b4474d99a836034b9a3ab",
+                "reference": "83f434d097df9e37e76b4474d99a836034b9a3ab",
                 "shasum": ""
             },
             "require": {
@@ -973,7 +973,7 @@
             ],
             "support": {
                 "issues": "https://github.com/foxws/laravel-ddd/issues",
-                "source": "https://github.com/foxws/laravel-ddd/tree/2.0.0"
+                "source": "https://github.com/foxws/laravel-ddd/tree/2.0.1"
             },
             "funding": [
                 {
@@ -981,21 +981,21 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-19T09:50:29+00:00",
-            "published-time": "2026-11-19T09:58:02+00:00"
+            "time": "2026-11-22T20:44:04+00:00",
+            "published-time": "2026-11-23T09:21:01+00:00"
         },
         {
             "name": "foxws/laravel-essentials",
-            "version": "3.0.0",
+            "version": "3.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/foxws/laravel-essentials.git",
-                "reference": "66e486368b9c3e24ae8e4f8a93d88d6a72c8ecc5"
+                "reference": "d68e59e3511fe0b56295a4ff9618bf92b1f68d89"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/foxws/laravel-essentials/zipball/66e486368b9c3e24ae8e4f8a93d88d6a72c8ecc5",
-                "reference": "66e486368b9c3e24ae8e4f8a93d88d6a72c8ecc5",
+                "url": "https://api.github.com/repos/foxws/laravel-essentials/zipball/d68e59e3511fe0b56295a4ff9618bf92b1f68d89",
+                "reference": "d68e59e3511fe0b56295a4ff9618bf92b1f68d89",
                 "shasum": ""
             },
             "require": {
@@ -1053,7 +1053,7 @@
             ],
             "support": {
                 "issues": "https://github.com/foxws/laravel-essentials/issues",
-                "source": "https://github.com/foxws/laravel-essentials/tree/3.0.0"
+                "source": "https://github.com/foxws/laravel-essentials/tree/3.1.0"
             },
             "funding": [
                 {
@@ -1061,8 +1061,8 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-22T15:53:26+00:00",
-            "published-time": "2026-11-22T15:59:41+00:00"
+            "time": "2026-11-22T17:26:50+00:00",
+            "published-time": "2026-11-22T17:28:08+00:00"
         },
         {
             "name": "foxws/laravel-pwa",
@@ -1149,21 +1149,21 @@
         },
         {
             "name": "foxws/laravel-scout-builder",
-            "version": "2.0.0",
+            "version": "2.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/foxws/laravel-scout-builder.git",
-                "reference": "8d10abfb84583a6370b44120b265530fea36bd89"
+                "reference": "64875a93766bea16e3eecd3490bfb25462715e45"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/foxws/laravel-scout-builder/zipball/8d10abfb84583a6370b44120b265530fea36bd89",
-                "reference": "8d10abfb84583a6370b44120b265530fea36bd89",
+                "url": "https://api.github.com/repos/foxws/laravel-scout-builder/zipball/64875a93766bea16e3eecd3490bfb25462715e45",
+                "reference": "64875a93766bea16e3eecd3490bfb25462715e45",
                 "shasum": ""
             },
             "require": {
                 "illuminate/contracts": "^13.0",
-                "laravel/scout": "^10.0||^11.0",
+                "laravel/scout": "^11.10",
                 "php": "^8.5",
                 "spatie/laravel-package-tools": "^1.16"
             },
@@ -1216,7 +1216,7 @@
             ],
             "support": {
                 "issues": "https://github.com/foxws/laravel-scout-builder/issues",
-                "source": "https://github.com/foxws/laravel-scout-builder/tree/2.0.0"
+                "source": "https://github.com/foxws/laravel-scout-builder/tree/2.1.0"
             },
             "funding": [
                 {
@@ -1224,8 +1224,8 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-19T09:46:41+00:00",
-            "published-time": "2026-11-19T09:58:21+00:00"
+            "time": "2026-11-22T21:05:35+00:00",
+            "published-time": "2026-11-23T09:21:00+00:00"
         },
         {
             "name": "fruitcake/php-cors",
@@ -1786,16 +1786,16 @@
         },
         {
             "name": "inertiajs/inertia-laravel",
-            "version": "v3.7.0",
+            "version": "v3.8.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/inertiajs/inertia-laravel.git",
-                "reference": "9d3f9060c1614565eb4d3a3208015ed01de347bb"
+                "reference": "ee6aa7a7cb0dc384573abec561a96fea4dc64af9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/inertiajs/inertia-laravel/zipball/9d3f9060c1614565eb4d3a3208015ed01de347bb",
-                "reference": "9d3f9060c1614565eb4d3a3208015ed01de347bb",
+                "url": "https://api.github.com/repos/inertiajs/inertia-laravel/zipball/ee6aa7a7cb0dc384573abec561a96fea4dc64af9",
+                "reference": "ee6aa7a7cb0dc384573abec561a96fea4dc64af9",
                 "shasum": ""
             },
             "require": {
@@ -1813,7 +1813,7 @@
                 "laravel/pint": "^1.16",
                 "mockery/mockery": "^1.3.3",
                 "orchestra/testbench": "^9.2|^10.0|^11.0",
-                "phpunit/phpunit": "^11.5|^12.0"
+                "phpunit/phpunit": "^11.5|^12.0|^13.0"
             },
             "suggest": {
                 "ext-pcntl": "Recommended when running the Inertia SSR server via the `inertia:start-ssr` artisan command."
@@ -1852,10 +1852,10 @@
             ],
             "support": {
                 "issues": "https://github.com/inertiajs/inertia-laravel/issues",
-                "source": "https://github.com/inertiajs/inertia-laravel/tree/v3.7.0"
+                "source": "https://github.com/inertiajs/inertia-laravel/tree/v3.8.0"
             },
-            "time": "2026-11-02T10:29:10+00:00",
-            "published-time": "2026-11-02T10:45:07+00:00"
+            "time": "2026-11-22T20:06:01+00:00",
+            "published-time": "2026-11-23T20:34:06+00:00"
         },
         {
             "name": "jetbrains/phpstorm-stubs",

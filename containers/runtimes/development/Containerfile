@@ -35,8 +35,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # The extensions of the production image, plus Xdebug (off until
-# XDEBUG_MODE is set) and Redis for the Valkey container
-RUN install-php-extensions @composer bcmath intl mbstring opcache pcntl redis xdebug
+# XDEBUG_MODE is set), Redis for the Valkey container and sockets
+# for Pest's browser plugin
+RUN install-php-extensions @composer bcmath intl mbstring opcache pcntl redis sockets xdebug
 
 # Install additional PHP extensions if specified
 RUN if [ -n "$PHP_EXTENSIONS" ]; then \
