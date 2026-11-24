@@ -16,12 +16,18 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class PinQueryBuilder extends Builder
 {
-    public function ofType(PinType $type): self
+    /**
+     * @return $this
+     */
+    public function ofType(PinType $type): static
     {
         return $this->where('type', $type);
     }
 
-    public function on(Environment $environment): self
+    /**
+     * @return $this
+     */
+    public function on(Environment $environment): static
     {
         return $this->whereBelongsTo($environment);
     }

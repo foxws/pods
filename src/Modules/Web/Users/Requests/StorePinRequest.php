@@ -34,8 +34,11 @@ class StorePinRequest extends FormRequest
         ];
     }
 
+    /**
+     * The validated type, which `rules()` requires.
+     */
     public function pinType(): PinType
     {
-        return $this->enum('type', PinType::class);
+        return PinType::from($this->validated('type'));
     }
 }
