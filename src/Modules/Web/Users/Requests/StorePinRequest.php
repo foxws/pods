@@ -6,6 +6,7 @@ namespace Modules\Web\Users\Requests;
 
 use Domain\Environments\Models\Environment;
 use Domain\Users\Enums\PinType;
+use Domain\Users\Models\Pin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -17,7 +18,7 @@ class StorePinRequest extends FormRequest
         /** @var Environment $environment */
         $environment = $this->route('environment');
 
-        return Gate::allows('view', $environment);
+        return Gate::allows('view', $environment) && Gate::allows('create', Pin::class);
     }
 
     /**
