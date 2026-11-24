@@ -41,7 +41,7 @@ import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/
 import { isTransitioning } from '@/utils/status'
 import { Head, Link, router } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
@@ -185,23 +185,18 @@ const { run } = useApplicationOperations(() => props.environment)
 
 const { pin, unpin } = usePins(() => props.environment)
 
-const isPinned = ref(props.pinned !== null)
+/** The pin lives in the `pinned` prop, which pinning and unpinning update right away. */
+const isPinned = computed({
+  get: () => props.pinned !== null,
+  set: (shouldPin) => {
+    if (shouldPin && !props.pinned) {
+      pin('application', props.name)
+    }
 
-watch(
-  () => props.pinned,
-  (pinned) => {
-    isPinned.value = pinned !== null
+    if (!shouldPin && props.pinned) {
+      unpin(props.pinned)
+    }
   },
-)
-
-watch(isPinned, (shouldPin) => {
-  if (shouldPin && !props.pinned) {
-    pin('application', props.name)
-  }
-
-  if (!shouldPin && props.pinned) {
-    unpin(props.pinned)
-  }
 })
 
 const isRemoving = ref(false)
