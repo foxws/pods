@@ -13,8 +13,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->registerTelescope();
         $this->registerHostGateway();
+        $this->registerTelescope();
     }
 
     public function boot(): void
