@@ -9,10 +9,10 @@ use Domain\Users\Models\User;
 use Foxws\ScoutBuilder\AllowedSort;
 use Foxws\ScoutBuilder\ScoutBuilder;
 use Illuminate\Container\Attributes\CurrentUser;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Gate;
+use Modules\Api\Users\Requests\SearchUsersRequest;
 use Spatie\LaravelData\PaginatedDataCollection;
 
 class UserController implements HasMiddleware
@@ -30,10 +30,8 @@ class UserController implements HasMiddleware
      *
      * @return PaginatedDataCollection<array-key, UserData>
      */
-    public function index(Request $request): PaginatedDataCollection
+    public function index(SearchUsersRequest $request): PaginatedDataCollection
     {
-        Gate::authorize('viewAny', User::class);
-
         $users = ScoutBuilder::for(User::class, $request)
             ->allowedSorts(
                 AllowedSort::latest('newest', 'created_at'),

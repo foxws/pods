@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
+use Domain\Users\Models\Pin;
 use Integrations\Ssh\HostResult;
 
 beforeEach(function () {
@@ -72,6 +73,28 @@ it('forgets an application that was removed outside Pods', function () {
     $this->assertModelMissing($installation);
     $lpod->assertRan(['apps', '--json']);
     expect(collect($lpod->recorded())->pluck('arguments')->all())->not->toContain(['nextcloud', 'files', '--json']);
+});
+
+it('forgets the pins of applications removed outside Pods, on a host without installations', function () {
+    $removed = Pin::factory()->for($this->environment)->application('nextcloud')->create();
+    $kept = Pin::factory()->for($this->environment)->application('immich')->create();
+    fakeLpod();
+
+    $this->artisan('pods:sync')
+        ->expectsOutputToContain('podman-01: 1 pins of removed applications forgotten.')
+        ->assertSuccessful();
+
+    $this->assertModelMissing($removed);
+    $this->assertModelExists($kept);
+});
+
+it('keeps the pins of a host it cannot reach', function () {
+    $pin = Pin::factory()->for($this->environment)->application('nextcloud')->create();
+    fakeLpod()->respond('apps --json', new HostResult(255, '', 'ssh: connect to host podman-01 port 22: Connection refused'));
+
+    $this->artisan('pods:sync')->assertFailed();
+
+    $this->assertModelExists($pin);
 });
 
 it('keeps the installations of a host it cannot reach', function () {

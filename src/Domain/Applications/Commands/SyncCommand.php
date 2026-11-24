@@ -8,6 +8,7 @@ use Domain\Applications\Actions\SyncInstallation;
 use Domain\Applications\DataObjects\ApplicationData;
 use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
+use Domain\Users\Enums\PinType;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Integrations\Lpod\Exceptions\LpodException;
@@ -27,7 +28,7 @@ class SyncCommand extends Command
     /**
      * @var string
      */
-    protected $description = 'Check the applications Pods installed for files changed or removed outside Pods';
+    protected $description = 'Check the applications Pods installed for files changed or removed outside Pods, and forget pins of removed applications';
 
     public function handle(LpodClient $lpod, SyncInstallation $syncInstallation): int
     {
@@ -40,6 +41,12 @@ class SyncCommand extends Command
     {
         try {
             $applications = array_map(fn (ApplicationData $application): string => $application->name, $lpod->applications($environment));
+
+            $unpinned = $environment->pins()->ofType(PinType::Application)->whereNotIn('name', $applications)->delete();
+
+            if ($unpinned > 0) {
+                info("{$environment->name}: {$unpinned} pins of removed applications forgotten.");
+            }
 
             $checked = 0;
 
@@ -85,7 +92,7 @@ class SyncCommand extends Command
         $search = $this->argument('environment');
 
         return Environment::query()
-            ->whereHas('installations')
+            ->where(fn ($query) => $query->has('installations')->orHas('pins'))
             ->when($search, fn ($query) => $query->where(fn ($query) => $query->where('name', $search)->orWhere('ulid', $search)))
             ->with('installations')
             ->orderBy('name')

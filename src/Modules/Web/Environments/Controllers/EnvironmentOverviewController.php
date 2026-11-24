@@ -6,6 +6,10 @@ namespace Modules\Web\Environments\Controllers;
 
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
+use Domain\Users\DataObjects\PinData;
+use Domain\Users\Enums\PinType;
+use Domain\Users\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Gate;
@@ -26,12 +30,16 @@ class EnvironmentOverviewController implements HasMiddleware
         ];
     }
 
-    public function __invoke(Environment $environment, LpodClient $lpod): Response
+    public function __invoke(Request $request, Environment $environment, LpodClient $lpod): Response
     {
         Gate::authorize('view', $environment);
 
+        /** @var User $user */
+        $user = $request->user();
+
         return Inertia::render('Environments/EnvironmentOverview', [
             'environment' => EnvironmentData::fromModel($environment),
+            'pinned' => PinData::collect($user->pins()->ofType(PinType::Application)->on($environment)->orderBy('name')->get()),
             'host' => $this->deferFromHost(fn () => $lpod->host($environment), live: $environment),
             'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $environment),
             'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment), 'secrets', live: $environment),

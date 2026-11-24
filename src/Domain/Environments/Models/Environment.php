@@ -6,6 +6,7 @@ namespace Domain\Environments\Models;
 
 use Database\Factories\EnvironmentFactory;
 use Domain\Applications\Models\Installation;
+use Domain\Users\Concerns\HasPins;
 use Domain\Volumes\Models\VolumeExport;
 use Foxws\Essentials\Casts\AsDateTime;
 use Foxws\Essentials\Concerns\HasUlid;
@@ -23,6 +24,7 @@ class Environment extends Model
     /** @use HasFactory<EnvironmentFactory> */
     use HasFactory;
 
+    use HasPins;
     use HasUlid;
 
     /**

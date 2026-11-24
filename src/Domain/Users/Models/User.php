@@ -6,6 +6,7 @@ namespace Domain\Users\Models;
 
 use Database\Factories\UserFactory;
 use Domain\Users\Collections\UserCollection;
+use Domain\Users\Concerns\HasPins;
 use Domain\Users\QueryBuilders\UserQueryBuilder;
 use Domain\Users\States\UserState;
 use Foxws\Essentials\Casts\AsDateTime;
@@ -38,6 +39,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     /** @use HasFactory<UserFactory> */
     use HasFactory;
 
+    use HasPins;
     use HasRoles;
     use HasStates;
     use HasUlid;

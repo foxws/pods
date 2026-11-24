@@ -12,7 +12,8 @@ import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
-import { useHostPolling } from '@/composables/applications'
+import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { usePins } from '@/composables/pins'
 import type {
   ApplicationData,
   EnvironmentData,
@@ -20,6 +21,7 @@ import type {
   HostProperty,
   HostStatsData,
   ImageData,
+  PinData,
   SecretData,
 } from '@/types'
 import { describeApplication } from '@/utils/application'
@@ -35,6 +37,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
+  pinned: PinData[]
   host?: HostProperty<HostStatsData>
   applications?: HostProperty<ApplicationData[]>
   secrets?: HostProperty<SecretData[]>
@@ -60,6 +63,26 @@ const list = computed(() => props.applications?.data ?? [])
 const isBusy = computed(() => list.value.some((application) => isTransitioning(application.status)))
 
 useHostPolling(['host', 'applications', 'events'], isBusy)
+
+const { run } = useApplicationOperations(() => props.environment)
+const { unpin } = usePins(() => props.environment)
+
+const pins = computed(() => new Map(props.pinned.map((pin) => [pin.name, pin])))
+const pinnedNames = computed(() => new Set(pins.value.keys()))
+
+/** Pins of applications the host no longer has are left out until `pods:sync` forgets them. */
+const pinnedApplications = computed(() =>
+  list.value.flatMap((application) => {
+    const pin = pins.value.get(application.name)
+
+    return pin ? [{ application, pin }] : []
+  }),
+)
+
+const applicationsPinnedFirst = computed(() => [
+  ...pinnedApplications.value.map(({ application }) => application),
+  ...list.value.filter((application) => !pinnedNames.value.has(application.name)),
+])
 
 const hostLine = computed(() =>
   [
@@ -271,6 +294,99 @@ const podmanLine = computed(() =>
         class="grid gap-4 lg:grid-cols-3"
       >
         <div class="flex flex-col gap-4 lg:col-span-2">
+          <UCard
+            v-if="pinned.length && (!applications || pinnedApplications.length)"
+            :ui="{ body: 'p-0 sm:p-0' }"
+          >
+            <template #header>
+              <h2 class="font-semibold text-highlighted">Pinned</h2>
+            </template>
+
+            <ul
+              v-if="applications"
+              class="divide-y divide-default"
+            >
+              <li
+                v-for="{ application, pin } in pinnedApplications"
+                :key="pin.id"
+                class="flex items-center gap-3 px-4 py-3"
+              >
+                <Link
+                  :href="show.url([environment.id, application.name])"
+                  class="flex min-w-0 flex-1 flex-col"
+                >
+                  <span class="truncate font-medium text-highlighted">{{ application.name }}</span>
+                  <span class="truncate text-xs text-muted">{{ describeApplication(application) }}</span>
+                </Link>
+
+                <UnitStatusBadge :status="application.status" />
+
+                <div class="flex shrink-0 gap-1">
+                  <UTooltip
+                    v-if="application.status === 'running'"
+                    text="Stop"
+                  >
+                    <UButton
+                      icon="i-lucide-square"
+                      :aria-label="`Stop ${application.name}`"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      @click="run(application.name, 'down')"
+                    />
+                  </UTooltip>
+                  <UTooltip
+                    v-else
+                    text="Start"
+                  >
+                    <UButton
+                      icon="i-lucide-play"
+                      :aria-label="`Start ${application.name}`"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      :disabled="isTransitioning(application.status)"
+                      @click="run(application.name, 'up')"
+                    />
+                  </UTooltip>
+
+                  <UTooltip text="Restart">
+                    <UButton
+                      icon="i-lucide-rotate-cw"
+                      :aria-label="`Restart ${application.name}`"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      :disabled="application.status !== 'running'"
+                      @click="run(application.name, 'restart')"
+                    />
+                  </UTooltip>
+
+                  <UTooltip text="Unpin">
+                    <UButton
+                      icon="i-lucide-pin-off"
+                      :aria-label="`Unpin ${application.name}`"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      @click="unpin(pin)"
+                    />
+                  </UTooltip>
+                </div>
+              </li>
+            </ul>
+            <div
+              v-else
+              class="flex flex-col gap-3 p-4"
+            >
+              <USkeleton
+                v-for="pin in pinned"
+                :key="pin.id"
+                class="h-10"
+              />
+            </div>
+          </UCard>
+
           <UCard :ui="{ body: 'p-0 sm:p-0' }">
             <template #header>
               <div class="flex items-center gap-2">
@@ -411,7 +527,7 @@ const podmanLine = computed(() =>
               class="divide-y divide-default"
             >
               <li
-                v-for="application in list"
+                v-for="application in applicationsPinnedFirst"
                 :key="application.name"
               >
                 <Link
@@ -419,7 +535,15 @@ const podmanLine = computed(() =>
                   class="flex items-center gap-3 px-4 py-3 hover:bg-elevated/50"
                 >
                   <span class="flex min-w-0 flex-1 flex-col">
-                    <span class="truncate font-medium text-highlighted">{{ application.name }}</span>
+                    <span class="flex min-w-0 items-center gap-1.5 font-medium text-highlighted">
+                      <span class="truncate">{{ application.name }}</span>
+                      <UIcon
+                        v-if="pinnedNames.has(application.name)"
+                        name="i-lucide-pin"
+                        class="size-3.5 shrink-0 text-muted"
+                        aria-label="Pinned"
+                      />
+                    </span>
                     <span class="truncate text-xs text-muted">{{ describeApplication(application) }}</span>
                   </span>
                   <UnitStatusBadge :status="application.status" />

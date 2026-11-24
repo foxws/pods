@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
+use Domain\Users\Models\Pin;
 use Domain\Users\Models\User;
 use Foundation\Settings\CatalogSettings;
 use Illuminate\Contracts\Process\ProcessResult;
@@ -327,6 +328,47 @@ it('forgets the installation of a removed application', function () {
         ->assertRedirect(action([ApplicationController::class, 'index'], $this->environment));
 
     $this->assertModelMissing($installation);
+});
+
+it('forgets the pins of a removed application', function () {
+    $pin = Pin::factory()->for($this->owner)->for($this->environment)->application('immich')->create();
+    $other = Pin::factory()->for($this->owner)->for($this->environment)->application('jellyfin')->create();
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->delete(action([ApplicationController::class, 'destroy'], [$this->environment, 'immich']), ['confirmation' => 'immich'])
+        ->assertRedirect(action([ApplicationController::class, 'index'], $this->environment));
+
+    $this->assertModelMissing($pin);
+    $this->assertModelExists($other);
+});
+
+it('lists the applications the current user pinned on the host', function () {
+    $jellyfin = Pin::factory()->for($this->owner)->for($this->environment)->application('jellyfin')->create();
+    $immich = Pin::factory()->for($this->owner)->for($this->environment)->application('immich')->create();
+    Pin::factory()->for($this->owner)->application('paperless')->create();
+    Pin::factory()->for($this->environment)->application('forgejo')->create();
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'index'], $this->environment))
+        ->assertInertia(fn ($page) => $page->where('pinned', [
+            ['id' => $immich->getKey(), 'type' => 'application', 'name' => 'immich'],
+            ['id' => $jellyfin->getKey(), 'type' => 'application', 'name' => 'jellyfin'],
+        ]));
+});
+
+it('gives the application page the current user\'s pin of it', function () {
+    $pin = Pin::factory()->for($this->owner)->for($this->environment)->application('immich')->create();
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'immich']))
+        ->assertInertia(fn ($page) => $page->where('pinned', ['id' => $pin->getKey(), 'type' => 'application', 'name' => 'immich']));
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'jellyfin']))
+        ->assertInertia(fn ($page) => $page->where('pinned', null));
 });
 
 it('keeps the installation when the application could not be removed', function () {

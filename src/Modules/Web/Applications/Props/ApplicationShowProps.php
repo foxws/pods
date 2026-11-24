@@ -14,6 +14,9 @@ use Domain\Applications\DataObjects\TimerData;
 use Domain\Applications\Models\Installation;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
+use Domain\Users\DataObjects\PinData;
+use Domain\Users\Enums\PinType;
+use Domain\Users\Models\User;
 use Inertia\ProvidesInertiaProperties;
 use Inertia\RenderContext;
 use Integrations\Lpod\LpodClient;
@@ -62,6 +65,7 @@ class ApplicationShowProps implements ProvidesInertiaProperties
         return [
             'environment' => EnvironmentData::fromModel($this->environment),
             'name' => $this->application,
+            'pinned' => $this->pin($context),
             'application' => $this->deferFromHost(fn () => $this->lpod->application($this->environment, $this->application), live: $this->environment),
             'ondemand' => $this->deferFromHost(fn () => $this->lpod->onDemand($this->environment, $this->application), live: $this->environment),
             'ondemandSuggestion' => $this->deferFromHost(fn () => ($this->suggestOnDemandSettings)(
@@ -81,6 +85,19 @@ class ApplicationShowProps implements ProvidesInertiaProperties
             'logs' => $this->deferFromHost(fn (): array => $this->lpod->logs($this->environment, $this->application), 'details'),
             'secrets' => $this->deferFromHost(fn (): array => $this->lpod->secrets($this->environment), 'details', live: $this->environment),
         ];
+    }
+
+    /**
+     * The current user's pin of the application, if they pinned it.
+     */
+    protected function pin(RenderContext $context): ?PinData
+    {
+        /** @var User $user */
+        $user = $context->request->user();
+
+        $pin = $user->pins()->ofType(PinType::Application)->on($this->environment)->firstWhere('name', $this->application);
+
+        return $pin !== null ? PinData::fromModel($pin) : null;
     }
 
     /**

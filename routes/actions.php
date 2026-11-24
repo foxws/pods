@@ -34,6 +34,7 @@ use Modules\Web\Secrets\Controllers\SecretController;
 use Modules\Web\Settings\Controllers\ApplicationSettingsController;
 use Modules\Web\Settings\Controllers\CatalogSettingsController;
 use Modules\Web\Settings\Controllers\ProxyDefaultsController;
+use Modules\Web\Users\Controllers\PinController;
 use Modules\Web\Volumes\Controllers\VolumeController;
 use Modules\Web\Volumes\Controllers\VolumeExportController;
 use Modules\Web\Volumes\Controllers\VolumePruneController;
@@ -49,39 +50,38 @@ Route::prefix('/settings')->name('settings.')->group(function () {
 Route::prefix('/notifications')->name('notifications.')->group(function () {
     Route::put('/', [NotificationBulkController::class, 'update'])->name('read');
     Route::delete('/', [NotificationBulkController::class, 'destroy'])->name('clear');
-    Route::put('/{notification}', [NotificationController::class, 'update'])->name('update');
-    Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
 });
+Route::apiResource('notifications', NotificationController::class)->only(['update', 'destroy']);
 
 // Environments
 Route::resource('environments', EnvironmentController::class)->only(['store', 'destroy']);
 
 Route::prefix('/environments/{environment}')->name('environments.')->group(function () {
     // Settings
-    Route::put('/settings', [EnvironmentSettingsController::class, 'update'])->name('settings.update');
-    Route::put('/lpod', [EnvironmentLpodController::class, 'update'])->name('lpod.update');
+    Route::singleton('settings', EnvironmentSettingsController::class)->only(['update']);
+    Route::singleton('lpod', EnvironmentLpodController::class)->only(['update']);
     Route::post('/verification', [EnvironmentVerificationController::class, 'store'])->name('verification.store');
 
     // Proxy
-    Route::prefix('/proxy')->name('proxy.')->group(function () {
-        Route::post('/', [EnvironmentProxyController::class, 'store'])->name('store');
-        Route::put('/', [EnvironmentProxyController::class, 'update'])->name('update');
-        Route::get('/certificate', [EnvironmentProxyController::class, 'certificate'])->name('certificate');
-    });
+    Route::get('/proxy/certificate', [EnvironmentProxyController::class, 'certificate'])->name('proxy.certificate');
+    Route::singleton('proxy', EnvironmentProxyController::class)->creatable()->only(['store', 'update']);
 
     // Applications
     Route::resource('applications', ApplicationController::class)->only(['destroy']);
-    Route::put('/applications/{application}/installation', [ApplicationInstallationController::class, 'update'])->name('applications.installation.update');
-    Route::put('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'update'])->name('applications.ondemand.update');
-    Route::delete('/applications/{application}/ondemand', [ApplicationOnDemandController::class, 'destroy'])->name('applications.ondemand.destroy');
-    Route::put('/applications/{application}/source', [ApplicationSourceController::class, 'update'])->name('applications.source.update');
-    Route::put('/applications/{application}/routes', [ApplicationRoutesController::class, 'update'])->name('applications.routes.update');
-    Route::put('/applications/{application}/drop-ins', [ApplicationDropInController::class, 'update'])->name('applications.drop-ins.update');
-    Route::delete('/applications/{application}/drop-ins', [ApplicationDropInController::class, 'destroy'])->name('applications.drop-ins.destroy');
+    Route::singleton('applications.installation', ApplicationInstallationController::class)->only(['update']);
+    Route::singleton('applications.ondemand', ApplicationOnDemandController::class)->destroyable()->only(['update', 'destroy']);
+    Route::singleton('applications.source', ApplicationSourceController::class)->only(['update']);
+    Route::singleton('applications.routes', ApplicationRoutesController::class)->only(['update']);
+    Route::singleton('applications.drop-ins', ApplicationDropInController::class)->destroyable()->only(['update', 'destroy']);
     Route::post('/applications/{application}/update', [ApplicationUpdateController::class, 'store'])->name('applications.update.store');
     Route::post('/applications/{application}/setup/{step}', [ApplicationSetupController::class, 'store'])->name('applications.setup.store');
     Route::post('/applications/{application}/timers/{timer}/run', [ApplicationTimerController::class, 'store'])->name('applications.timers.run');
     Route::post('/applications/{application}/{operation}', ApplicationOperationController::class)->name('applications.operation');
+
+    // Pins
+    Route::scopeBindings()->group(function () {
+        Route::apiResource('pins', PinController::class)->only(['store', 'destroy']);
+    });
 
     // Containers
     Route::post('/containers/prune', ContainerPruneController::class)->name('containers.prune');
@@ -97,10 +97,9 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     // Volumes
     Route::post('/volumes/prune', VolumePruneController::class)->name('volumes.prune');
     Route::resource('volumes', VolumeController::class)->only(['destroy']);
-    Route::prefix('/volume-exports')->name('volume-exports.')->scopeBindings()->group(function () {
-        Route::post('/', [VolumeExportController::class, 'store'])->name('store');
-        Route::get('/{volumeExport}/download', [VolumeExportController::class, 'download'])->name('download');
-        Route::delete('/{volumeExport}', [VolumeExportController::class, 'destroy'])->name('destroy');
+    Route::scopeBindings()->group(function () {
+        Route::get('/volume-exports/{volumeExport}/download', [VolumeExportController::class, 'download'])->name('volume-exports.download');
+        Route::apiResource('volume-exports', VolumeExportController::class)->only(['store', 'destroy'])->parameters(['volume-exports' => 'volumeExport']);
     });
 
     // Networks

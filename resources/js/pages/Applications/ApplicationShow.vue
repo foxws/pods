@@ -19,6 +19,7 @@ import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { usePins } from '@/composables/pins'
 import type {
   ApplicationDetailData,
   ApplicationRoutesData,
@@ -30,6 +31,7 @@ import type {
   JournalEntryData,
   OnDemandData,
   OnDemandSuggestionData,
+  PinData,
   QuadletFileData,
   SecretData,
   TimerData,
@@ -44,6 +46,7 @@ import { computed, ref } from 'vue'
 const props = defineProps<{
   environment: EnvironmentData
   name: string
+  pinned: PinData | null
   application?: HostProperty<ApplicationDetailData>
   ondemand?: HostProperty<OnDemandData>
   ondemandSuggestion?: HostProperty<OnDemandSuggestionData>
@@ -180,6 +183,22 @@ const isForceStopping = ref(false)
 
 const { run } = useApplicationOperations(() => props.environment)
 
+const { pin, unpin } = usePins(() => props.environment)
+
+/** The pin lives in the `pinned` prop, which pinning and unpinning update right away. */
+const isPinned = computed({
+  get: () => props.pinned !== null,
+  set: (shouldPin) => {
+    if (shouldPin && !props.pinned) {
+      pin('application', props.name)
+    }
+
+    if (!shouldPin && props.pinned) {
+      unpin(props.pinned)
+    }
+  },
+})
+
 const isRemoving = ref(false)
 </script>
 
@@ -233,6 +252,15 @@ const isRemoving = ref(false)
         </div>
 
         <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+          <UToggle
+            v-model="isPinned"
+            :label="isPinned ? 'Pinned' : 'Pin'"
+            :icon="isPinned ? 'i-lucide-pin' : 'i-lucide-pin-off'"
+            class="col-span-2 justify-center sm:col-span-1"
+            variant="outline"
+            active-color="primary"
+            title="Pinned applications show first on the overview, with Start, Stop and Restart."
+          />
           <UButton
             v-if="canStop"
             label="Stop"

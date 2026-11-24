@@ -29,6 +29,10 @@ return [
     | Each feature is represented by a class that implements the Configurable interface.
     | You can add or remove features from this array as needed.
     |
+    | ForceRootUrl is left out: Pods is reached on 127.0.0.1:PORT and on the
+    | proxy's hostname, which can change in Pods after APP_URL was written,
+    | so links and redirects keep the request's own origin.
+    |
     */
 
     'configurables' => [
