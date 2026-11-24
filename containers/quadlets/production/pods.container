@@ -7,7 +7,7 @@ StartLimitBurst=5
 [Container]
 # A pre-release only has its full tag; the first release moves this to the
 # major tag (ghcr.io/foxws/pods:1).
-Image=ghcr.io/foxws/pods:1.2.1
+Image=ghcr.io/foxws/pods:1.3.0
 AutoUpdate=registry
 Environment=PUID=%U
 Environment=PGID=%G
