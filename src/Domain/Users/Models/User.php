@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Domain\Users\Models;
 
 use Database\Factories\UserFactory;
+use Domain\Applications\Models\PinnedApplication;
+use Domain\Environments\Models\Environment;
 use Domain\Users\Collections\UserCollection;
 use Domain\Users\QueryBuilders\UserQueryBuilder;
 use Domain\Users\States\UserState;
@@ -16,6 +18,7 @@ use Illuminate\Database\Eloquent\Attributes\RouteKey;
 use Illuminate\Database\Eloquent\Attributes\UseEloquentBuilder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -106,6 +109,28 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'name' => $this->name,
             'email' => $this->email,
         ];
+    }
+
+    /**
+     * @return HasMany<PinnedApplication, $this>
+     */
+    public function pinnedApplications(): HasMany
+    {
+        return $this->hasMany(PinnedApplication::class)->chaperone();
+    }
+
+    /**
+     * The names of the applications the user pinned on a host.
+     *
+     * @return list<string>
+     */
+    public function pinnedApplicationsOn(Environment $environment): array
+    {
+        return $this->pinnedApplications()
+            ->where('environment_id', $environment->getKey())
+            ->orderBy('application')
+            ->pluck('application')
+            ->all();
     }
 
     public function isAdmin(): bool

@@ -27,7 +27,7 @@ class SyncCommand extends Command
     /**
      * @var string
      */
-    protected $description = 'Check the applications Pods installed for files changed or removed outside Pods';
+    protected $description = 'Check the applications Pods installed for files changed or removed outside Pods, and forget pins of removed applications';
 
     public function handle(LpodClient $lpod, SyncInstallation $syncInstallation): int
     {
@@ -40,6 +40,12 @@ class SyncCommand extends Command
     {
         try {
             $applications = array_map(fn (ApplicationData $application): string => $application->name, $lpod->applications($environment));
+
+            $unpinned = $environment->pinnedApplications()->whereNotIn('application', $applications)->delete();
+
+            if ($unpinned > 0) {
+                info("{$environment->name}: {$unpinned} pins of removed applications forgotten.");
+            }
 
             $checked = 0;
 
@@ -85,7 +91,7 @@ class SyncCommand extends Command
         $search = $this->argument('environment');
 
         return Environment::query()
-            ->whereHas('installations')
+            ->where(fn ($query) => $query->has('installations')->orHas('pinnedApplications'))
             ->when($search, fn ($query) => $query->where(fn ($query) => $query->where('name', $search)->orWhere('ulid', $search)))
             ->with('installations')
             ->orderBy('name')

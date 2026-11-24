@@ -7,8 +7,10 @@ namespace Modules\Web\Applications\Controllers;
 use Domain\Catalog\Actions\ListCatalog;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
+use Domain\Users\Models\User;
 use Foundation\Settings\ProxySettings;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Gate;
@@ -33,12 +35,16 @@ class ApplicationController implements HasMiddleware
         ];
     }
 
-    public function index(Environment $environment, LpodClient $lpod): Response
+    public function index(Request $request, Environment $environment, LpodClient $lpod): Response
     {
         Gate::authorize('view', $environment);
 
+        /** @var User $user */
+        $user = $request->user();
+
         return Inertia::render('Applications/ApplicationIndex', [
             'environment' => EnvironmentData::fromModel($environment),
+            'pinned' => $user->pinnedApplicationsOn($environment),
             'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $environment),
             'host' => $this->deferFromHost(fn () => $lpod->host($environment), live: $environment),
             'images' => $this->deferFromHost(fn (): array => $lpod->images($environment), 'images'),
@@ -87,6 +93,7 @@ class ApplicationController implements HasMiddleware
         }
 
         $environment->installations()->where('application', $application)->delete();
+        $environment->pinnedApplications()->where('application', $application)->delete();
 
         return to_action([self::class, 'index'], $environment);
     }

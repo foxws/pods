@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Domain\Applications\Models\PinnedApplication;
 use Domain\Environments\Models\Environment;
 use Domain\Users\Models\User;
 use Integrations\Ssh\HostResult;
@@ -52,6 +53,18 @@ it('shows the host, its applications, its secrets and the recent events', functi
                 ->where('events.data.1.application', 'immich')));
 
     $lpod->assertRan(['events', '--json', '--since', '24h', '--limit', '20']);
+});
+
+it('shows the applications the current user pinned on the host first', function () {
+    PinnedApplication::factory()->for($this->owner)->for($this->environment)->create(['application' => 'jellyfin']);
+    PinnedApplication::factory()->for($this->environment)->create(['application' => 'immich']);
+    $lpod = fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action(EnvironmentOverviewController::class, $this->environment))
+        ->assertInertia(fn ($page) => $page->where('pinned', ['jellyfin']));
+
+    $lpod->assertNothingRan();
 });
 
 it('shows the rest of the overview when lpod has no events command yet', function () {

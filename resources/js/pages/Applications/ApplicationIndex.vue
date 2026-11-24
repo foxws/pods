@@ -10,7 +10,7 @@ import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import SortableHeader from '@/components/Ui/SortableHeader.vue'
 import TableSortControls from '@/components/Ui/TableSortControls.vue'
-import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { useApplicationOperations, useApplicationPins, useHostPolling } from '@/composables/applications'
 import { useHostAction } from '@/composables/hostActions'
 import { useTableSort } from '@/composables/tables'
 import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, ImageData } from '@/types'
@@ -26,6 +26,7 @@ import { computed, ref } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
+  pinned: string[]
   applications?: HostProperty<ApplicationData[]>
   host?: HostProperty<HostStatsData>
   images?: HostProperty<ImageData[]>
@@ -69,6 +70,9 @@ const isBusy = computed(() => list.value.some((application) => isTransitioning(a
 useHostPolling(['applications', 'host'], isBusy)
 
 const { run } = useApplicationOperations(() => props.environment)
+const { setPinned } = useApplicationPins(() => props.environment)
+
+const pinnedNames = computed(() => new Set(props.pinned))
 
 const removing = ref<string | null>(null)
 const isRemoving = computed({
@@ -99,6 +103,17 @@ const actions = (application: ApplicationData): DropdownMenuItem[][] => [
       icon: 'i-lucide-square-arrow-out-up-right',
       to: show.url([props.environment.id, application.name]),
     },
+    pinnedNames.value.has(application.name)
+      ? {
+          label: 'Unpin from overview',
+          icon: 'i-lucide-pin-off',
+          onSelect: () => setPinned(application.name, false),
+        }
+      : {
+          label: 'Pin to overview',
+          icon: 'i-lucide-pin',
+          onSelect: () => setPinned(application.name, true),
+        },
   ],
   [
     {
@@ -322,7 +337,15 @@ const columns: TableColumn<ApplicationData>[] = [
               />
             </span>
             <span class="flex min-w-0 flex-1 flex-col">
-              <span class="truncate font-medium text-highlighted">{{ application.name }}</span>
+              <span class="flex min-w-0 items-center gap-1.5 font-medium text-highlighted">
+                <span class="truncate">{{ application.name }}</span>
+                <UIcon
+                  v-if="pinnedNames.has(application.name)"
+                  name="i-lucide-pin"
+                  class="size-3.5 shrink-0 text-muted"
+                  aria-label="Pinned"
+                />
+              </span>
               <span class="truncate text-xs text-muted">{{ describeApplication(application) }}</span>
             </span>
             <UnitStatusBadge :status="application.status" />
@@ -372,7 +395,15 @@ const columns: TableColumn<ApplicationData>[] = [
             :href="show.url([environment.id, row.original.name])"
             class="flex flex-col"
           >
-            <span class="font-medium text-highlighted">{{ row.original.name }}</span>
+            <span class="flex items-center gap-1.5 font-medium text-highlighted">
+              {{ row.original.name }}
+              <UIcon
+                v-if="pinnedNames.has(row.original.name)"
+                name="i-lucide-pin"
+                class="size-3.5 text-muted"
+                aria-label="Pinned"
+              />
+            </span>
             <span class="font-mono text-xs text-muted">{{ quadletName(row.original) }}</span>
           </Link>
         </template>

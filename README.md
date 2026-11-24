@@ -51,7 +51,7 @@ See [docs/architecture.md](docs/architecture.md) for the details.
 ## Features
 
 - **Environments**: add local and remote hosts, with host key pinning and a contract check
-- **Overview**: host stats (CPU, memory, disk, containers), failed units and recent activity
+- **Overview**: host stats (CPU, memory, disk, containers), failed units, recent activity, and the applications you pinned, with Start, Stop and Restart
 - **Applications**: list, start, stop, restart, redeploy and remove; containers, Quadlet files, logs and secrets per application; add, edit and remove drop-ins, with local ones (`*.local.conf`) kept over updates; install from Quadlet files or a Git repository, with a check before installing, reading the repository's [`pods.yml`](docs/manifest.md) when it has one
 - **Containers** and **pods**: list, inspect, logs, stats, start/stop/restart and pruning stopped containers
 - **Images**: pull, remove, prune and check for updates

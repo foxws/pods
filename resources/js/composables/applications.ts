@@ -1,4 +1,5 @@
 import ApplicationOperationController from '@/actions/Modules/Web/Applications/Controllers/ApplicationOperationController'
+import ApplicationPinController from '@/actions/Modules/Web/Applications/Controllers/ApplicationPinController'
 import type { ApplicationData, ApplicationOperation, EnvironmentData, HostProperty } from '@/types'
 import { useHostReload } from '@/composables/polling'
 import { router, usePage } from '@inertiajs/vue3'
@@ -39,6 +40,31 @@ export function useApplicationOperations(environment: MaybeRefOrGetter<Environme
   }
 
   return { run }
+}
+
+/**
+ * Pins applications to the host's overview, or unpins them. The page's `pinned` prop (the names
+ * on a list page, or a boolean on an application's page) changes right away, and only it reloads.
+ */
+export function useApplicationPins(environment: MaybeRefOrGetter<EnvironmentData>) {
+  const setPinned = (name: string, isPinned: boolean): void => {
+    const route: [string, string] = [toValue(environment).id, name]
+    const url = isPinned ? ApplicationPinController.update.url(route) : ApplicationPinController.destroy.url(route)
+
+    router
+      .optimistic<{ pinned?: string[] | boolean }>(({ pinned }) => {
+        if (!Array.isArray(pinned)) {
+          return { pinned: isPinned }
+        }
+
+        const others = pinned.filter((item) => item !== name)
+
+        return { pinned: isPinned ? [...others, name].sort() : others }
+      })
+      .visit(url, { method: isPinned ? 'put' : 'delete', preserveScroll: true, only: ['pinned'] })
+  }
+
+  return { setPinned }
 }
 
 /**

@@ -18,7 +18,7 @@ import SecretCreateModal from '@/components/Secrets/SecretCreateModal.vue'
 import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
-import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { useApplicationOperations, useApplicationPins, useHostPolling } from '@/composables/applications'
 import type {
   ApplicationDetailData,
   ApplicationRoutesData,
@@ -39,11 +39,12 @@ import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/
 import { isTransitioning } from '@/utils/status'
 import { Head, Link, router } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
   name: string
+  pinned: boolean
   application?: HostProperty<ApplicationDetailData>
   ondemand?: HostProperty<OnDemandData>
   ondemandSuggestion?: HostProperty<OnDemandSuggestionData>
@@ -180,6 +181,23 @@ const isForceStopping = ref(false)
 
 const { run } = useApplicationOperations(() => props.environment)
 
+const { setPinned } = useApplicationPins(() => props.environment)
+
+const isPinned = ref(props.pinned)
+
+watch(
+  () => props.pinned,
+  (pinned) => {
+    isPinned.value = pinned
+  },
+)
+
+watch(isPinned, (pinned) => {
+  if (pinned !== props.pinned) {
+    setPinned(props.name, pinned)
+  }
+})
+
 const isRemoving = ref(false)
 </script>
 
@@ -233,6 +251,15 @@ const isRemoving = ref(false)
         </div>
 
         <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+          <UToggle
+            v-model="isPinned"
+            :label="isPinned ? 'Pinned' : 'Pin'"
+            :icon="isPinned ? 'i-lucide-pin' : 'i-lucide-pin-off'"
+            class="col-span-2 justify-center sm:col-span-1"
+            variant="outline"
+            active-color="primary"
+            title="Pinned applications show first on the overview, with Start, Stop and Restart."
+          />
           <UButton
             v-if="canStop"
             label="Stop"

@@ -8,6 +8,7 @@ use Modules\Web\Applications\Controllers\ApplicationDropInController;
 use Modules\Web\Applications\Controllers\ApplicationInstallationController;
 use Modules\Web\Applications\Controllers\ApplicationOnDemandController;
 use Modules\Web\Applications\Controllers\ApplicationOperationController;
+use Modules\Web\Applications\Controllers\ApplicationPinController;
 use Modules\Web\Applications\Controllers\ApplicationRoutesController;
 use Modules\Web\Applications\Controllers\ApplicationSetupController;
 use Modules\Web\Applications\Controllers\ApplicationSourceController;
@@ -78,6 +79,8 @@ Route::prefix('/environments/{environment}')->name('environments.')->group(funct
     Route::put('/applications/{application}/routes', [ApplicationRoutesController::class, 'update'])->name('applications.routes.update');
     Route::put('/applications/{application}/drop-ins', [ApplicationDropInController::class, 'update'])->name('applications.drop-ins.update');
     Route::delete('/applications/{application}/drop-ins', [ApplicationDropInController::class, 'destroy'])->name('applications.drop-ins.destroy');
+    Route::put('/applications/{application}/pin', [ApplicationPinController::class, 'update'])->where('application', '[^/]{1,255}')->name('applications.pin.update');
+    Route::delete('/applications/{application}/pin', [ApplicationPinController::class, 'destroy'])->where('application', '[^/]{1,255}')->name('applications.pin.destroy');
     Route::post('/applications/{application}/update', [ApplicationUpdateController::class, 'store'])->name('applications.update.store');
     Route::post('/applications/{application}/setup/{step}', [ApplicationSetupController::class, 'store'])->name('applications.setup.store');
     Route::post('/applications/{application}/timers/{timer}/run', [ApplicationTimerController::class, 'store'])->name('applications.timers.run');
