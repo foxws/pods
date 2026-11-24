@@ -18,7 +18,8 @@ import SecretCreateModal from '@/components/Secrets/SecretCreateModal.vue'
 import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
-import { useApplicationOperations, useApplicationPins, useHostPolling } from '@/composables/applications'
+import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { usePins } from '@/composables/pins'
 import type {
   ApplicationDetailData,
   ApplicationRoutesData,
@@ -30,6 +31,7 @@ import type {
   JournalEntryData,
   OnDemandData,
   OnDemandSuggestionData,
+  PinData,
   QuadletFileData,
   SecretData,
   TimerData,
@@ -44,7 +46,7 @@ import { computed, ref, watch } from 'vue'
 const props = defineProps<{
   environment: EnvironmentData
   name: string
-  pinned: boolean
+  pinned: PinData | null
   application?: HostProperty<ApplicationDetailData>
   ondemand?: HostProperty<OnDemandData>
   ondemandSuggestion?: HostProperty<OnDemandSuggestionData>
@@ -181,20 +183,24 @@ const isForceStopping = ref(false)
 
 const { run } = useApplicationOperations(() => props.environment)
 
-const { setPinned } = useApplicationPins(() => props.environment)
+const { pin, unpin } = usePins(() => props.environment)
 
-const isPinned = ref(props.pinned)
+const isPinned = ref(props.pinned !== null)
 
 watch(
   () => props.pinned,
   (pinned) => {
-    isPinned.value = pinned
+    isPinned.value = pinned !== null
   },
 )
 
-watch(isPinned, (pinned) => {
-  if (pinned !== props.pinned) {
-    setPinned(props.name, pinned)
+watch(isPinned, (shouldPin) => {
+  if (shouldPin && !props.pinned) {
+    pin('application', props.name)
+  }
+
+  if (!shouldPin && props.pinned) {
+    unpin(props.pinned)
   }
 })
 

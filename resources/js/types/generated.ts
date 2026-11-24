@@ -396,6 +396,12 @@ export type OnDemandSuggestionData = {
   from_manifest: boolean
 }
 export type PaginatedDataCollection<TKey, TValue> = LengthAwarePaginator<TKey, TValue>
+export type PinData = {
+  id: number
+  type: PinType
+  name: string
+}
+export type PinType = 'application'
 export type PodData = {
   id: string
   name: string

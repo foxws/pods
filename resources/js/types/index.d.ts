@@ -75,6 +75,8 @@ export type {
   OnDemandData,
   OnDemandSettingsData,
   OnDemandSuggestionData,
+  PinData,
+  PinType,
   PodData,
   ProxyRoutesData,
   ProxySettingsData,

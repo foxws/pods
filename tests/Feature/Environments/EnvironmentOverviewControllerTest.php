@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Domain\Applications\Models\PinnedApplication;
 use Domain\Environments\Models\Environment;
+use Domain\Users\Models\Pin;
 use Domain\Users\Models\User;
 use Integrations\Ssh\HostResult;
 use Modules\Web\Environments\Controllers\EnvironmentOverviewController;
@@ -56,13 +56,13 @@ it('shows the host, its applications, its secrets and the recent events', functi
 });
 
 it('shows the applications the current user pinned on the host first', function () {
-    PinnedApplication::factory()->for($this->owner)->for($this->environment)->create(['application' => 'jellyfin']);
-    PinnedApplication::factory()->for($this->environment)->create(['application' => 'immich']);
+    $pin = Pin::factory()->for($this->owner)->for($this->environment)->application('jellyfin')->create();
+    Pin::factory()->for($this->environment)->application('immich')->create();
     $lpod = fakeLpod();
 
     $this->actingAs($this->owner)
         ->get(action(EnvironmentOverviewController::class, $this->environment))
-        ->assertInertia(fn ($page) => $page->where('pinned', ['jellyfin']));
+        ->assertInertia(fn ($page) => $page->where('pinned', [['id' => $pin->getKey(), 'type' => 'application', 'name' => 'jellyfin']]));
 
     $lpod->assertNothingRan();
 });

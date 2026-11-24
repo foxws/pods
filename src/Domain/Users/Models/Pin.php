@@ -2,26 +2,30 @@
 
 declare(strict_types=1);
 
-namespace Domain\Applications\Models;
+namespace Domain\Users\Models;
 
-use Database\Factories\PinnedApplicationFactory;
+use Database\Factories\PinFactory;
 use Domain\Environments\Models\Environment;
-use Domain\Users\Models\User;
+use Domain\Users\Enums\PinType;
+use Domain\Users\QueryBuilders\PinQueryBuilder;
 use Foxws\Essentials\Casts\AsDateTime;
+use Illuminate\Database\Eloquent\Attributes\UseEloquentBuilder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * An application a user pinned, so its host's overview shows it first with its quick actions.
- * Applications live on the host, so a pin is keyed by environment and application name.
+ * Something a user pinned, such as an application to its host's overview. Host resources live on
+ * the host, so a pin names its type and the resource's name, and the environment it's on.
  *
+ * @property PinType $type
  * @property-read User $user
- * @property-read Environment $environment
+ * @property-read Environment|null $environment
  */
-class PinnedApplication extends Model
+#[UseEloquentBuilder(PinQueryBuilder::class)]
+class Pin extends Model
 {
-    /** @use HasFactory<PinnedApplicationFactory> */
+    /** @use HasFactory<PinFactory> */
     use HasFactory;
 
     /**
@@ -30,20 +34,22 @@ class PinnedApplication extends Model
     protected $fillable = [
         'user_id',
         'environment_id',
-        'application',
+        'type',
+        'name',
     ];
 
     protected function casts(): array
     {
         return [
+            'type' => PinType::class,
             'created_at' => AsDateTime::class,
             'updated_at' => AsDateTime::class,
         ];
     }
 
-    protected static function newFactory(): PinnedApplicationFactory
+    protected static function newFactory(): PinFactory
     {
-        return PinnedApplicationFactory::new();
+        return PinFactory::new();
     }
 
     /**

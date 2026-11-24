@@ -12,7 +12,8 @@ import UnitStatusBadge from '@/components/Applications/UnitStatusBadge.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
-import { useApplicationOperations, useApplicationPins, useHostPolling } from '@/composables/applications'
+import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { usePins } from '@/composables/pins'
 import type {
   ApplicationData,
   EnvironmentData,
@@ -20,6 +21,7 @@ import type {
   HostProperty,
   HostStatsData,
   ImageData,
+  PinData,
   SecretData,
 } from '@/types'
 import { describeApplication } from '@/utils/application'
@@ -35,7 +37,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
-  pinned: string[]
+  pinned: PinData[]
   host?: HostProperty<HostStatsData>
   applications?: HostProperty<ApplicationData[]>
   secrets?: HostProperty<SecretData[]>
@@ -63,15 +65,22 @@ const isBusy = computed(() => list.value.some((application) => isTransitioning(a
 useHostPolling(['host', 'applications', 'events'], isBusy)
 
 const { run } = useApplicationOperations(() => props.environment)
-const { setPinned } = useApplicationPins(() => props.environment)
+const { unpin } = usePins(() => props.environment)
 
-const pinnedNames = computed(() => new Set(props.pinned))
+const pins = computed(() => new Map(props.pinned.map((pin) => [pin.name, pin])))
+const pinnedNames = computed(() => new Set(pins.value.keys()))
 
 /** Pins of applications the host no longer has are left out until `pods:sync` forgets them. */
-const pinnedApplications = computed(() => list.value.filter((application) => pinnedNames.value.has(application.name)))
+const pinnedApplications = computed(() =>
+  list.value.flatMap((application) => {
+    const pin = pins.value.get(application.name)
+
+    return pin ? [{ application, pin }] : []
+  }),
+)
 
 const applicationsPinnedFirst = computed(() => [
-  ...pinnedApplications.value,
+  ...pinnedApplications.value.map(({ application }) => application),
   ...list.value.filter((application) => !pinnedNames.value.has(application.name)),
 ])
 
@@ -298,8 +307,8 @@ const podmanLine = computed(() =>
               class="divide-y divide-default"
             >
               <li
-                v-for="application in pinnedApplications"
-                :key="application.name"
+                v-for="{ application, pin } in pinnedApplications"
+                :key="pin.id"
                 class="flex items-center gap-3 px-4 py-3"
               >
                 <Link
@@ -360,7 +369,7 @@ const podmanLine = computed(() =>
                       color="neutral"
                       variant="ghost"
                       size="sm"
-                      @click="setPinned(application.name, false)"
+                      @click="unpin(pin)"
                     />
                   </UTooltip>
                 </div>
@@ -371,8 +380,8 @@ const podmanLine = computed(() =>
               class="flex flex-col gap-3 p-4"
             >
               <USkeleton
-                v-for="name in pinned"
-                :key="name"
+                v-for="pin in pinned"
+                :key="pin.id"
                 class="h-10"
               />
             </div>

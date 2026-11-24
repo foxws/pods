@@ -6,6 +6,8 @@ namespace Modules\Web\Environments\Controllers;
 
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
+use Domain\Users\DataObjects\PinData;
+use Domain\Users\Enums\PinType;
 use Domain\Users\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -37,7 +39,7 @@ class EnvironmentOverviewController implements HasMiddleware
 
         return Inertia::render('Environments/EnvironmentOverview', [
             'environment' => EnvironmentData::fromModel($environment),
-            'pinned' => $user->pinnedApplicationsOn($environment),
+            'pinned' => PinData::collect($user->pins()->ofType(PinType::Application)->on($environment)->orderBy('name')->get()),
             'host' => $this->deferFromHost(fn () => $lpod->host($environment), live: $environment),
             'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $environment),
             'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment), 'secrets', live: $environment),

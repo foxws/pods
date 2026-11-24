@@ -10,10 +10,11 @@ import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import SortableHeader from '@/components/Ui/SortableHeader.vue'
 import TableSortControls from '@/components/Ui/TableSortControls.vue'
-import { useApplicationOperations, useApplicationPins, useHostPolling } from '@/composables/applications'
+import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { usePins } from '@/composables/pins'
 import { useHostAction } from '@/composables/hostActions'
 import { useTableSort } from '@/composables/tables'
-import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, ImageData } from '@/types'
+import type { ApplicationData, EnvironmentData, HostProperty, HostStatsData, ImageData, PinData } from '@/types'
 import { describeApplication, describeUnits, quadletName } from '@/utils/application'
 import { missingSecretIn } from '@/utils/attention'
 import { formatBytes, formatPort, formatRelative, percentOf } from '@/utils/format'
@@ -26,7 +27,7 @@ import { computed, ref } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
-  pinned: string[]
+  pinned: PinData[]
   applications?: HostProperty<ApplicationData[]>
   host?: HostProperty<HostStatsData>
   images?: HostProperty<ImageData[]>
@@ -70,9 +71,18 @@ const isBusy = computed(() => list.value.some((application) => isTransitioning(a
 useHostPolling(['applications', 'host'], isBusy)
 
 const { run } = useApplicationOperations(() => props.environment)
-const { setPinned } = useApplicationPins(() => props.environment)
+const { pin, unpin } = usePins(() => props.environment)
 
-const pinnedNames = computed(() => new Set(props.pinned))
+const pins = computed(() => new Map(props.pinned.map((pinned) => [pinned.name, pinned])))
+const pinnedNames = computed(() => new Set(pins.value.keys()))
+
+const pinAction = (application: ApplicationData): DropdownMenuItem => {
+  const pinned = pins.value.get(application.name)
+
+  return pinned
+    ? { label: 'Unpin from overview', icon: 'i-lucide-pin-off', onSelect: () => unpin(pinned) }
+    : { label: 'Pin to overview', icon: 'i-lucide-pin', onSelect: () => pin('application', application.name) }
+}
 
 const removing = ref<string | null>(null)
 const isRemoving = computed({
@@ -103,17 +113,7 @@ const actions = (application: ApplicationData): DropdownMenuItem[][] => [
       icon: 'i-lucide-square-arrow-out-up-right',
       to: show.url([props.environment.id, application.name]),
     },
-    pinnedNames.value.has(application.name)
-      ? {
-          label: 'Unpin from overview',
-          icon: 'i-lucide-pin-off',
-          onSelect: () => setPinned(application.name, false),
-        }
-      : {
-          label: 'Pin to overview',
-          icon: 'i-lucide-pin',
-          onSelect: () => setPinned(application.name, true),
-        },
+    pinAction(application),
   ],
   [
     {

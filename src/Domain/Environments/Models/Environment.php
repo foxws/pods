@@ -6,7 +6,7 @@ namespace Domain\Environments\Models;
 
 use Database\Factories\EnvironmentFactory;
 use Domain\Applications\Models\Installation;
-use Domain\Applications\Models\PinnedApplication;
+use Domain\Users\Concerns\HasPins;
 use Domain\Volumes\Models\VolumeExport;
 use Foxws\Essentials\Casts\AsDateTime;
 use Foxws\Essentials\Concerns\HasUlid;
@@ -24,6 +24,7 @@ class Environment extends Model
     /** @use HasFactory<EnvironmentFactory> */
     use HasFactory;
 
+    use HasPins;
     use HasUlid;
 
     /**
@@ -70,14 +71,6 @@ class Environment extends Model
     public function installations(): HasMany
     {
         return $this->hasMany(Installation::class)->chaperone();
-    }
-
-    /**
-     * @return HasMany<PinnedApplication, $this>
-     */
-    public function pinnedApplications(): HasMany
-    {
-        return $this->hasMany(PinnedApplication::class)->chaperone();
     }
 
     /**

@@ -8,6 +8,7 @@ use Domain\Applications\Actions\SyncInstallation;
 use Domain\Applications\DataObjects\ApplicationData;
 use Domain\Applications\Models\Installation;
 use Domain\Environments\Models\Environment;
+use Domain\Users\Enums\PinType;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Integrations\Lpod\Exceptions\LpodException;
@@ -41,7 +42,7 @@ class SyncCommand extends Command
         try {
             $applications = array_map(fn (ApplicationData $application): string => $application->name, $lpod->applications($environment));
 
-            $unpinned = $environment->pinnedApplications()->whereNotIn('application', $applications)->delete();
+            $unpinned = $environment->pins()->ofType(PinType::Application)->whereNotIn('name', $applications)->delete();
 
             if ($unpinned > 0) {
                 info("{$environment->name}: {$unpinned} pins of removed applications forgotten.");
@@ -91,7 +92,7 @@ class SyncCommand extends Command
         $search = $this->argument('environment');
 
         return Environment::query()
-            ->where(fn ($query) => $query->has('installations')->orHas('pinnedApplications'))
+            ->where(fn ($query) => $query->has('installations')->orHas('pins'))
             ->when($search, fn ($query) => $query->where(fn ($query) => $query->where('name', $search)->orWhere('ulid', $search)))
             ->with('installations')
             ->orderBy('name')

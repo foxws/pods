@@ -12,6 +12,11 @@ use Illuminate\Support\ServiceProvider;
 
 class RouteServiceProvider extends ServiceProvider
 {
+    /**
+     * An application's name as routes and requests accept it.
+     */
+    public const string ApplicationPattern = '[A-Za-z0-9][A-Za-z0-9_.@-]{0,127}';
+
     public function boot(): void
     {
         $this->configureRateLimits();
@@ -23,7 +28,7 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function configurePatterns(): void
     {
-        Route::pattern('application', '[A-Za-z0-9][A-Za-z0-9_.@-]{0,127}');
+        Route::pattern('application', self::ApplicationPattern);
         Route::pattern('container', '[A-Za-z0-9][A-Za-z0-9_.-]{0,127}');
         Route::pattern('image', '[a-f0-9]{12,64}');
         Route::pattern('volume', '[A-Za-z0-9][A-Za-z0-9_.-]{0,127}');

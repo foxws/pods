@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Domain\Applications\Models\Installation;
-use Domain\Applications\Models\PinnedApplication;
 use Domain\Environments\Models\Environment;
+use Domain\Users\Models\Pin;
 use Integrations\Ssh\HostResult;
 
 beforeEach(function () {
@@ -76,8 +76,8 @@ it('forgets an application that was removed outside Pods', function () {
 });
 
 it('forgets the pins of applications removed outside Pods, on a host without installations', function () {
-    $removed = PinnedApplication::factory()->for($this->environment)->create(['application' => 'nextcloud']);
-    $kept = PinnedApplication::factory()->for($this->environment)->create(['application' => 'immich']);
+    $removed = Pin::factory()->for($this->environment)->application('nextcloud')->create();
+    $kept = Pin::factory()->for($this->environment)->application('immich')->create();
     fakeLpod();
 
     $this->artisan('pods:sync')
@@ -89,7 +89,7 @@ it('forgets the pins of applications removed outside Pods, on a host without ins
 });
 
 it('keeps the pins of a host it cannot reach', function () {
-    $pin = PinnedApplication::factory()->for($this->environment)->create(['application' => 'nextcloud']);
+    $pin = Pin::factory()->for($this->environment)->application('nextcloud')->create();
     fakeLpod()->respond('apps --json', new HostResult(255, '', 'ssh: connect to host podman-01 port 22: Connection refused'));
 
     $this->artisan('pods:sync')->assertFailed();

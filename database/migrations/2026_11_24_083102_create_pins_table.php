@@ -10,19 +10,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('pinned_applications', function (Blueprint $table) {
+        Schema::create('pins', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('environment_id')->constrained()->cascadeOnDelete();
-            $table->string('application');
+            $table->foreignId('environment_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->string('type');
+            $table->string('name');
             $table->timestamps();
 
-            $table->unique(['user_id', 'environment_id', 'application']);
+            $table->unique(['user_id', 'environment_id', 'type', 'name']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('pinned_applications');
+        Schema::dropIfExists('pins');
     }
 };
