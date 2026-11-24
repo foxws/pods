@@ -30,7 +30,7 @@ class StorePinRequest extends FormRequest
 
         return [
             'type' => ['required', Rule::enum(PinType::class)],
-            'name' => ['required', 'string', ...($type !== null ? ['regex:/^'.$type->namePattern().'$/'] : [])],
+            'name' => ['required', 'string', ...($type !== null ? ['regex:'.$type->hostResource()->regex()] : [])],
         ];
     }
 

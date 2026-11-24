@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Domain\Users\Enums;
 
-use Foundation\Providers\RouteServiceProvider;
+use Domain\Shared\Enums\HostResource;
 use Foxws\Essentials\Concerns\HasLabels;
 use Foxws\Essentials\Contracts\Enumerable;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
@@ -27,12 +27,12 @@ enum PinType: string implements Enumerable
     }
 
     /**
-     * The names a pin of this type accepts, as the routes of the thing it points at accept them.
+     * The host resource a pin of this type names, which decides the names it accepts.
      */
-    public function namePattern(): string
+    public function hostResource(): HostResource
     {
         return match ($this) {
-            self::Application => RouteServiceProvider::ApplicationPattern,
+            self::Application => HostResource::Application,
         };
     }
 }
