@@ -106,13 +106,12 @@ const isEditing = ref(false)
     />
 
     <ApplicationRoutesModal
-      v-if="data"
       v-model:open="isEditing"
       :environment="environment"
       :application="application"
-      :routes="data.routes"
-      :wildcard="data.domain"
-      :domain="data.default_domain"
+      :routes="data?.routes ?? []"
+      :wildcard="data?.domain ?? null"
+      :domain="data?.default_domain ?? null"
     />
   </UCard>
 </template>
