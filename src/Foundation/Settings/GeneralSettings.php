@@ -20,16 +20,9 @@ class GeneralSettings extends Settings
     /**
      * Seconds between reloads of an idle host page, for what changed outside Pods (0 turns them off).
      * Pods' own changes reach open pages at once, and a page reloads every 5 seconds (or sooner, when this is shorter)
-     * while a unit changes state.
+     * while a unit changes state. The choices are the cases of HostRefresh.
      */
     public int $host_refresh = 10;
-
-    /**
-     * The choices of host_refresh, in seconds.
-     *
-     * @var list<int>
-     */
-    public const array HostRefreshChoices = [0, 3, 5, 10, 15, 30, 60, 180, 300];
 
     public static function group(): string
     {

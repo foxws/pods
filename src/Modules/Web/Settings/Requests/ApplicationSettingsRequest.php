@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Web\Settings\Requests;
 
+use Domain\Shared\Enums\HostRefresh;
 use Domain\Shared\Enums\Locale;
-use Foundation\Settings\GeneralSettings;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -28,7 +28,7 @@ class ApplicationSettingsRequest extends FormRequest
             'timezone' => ['sometimes', 'timezone'],
             'default_locale' => ['sometimes', new Enum(Locale::class)],
             'allow_registration' => ['sometimes', 'boolean'],
-            'host_refresh' => ['sometimes', 'integer', Rule::in(GeneralSettings::HostRefreshChoices)],
+            'host_refresh' => ['sometimes', 'integer', Rule::enum(HostRefresh::class)],
         ];
     }
 }

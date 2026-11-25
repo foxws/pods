@@ -18,6 +18,12 @@ declare module '@inertiajs/core' {
     readonly locale: string
     readonly locales: OptionItem[] | undefined
     readonly languages: OptionItem[] | undefined
+    /** The choices of how often an idle host page reloads, from HostRefresh. */
+    readonly hostRefreshes: OptionItem[] | undefined
+    /** The labels of the unit statuses, from UnitStatus. */
+    readonly unitStatuses: OptionItem[] | undefined
+    /** The labels of the volume export statuses, from VolumeExportStatus. */
+    readonly volumeExportStatuses: OptionItem[] | undefined
     readonly features: Features | undefined
     readonly auth: User | null | undefined
     readonly environments: EnvironmentData[] | undefined
