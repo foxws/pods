@@ -31,12 +31,11 @@ class ListReachableUpstreams
     {
         $isOnJoinableNetwork = collect($networks)->contains(fn (NetworkData $network): bool => $this->isJoinable($network, $application));
 
-        return collect($containers)
+        return array_values(collect($containers)
             ->filter(fn (HostContainerData $container): bool => $container->application === $application)
             ->groupBy(fn (HostContainerData $container): string => $container->pod ?? $container->name)
             ->flatMap(fn (Collection $group, string $name): array => $this->reachableOf($name, $this->published($group), $isOnJoinableNetwork))
-            ->values()
-            ->all();
+            ->all());
     }
 
     /**
@@ -82,7 +81,7 @@ class ListReachableUpstreams
             $reachable[] = new ReachableUpstreamData($name, UpstreamReach::Unknown, $name, null, null);
         }
 
-        return $reachable;
+        return array_values($reachable);
     }
 
     /**
@@ -93,7 +92,7 @@ class ListReachableUpstreams
      */
     protected function published(Collection $containers): array
     {
-        return $containers
+        return array_values($containers
             ->flatMap(fn (HostContainerData $container): array => $container->ports)
             ->unique()
             ->map(fn (string $published): ?array => preg_match(self::PublishedPattern, $published, $matches) === 1 && $matches['protocol'] === 'tcp'
@@ -105,8 +104,7 @@ class ListReachableUpstreams
                 ]
                 : null)
             ->filter()
-            ->values()
-            ->all();
+            ->all());
     }
 
     protected function isLoopback(?string $address): bool
