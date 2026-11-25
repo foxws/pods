@@ -2,6 +2,7 @@
 
 use Foxws\Essentials\Csp\Nonce\ViteNonceGenerator;
 use Foxws\Essentials\Csp\Presets\BasicPreset;
+use Foxws\Essentials\Csp\Presets\IconifyPreset;
 use Spatie\Csp\Presets\BunnyFonts;
 use Support\Csp\Presets\ReverbPreset;
 
@@ -17,6 +18,7 @@ return [
     'presets' => [
         BasicPreset::class,
         BunnyFonts::class,
+        IconifyPreset::class,
         ReverbPreset::class,
     ],
 
