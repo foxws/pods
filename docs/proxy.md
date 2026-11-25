@@ -33,19 +33,19 @@ Once the proxy is installed, Pods manages the routes: the install page asks for 
 | Upstream                        | For                                                                                       |
 | ------------------------------- | ----------------------------------------------------------------------------------------- |
 | `systemd-hello:8000`            | A container on one of the application's networks, which the proxy joins. The usual choice |
-| `host.containers.internal:3001` | A port the host publishes on every address                                                |
-| `192.168.1.10:3000`             | A port the host publishes on that address                                                 |
+| `host.containers.internal:3000` | A port on the proxy's own host, published on an address other than `127.0.0.1`            |
+| `192.168.1.20:8080`             | Another machine on your network                                                           |
 
-IPv6 addresses aren't supported. A container name only resolves on a network the proxy shares with it, so an application without a `Network=` (on Podman's default pasta network, or `Network=host`) needs one of the other two. The proxy container can't reach the host's `127.0.0.1` either, so a port published as `PublishPort=127.0.0.1:3000:3000` needs another publish first, in a drop-in on the application's Files tab:
+IPv6 addresses aren't supported. A container name only resolves on a network the proxy shares with it, so an application without a `Network=` (on Podman's default pasta network, or `Network=host`) is reached through the host. Use `host.containers.internal` for that, not the host's own IP: rootless Podman gives the proxy's network the host's address, so a connection to it stays inside the container's namespace and is refused. The proxy can't reach the host's `127.0.0.1` either, so a port published as `PublishPort=127.0.0.1:3000:3000` needs another publish first, in a drop-in on the application's Files tab:
 
 ```ini
 # adguardhome.container.d/proxy.local.conf
 [Container]
-# Publishes the web UI on the host's LAN address too, so the Pods proxy can reach it.
+# Publishes the web UI on the host's LAN address too, so the Pods proxy can reach it as host.containers.internal.
 PublishPort=192.168.1.10:3000:3000
 ```
 
-Then route to `192.168.1.10:3000`. Give the host a fixed address, or both break when it changes. Publishing on every address instead (`PublishPort=3001:3000`, routed to `host.containers.internal:3001`) needs another host port, since `127.0.0.1:3000` is taken. Either way the port is reachable from your network without HTTPS, so block it in the host's firewall if the application's own login isn't enough. This is how to route AdGuard Home: on a bridge network, rootless Podman would show every DNS client as the gateway's address, so it stays on pasta.
+Restart the application, then route to `host.containers.internal:3000`. Give the host a fixed address, or the drop-in breaks when it changes, or publish on every address instead (`PublishPort=3001:3000`, routed to `host.containers.internal:3001`), which needs another host port since `127.0.0.1:3000` is taken. Either way the port is reachable from your network without HTTPS, so block it in the host's firewall if the application's own login isn't enough. This is how to route AdGuard Home: on a bridge network, rootless Podman would show every DNS client as the gateway's address, so it stays on pasta.
 
 **Forwarded headers.** Pods believes `X-Forwarded-For`, `-Port` and `-Proto` from private addresses only (`TRUSTED_PROXIES` in the `pods-env` secret picks others), and never `X-Forwarded-Host`, so a proxy in front has to pass the `Host` header on (Caddy does, nginx needs `proxy_set_header Host $host;`). Links in password reset mails use `APP_URL`, as passkeys do, so set it to the address you reach Pods at.
 

@@ -93,9 +93,9 @@ it('saves the routes with lowercase hostnames and one main route', function (arr
         [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'systemd-hello:8000', 'main' => false], ['role' => 'websockets', 'host' => 'ws.hello.home.arpa', 'upstream' => 'systemd-hello-reverb:6001', 'main' => true], ['role' => 's3', 'host' => 's3.hello.home.arpa', 'upstream' => 'systemd-hello-rustfs:9000', 'main' => true]],
         [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'systemd-hello:8000', 'main' => false, 'via' => null], ['role' => 'websockets', 'host' => 'ws.hello.home.arpa', 'upstream' => 'systemd-hello-reverb:6001', 'main' => true, 'via' => null], ['role' => 's3', 'host' => 's3.hello.home.arpa', 'upstream' => 'systemd-hello-rustfs:9000', 'main' => false, 'via' => null]],
     ],
-    'to the host, for an application on no network' => [
-        [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'host.containers.internal:3001'], ['role' => 'admin', 'host' => 'admin.hello.home.arpa', 'upstream' => '192.168.1.10:3000']],
-        [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'host.containers.internal:3001', 'main' => true, 'via' => null], ['role' => 'admin', 'host' => 'admin.hello.home.arpa', 'upstream' => '192.168.1.10:3000', 'main' => false, 'via' => null]],
+    'to the host or another machine' => [
+        [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'host.containers.internal:3000'], ['role' => 'admin', 'host' => 'admin.hello.home.arpa', 'upstream' => '192.168.1.20:8080']],
+        [['role' => 'app', 'host' => 'hello.home.arpa', 'upstream' => 'host.containers.internal:3000', 'main' => true, 'via' => null], ['role' => 'admin', 'host' => 'admin.hello.home.arpa', 'upstream' => '192.168.1.20:8080', 'main' => false, 'via' => null]],
     ],
     'none, which removes them' => [[], []],
 ]);

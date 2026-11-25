@@ -21,7 +21,7 @@ class RouteData extends Data
 
     /**
      * A container and the port it listens on, such as systemd-hello:8000. A host name or IPv4 address works too,
-     * such as host.containers.internal:3001 for an application on no network, but IPv6 does not.
+     * such as host.containers.internal:3000 for an application on no network (never the host's own IP), but IPv6 does not.
      */
     public const string UpstreamPattern = '/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}:\d{1,5}$/';
 

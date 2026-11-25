@@ -187,7 +187,7 @@ const onSubmit = (close: () => void): void => {
               :description="
                 row.fromManifest
                   ? 'From pods.yml'
-                  : 'A container and its port, or host.containers.internal or an IPv4 address of the host'
+                  : 'A container and its port, or host.containers.internal:PORT for a port on the host'
               "
               :error="errorOf(row, 'upstream')"
             >
