@@ -42,6 +42,15 @@ it('shares how often host pages refresh', function () {
         ->assertInertia(fn ($page) => $page->where('refresher', 180));
 });
 
+it('shares the labels of the enums the pages show', function (string $prop, string|int $value, string $label) {
+    $this->get(route('login'))
+        ->assertInertia(fn ($page) => $page->where($prop, fn ($options): bool => collect($options)->firstWhere('value', $value)['label'] === $label));
+})->with([
+    'a unit status' => ['unitStatuses', 'activating', 'Starting'],
+    'a volume export status' => ['volumeExportStatuses', 'completed', 'Ready'],
+    'a host refresh' => ['hostRefreshes', 60, 'Every minute'],
+]);
+
 it('gives the auth pages relative urls, whatever scheme urls are generated with', function () {
     $this->get(route('login'))
         ->assertInertia(fn ($page) => $page

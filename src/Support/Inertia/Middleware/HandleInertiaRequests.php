@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Support\Inertia\Middleware;
 
+use Domain\Applications\Enums\UnitStatus;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
+use Domain\Shared\Enums\HostRefresh;
 use Domain\Shared\Enums\Language;
 use Domain\Shared\Enums\Locale;
 use Domain\Users\Models\User;
+use Domain\Volumes\Enums\VolumeExportStatus;
 use Foundation\Settings\GeneralSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
@@ -52,6 +55,9 @@ class HandleInertiaRequests extends Middleware
             'app' => fn (): string => app(GeneralSettings::class)->site_name,
             'locales' => fn (): Options => Options::forEnum(Locale::class),
             'languages' => fn (): Options => Options::forEnum(Language::class),
+            'hostRefreshes' => fn (): Options => Options::forEnum(HostRefresh::class),
+            'unitStatuses' => fn (): Options => Options::forEnum(UnitStatus::class),
+            'volumeExportStatuses' => fn (): Options => Options::forEnum(VolumeExportStatus::class),
             'features' => fn (): array => [
                 'registration' => Features::enabled(Features::registration()) && app(GeneralSettings::class)->allow_registration,
                 'resetPasswords' => Features::enabled(Features::resetPasswords()),

@@ -162,6 +162,8 @@ export type HostEventData = {
   application: string | null
   exit_code: number | null
 }
+export type HostRefresh = 0 | 3 | 5 | 10 | 15 | 30 | 60 | 180 | 300
+export type HostResource = 'application' | 'container' | 'image' | 'volume' | 'network' | 'secret'
 export type HostSettingsData = {
   auto_update: boolean
   schedule: string | null

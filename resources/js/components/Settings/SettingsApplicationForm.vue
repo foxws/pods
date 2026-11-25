@@ -17,17 +17,7 @@ const form = useForm<ApplicationSettings>(update(), {
   host_refresh: 10,
 })
 
-const hostRefreshChoices = [
-  { label: 'Off', value: 0 },
-  { label: 'Every 3 seconds', value: 3 },
-  { label: 'Every 5 seconds', value: 5 },
-  { label: 'Every 10 seconds', value: 10 },
-  { label: 'Every 15 seconds', value: 15 },
-  { label: 'Every 30 seconds', value: 30 },
-  { label: 'Every minute', value: 60 },
-  { label: 'Every 3 minutes', value: 180 },
-  { label: 'Every 5 minutes', value: 300 },
-]
+const hostRefreshChoices = computed(() => usePage().props.hostRefreshes ?? [])
 
 const onSubmit = () =>
   form.submit({

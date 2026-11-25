@@ -4,19 +4,23 @@ import StateBadge from '@/components/Ui/StateBadge.vue'
 import { useHostAction } from '@/composables/hostActions'
 import type { EnvironmentData, VolumeExportData, VolumeExportStatus } from '@/types'
 import { formatBytes, formatRelative } from '@/utils/format'
+import { optionLabel } from '@/utils/options'
 import type { BadgeProps } from '@nuxt/ui'
+import { usePage } from '@inertiajs/vue3'
 
 defineProps<{
   environment: EnvironmentData
   exports: VolumeExportData[]
 }>()
 
-const statuses: Record<VolumeExportStatus, { label: string; color: BadgeProps['color']; busy?: boolean }> = {
-  pending: { label: 'Waiting', color: 'neutral', busy: true },
-  running: { label: 'Exporting', color: 'info', busy: true },
-  completed: { label: 'Ready', color: 'success' },
-  failed: { label: 'Failed', color: 'error' },
+const statuses: Record<VolumeExportStatus, { color: BadgeProps['color']; busy?: boolean }> = {
+  pending: { color: 'neutral', busy: true },
+  running: { color: 'info', busy: true },
+  completed: { color: 'success' },
+  failed: { color: 'error' },
 }
+
+const statusLabel = (status: VolumeExportStatus): string => optionLabel(usePage().props.volumeExportStatuses, status)
 
 const { send, processing } = useHostAction()
 </script>
@@ -52,7 +56,10 @@ const { send, processing } = useHostAction()
             >{{ item.error }}</span
           >
         </span>
-        <StateBadge v-bind="statuses[item.status]" />
+        <StateBadge
+          v-bind="statuses[item.status]"
+          :label="statusLabel(item.status)"
+        />
         <UButton
           v-if="item.download_url"
           label="Download"
