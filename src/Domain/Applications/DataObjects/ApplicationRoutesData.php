@@ -17,6 +17,7 @@ class ApplicationRoutesData extends Data
      * @param  string  $layout  "sites" or "handlers", see ProxyRoutesData
      * @param  string|null  $default_domain  the proxy defaults' domain, which hostnames are suggested under outside a wildcard site
      * @param  list<RouteSuggestionData>  $routes
+     * @param  list<ReachableUpstreamData>  $reachable  where the proxy can reach the application's containers, to offer as upstreams
      */
     public function __construct(
         public bool $proxy_installed,
@@ -25,5 +26,6 @@ class ApplicationRoutesData extends Data
         public ?string $domain,
         public ?string $default_domain,
         public array $routes,
+        public array $reachable = [],
     ) {}
 }

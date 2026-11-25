@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Modules\Web\Applications\Props;
 
 use Domain\Applications\Actions\ListApplicationUpdates;
+use Domain\Applications\Actions\ListReachableUpstreams;
 use Domain\Applications\Actions\SuggestOnDemandSettings;
 use Domain\Applications\Actions\SuggestRoutes;
 use Domain\Applications\Actions\SyncInstallation;
 use Domain\Applications\DataObjects\InstallationData;
 use Domain\Applications\DataObjects\QuadletFileData;
+use Domain\Applications\DataObjects\ReachableUpstreamData;
 use Domain\Applications\DataObjects\TimerData;
+use Domain\Applications\Enums\UpstreamReach;
 use Domain\Applications\Models\Installation;
 use Domain\Environments\DataObjects\EnvironmentData;
 use Domain\Environments\Models\Environment;
@@ -19,6 +22,7 @@ use Domain\Users\Enums\PinType;
 use Domain\Users\Models\User;
 use Inertia\ProvidesInertiaProperties;
 use Inertia\RenderContext;
+use Integrations\Lpod\Exceptions\LpodException;
 use Integrations\Lpod\LpodClient;
 use Modules\Web\Environments\Concerns\ReadsFromHost;
 
@@ -47,6 +51,7 @@ class ApplicationShowProps implements ProvidesInertiaProperties
         protected SyncInstallation $syncInstallation,
         protected ListApplicationUpdates $listApplicationUpdates,
         protected SuggestRoutes $suggestRoutes,
+        protected ListReachableUpstreams $listReachableUpstreams,
     ) {}
 
     public function for(Environment $environment, string $application): self
@@ -66,6 +71,7 @@ class ApplicationShowProps implements ProvidesInertiaProperties
             'environment' => EnvironmentData::fromModel($this->environment),
             'name' => $this->application,
             'pinned' => $this->pin($context),
+            'upstreamReaches' => UpstreamReach::options(),
             'application' => $this->deferFromHost(fn () => $this->lpod->application($this->environment, $this->application), live: $this->environment),
             'ondemand' => $this->deferFromHost(fn () => $this->lpod->onDemand($this->environment, $this->application), live: $this->environment),
             'ondemandSuggestion' => $this->deferFromHost(fn () => ($this->suggestOnDemandSettings)(
@@ -79,6 +85,7 @@ class ApplicationShowProps implements ProvidesInertiaProperties
                 $this->application,
                 $this->lpod->proxyRoutes($this->environment),
                 $this->installation()?->manifest(),
+                $this->reachable(),
             ), 'routes', live: $this->environment),
             'timers' => $this->deferFromHost(fn (): array => $this->timers(), 'details', live: $this->environment),
             'updates' => $this->deferFromHost(fn (): array => $this->installation() !== null ? ($this->listApplicationUpdates)($this->installation()) : [], 'updates'),
@@ -136,6 +143,27 @@ class ApplicationShowProps implements ProvidesInertiaProperties
         }
 
         return $this->lpod->timers($this->environment, $this->application);
+    }
+
+    /**
+     * Where the proxy can reach the application's containers. The routes still show when the host
+     * can't list its containers or networks, without these.
+     *
+     * @return list<ReachableUpstreamData>
+     */
+    protected function reachable(): array
+    {
+        try {
+            return ($this->listReachableUpstreams)(
+                $this->application,
+                $this->lpod->containers($this->environment),
+                $this->lpod->networks($this->environment),
+            );
+        } catch (LpodException $exception) {
+            report($exception);
+
+            return [];
+        }
     }
 
     /**

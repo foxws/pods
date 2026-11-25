@@ -1,4 +1,4 @@
-import type { Locale } from '@/types/generated'
+import type { Locale, UpstreamReach } from '@/types/generated'
 import type { SelectItem } from '@nuxt/ui'
 
 export type FlashType = 'success' | 'error' | 'warning' | 'info' | 'primary'
@@ -35,6 +35,17 @@ export type OptionItem = SelectItem & {
   label: string
   value: string | number | boolean | null
   disabled?: boolean
+}
+
+/**
+ * A kind of upstream, as UpstreamReach::options() gives it.
+ */
+export type UpstreamReachOption = {
+  label: string
+  value: UpstreamReach
+  description: string
+  example: string | null
+  usable: boolean
 }
 
 export type { StateData, UserData as User } from '@/types/generated'
@@ -83,11 +94,13 @@ export type {
   QuadletCheckData,
   QuadletFileData,
   QuadletSourceData,
+  ReachableUpstreamData,
   RouteSuggestionData,
   SearchResultData,
   SecretData,
   TimerData,
   UnitStatus,
+  UpstreamReach,
   VolumeExportData,
   VolumeExportStatus,
 } from '@/types/generated'

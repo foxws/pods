@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import ApplicationRoutesModal from '@/components/Applications/ApplicationRoutesModal.vue'
 import HostError from '@/components/Environments/HostError.vue'
-import type { ApplicationRoutesData, EnvironmentData, HostProperty } from '@/types'
+import type { ApplicationRoutesData, EnvironmentData, HostProperty, UpstreamReachOption } from '@/types'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
   application: string
   routes?: HostProperty<ApplicationRoutesData>
+  /** The kinds of upstream, from UpstreamReach. */
+  reaches: UpstreamReachOption[]
 }>()
 
 const data = computed(() => props.routes?.data ?? null)
@@ -112,6 +114,8 @@ const isEditing = ref(false)
       :routes="data?.routes ?? []"
       :wildcard="data?.domain ?? null"
       :domain="data?.default_domain ?? null"
+      :reachable="data?.reachable ?? []"
+      :reaches="reaches"
     />
   </UCard>
 </template>

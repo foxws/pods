@@ -36,6 +36,8 @@ Once the proxy is installed, Pods manages the routes: the install page asks for 
 | `host.containers.internal:3000` | A port on the proxy's own host, published on an address other than `127.0.0.1`            |
 | `192.168.1.20:8080`             | Another machine on your network                                                           |
 
+The routes modal lists where the application's containers can be reached under **Where APP listens**, from the ports they publish and the networks they're on, and **Pick** fills one in. Pods can't see the ports of a container on the host network, so those show as unknown.
+
 IPv6 addresses aren't supported. A container name only resolves on a network the proxy shares with it, so an application without a `Network=` (on Podman's default pasta network, or `Network=host`) is reached through the host. Use `host.containers.internal` for that, not the host's own IP: rootless Podman gives the proxy's network the host's address, so a connection to it stays inside the container's namespace and is refused. The proxy can't reach the host's `127.0.0.1` either, so a port published as `PublishPort=127.0.0.1:3000:3000` needs another publish first, in a drop-in on the application's Files tab:
 
 ```ini
