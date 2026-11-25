@@ -31,7 +31,7 @@ class UpdateApplicationRoutesRequest extends FormRequest
         return [
             'routes.*.host.regex' => __('Use a hostname, such as hello.home.arpa.'),
             'routes.*.host.distinct' => __('Each hostname can only have one route.'),
-            'routes.*.upstream.regex' => __('Use a container and its port, such as systemd-hello:8000.'),
+            'routes.*.upstream.regex' => __('Use a container, host name or IPv4 address and its port, such as systemd-hello:8000.'),
         ];
     }
 

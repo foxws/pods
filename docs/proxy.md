@@ -28,6 +28,25 @@ Pods installs `containers/proxy` from this repository as the application `pods-p
 
 Once the proxy is installed, Pods manages the routes: the install page asks for a hostname for each route an application's `pods.yml` names, and the Routes card on the application page adds, changes and removes them. lpod writes them to `~/.config/pods-proxy/sites/`, with a drop-in that joins the application's networks, then reloads Caddy, or restarts the proxy when it joins a new network. The main route of an on-demand application goes to its socket, so a request wakes it.
 
+**Upstreams.** A route's upstream is a name or address and a port:
+
+| Upstream                        | For                                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------------- |
+| `systemd-hello:8000`            | A container on one of the application's networks, which the proxy joins. The usual choice |
+| `host.containers.internal:3001` | A port the host publishes on every address                                                |
+| `192.168.1.10:3000`             | A port the host publishes on that address                                                 |
+
+IPv6 addresses aren't supported. A container name only resolves on a network the proxy shares with it, so an application without a `Network=` (on Podman's default pasta network, or `Network=host`) needs one of the other two. The proxy container can't reach the host's `127.0.0.1` either, so a port published as `PublishPort=127.0.0.1:3000:3000` needs another publish first, in a drop-in on the application's Files tab:
+
+```ini
+# adguardhome.container.d/proxy.local.conf
+[Container]
+# Publishes the web UI on the host's LAN address too, so the Pods proxy can reach it.
+PublishPort=192.168.1.10:3000:3000
+```
+
+Then route to `192.168.1.10:3000`. Give the host a fixed address, or both break when it changes. Publishing on every address instead (`PublishPort=3001:3000`, routed to `host.containers.internal:3001`) needs another host port, since `127.0.0.1:3000` is taken. Either way the port is reachable from your network without HTTPS, so block it in the host's firewall if the application's own login isn't enough. This is how to route AdGuard Home: on a bridge network, rootless Podman would show every DNS client as the gateway's address, so it stays on pasta.
+
 **Forwarded headers.** Pods believes `X-Forwarded-For`, `-Port` and `-Proto` from private addresses only (`TRUSTED_PROXIES` in the `pods-env` secret picks others), and never `X-Forwarded-Host`, so a proxy in front has to pass the `Host` header on (Caddy does, nginx needs `proxy_set_header Host $host;`). Links in password reset mails use `APP_URL`, as passkeys do, so set it to the address you reach Pods at.
 
 To install it by hand instead:
