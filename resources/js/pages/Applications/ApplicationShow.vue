@@ -32,6 +32,7 @@ import type {
   OnDemandData,
   OnDemandSuggestionData,
   PinData,
+  UpstreamReachOption,
   QuadletFileData,
   SecretData,
   TimerData,
@@ -47,6 +48,7 @@ const props = defineProps<{
   environment: EnvironmentData
   name: string
   pinned: PinData | null
+  upstreamReaches: UpstreamReachOption[]
   application?: HostProperty<ApplicationDetailData>
   ondemand?: HostProperty<OnDemandData>
   ondemandSuggestion?: HostProperty<OnDemandSuggestionData>
@@ -442,6 +444,7 @@ const isRemoving = ref(false)
             :environment="environment"
             :application="name"
             :routes="routes"
+            :reaches="upstreamReaches"
           />
 
           <ApplicationTimersCard

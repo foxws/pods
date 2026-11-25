@@ -65,6 +65,123 @@ it('shows the routes of an application, then the ones its pods.yml names with a 
             ])));
 });
 
+/**
+ * The reachable upstreams the application page offers for an application.
+ *
+ * @return list<array<string, mixed>>
+ */
+function reachableOn(mixed $test, string $application): array
+{
+    $reachable = null;
+
+    $test->actingAs($test->owner)
+        ->get(action([ApplicationController::class, 'show'], [$test->environment, $application]))
+        ->assertInertia(function ($page) use (&$reachable) {
+            $page->loadDeferredProps('routes', function ($reload) use (&$reachable) {
+                $reachable = $reload->toArray()['props']['routes']['data']['reachable'];
+            });
+        });
+
+    return $reachable;
+}
+
+/**
+ * One container of an application, as "lpod containers --json" lists it.
+ *
+ * @param  list<string>  $ports
+ * @return array<string, mixed>
+ */
+function hostContainer(string $name, string $application, array $ports = [], ?string $pod = null): array
+{
+    return ['id' => md5($name), 'name' => $name, 'state' => 'running', 'application' => $application, 'pod' => $pod, 'ports' => $ports];
+}
+
+/**
+ * One network, as "lpod networks --json" lists it.
+ *
+ * @param  list<string>  $applications
+ * @return array<string, mixed>
+ */
+function hostNetwork(string $name, array $applications, string $driver = 'bridge', bool $dns = true): array
+{
+    return ['name' => $name, 'driver' => $driver, 'dns' => $dns, 'applications' => $applications, 'default' => false];
+}
+
+it('offers a pod by name on its network, and a port published on every address through the host', function () {
+    fakeLpod();
+
+    expect(reachableOn($this, 'immich'))->toBe([
+        ['container' => 'immich', 'reach' => 'network', 'name' => 'immich', 'port' => 2283, 'published' => '0.0.0.0:2283->2283/tcp'],
+        ['container' => 'immich', 'reach' => 'host', 'name' => 'host.containers.internal', 'port' => 2283, 'published' => '0.0.0.0:2283->2283/tcp'],
+    ]);
+});
+
+it('tells where an application without a network can be reached', function (array $container, array $reachable) {
+    fakeLpod()
+        ->respond('containers --json', json_encode(['contract' => 1, 'containers' => [$container]]))
+        ->respond('networks --json', json_encode(['contract' => 1, 'networks' => [hostNetwork('iot', ['hello'], driver: 'macvlan', dns: false)]]));
+
+    expect(reachableOn($this, 'hello'))->toBe($reachable);
+})->with([
+    'published on the LAN address' => [
+        hostContainer('systemd-hello', 'hello', ['127.0.0.1:3000->3000/tcp', '192.168.1.10:3000->3000/tcp', '0.0.0.0:53->53/udp']),
+        [
+            ['container' => 'systemd-hello', 'reach' => 'loopback', 'name' => 'host.containers.internal', 'port' => 3000, 'published' => '127.0.0.1:3000->3000/tcp'],
+            ['container' => 'systemd-hello', 'reach' => 'host', 'name' => 'host.containers.internal', 'port' => 3000, 'published' => '192.168.1.10:3000->3000/tcp'],
+        ],
+    ],
+    'published on loopback only' => [
+        hostContainer('systemd-hello', 'hello', ['127.0.0.1:3000->3000/tcp']),
+        [['container' => 'systemd-hello', 'reach' => 'loopback', 'name' => 'host.containers.internal', 'port' => 3000, 'published' => '127.0.0.1:3000->3000/tcp']],
+    ],
+    'on the host network, publishing nothing' => [
+        hostContainer('systemd-hello', 'hello'),
+        [['container' => 'systemd-hello', 'reach' => 'unknown', 'name' => 'systemd-hello', 'port' => null, 'published' => null]],
+    ],
+]);
+
+it('offers a container on a network by name, on the port inside it, without its loopback publish', function () {
+    fakeLpod()
+        ->respond('containers --json', json_encode(['contract' => 1, 'containers' => [
+            hostContainer('systemd-hello', 'hello', ['127.0.0.1:8222->80/tcp']),
+            hostContainer('systemd-hello-worker', 'hello'),
+            hostContainer('systemd-other', 'other', ['0.0.0.0:9000->9000/tcp']),
+        ]]))
+        ->respond('networks --json', json_encode(['contract' => 1, 'networks' => [hostNetwork('systemd-hello', ['hello'])]]));
+
+    expect(reachableOn($this, 'hello'))->toBe([
+        ['container' => 'systemd-hello', 'reach' => 'network', 'name' => 'systemd-hello', 'port' => 80, 'published' => '127.0.0.1:8222->80/tcp'],
+        ['container' => 'systemd-hello-worker', 'reach' => 'network', 'name' => 'systemd-hello-worker', 'port' => null, 'published' => null],
+    ]);
+});
+
+it('gives the routes modal the kinds of upstream, with an example of the ones a route can use', function () {
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'hello']))
+        ->assertInertia(fn ($page) => $page->where('upstreamReaches', fn ($reaches): bool => collect($reaches)
+            ->map(fn (array $reach): array => [$reach['value'], $reach['example'], $reach['usable']])
+            ->all() === [
+                ['network', 'systemd-hello:8000', true],
+                ['host', 'host.containers.internal:3000', true],
+                ['machine', '192.168.1.20:8080', true],
+                ['loopback', null, false],
+                ['unknown', null, false],
+            ]));
+});
+
+it('still shows the routes when the host cannot list its containers', function () {
+    fakeLpod()->respond('containers --json', new HostResult(1, '', 'podman ps failed'));
+
+    $this->actingAs($this->owner)
+        ->get(action([ApplicationController::class, 'show'], [$this->environment, 'hello']))
+        ->assertInertia(fn ($page) => $page->loadDeferredProps('routes', fn ($reload) => $reload
+            ->where('routes.error', null)
+            ->where('routes.data.proxy_installed', true)
+            ->where('routes.data.reachable', [])));
+});
+
 it('says when the proxy is not installed', function () {
     fakeLpod()->respond('proxy routes --json', json_encode(['contract' => 1, 'proxy' => ['installed' => false, 'running' => false], 'routes' => []]));
 

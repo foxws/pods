@@ -6,6 +6,7 @@ namespace Domain\Applications\Actions;
 
 use Domain\Applications\DataObjects\ApplicationRoutesData;
 use Domain\Applications\DataObjects\ProxyRoutesData;
+use Domain\Applications\DataObjects\ReachableUpstreamData;
 use Domain\Applications\DataObjects\RouteData;
 use Domain\Applications\DataObjects\RouteSuggestionData;
 use Domain\Quadlets\DataObjects\ManifestData;
@@ -27,8 +28,10 @@ class SuggestRoutes
      * (hello.home.arpa), and the role in front of it for the others (ws.hello.home.arpa), under the
      * domain of the proxy defaults when they have one. Behind a wildcard site, names stay one label
      * under its domain (hello-ws.home.example.com).
+     *
+     * @param  list<ReachableUpstreamData>  $reachable  where the proxy can reach the application's containers
      */
-    public function __invoke(string $application, ProxyRoutesData $proxy, ?ManifestData $manifest = null): ApplicationRoutesData
+    public function __invoke(string $application, ProxyRoutesData $proxy, ?ManifestData $manifest = null, array $reachable = []): ApplicationRoutesData
     {
         $current = collect($proxy->of($application))->keyBy('role');
         $named = collect($manifest->routes ?? [])->keyBy('role');
@@ -68,6 +71,7 @@ class SuggestRoutes
             domain: $proxy->domain,
             default_domain: $domain,
             routes: $suggestions,
+            reachable: $reachable,
         );
     }
 

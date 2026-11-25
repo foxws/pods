@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { update } from '@/actions/Modules/Web/Applications/Controllers/ApplicationRoutesController'
 import FormModal from '@/components/Ui/FormModal.vue'
-import type { EnvironmentData, RouteSuggestionData } from '@/types'
-import { suggestedHost } from '@/utils/routes'
+import type { EnvironmentData, ReachableUpstreamData, RouteSuggestionData, UpstreamReachOption } from '@/types'
+import { reachableUpstream, suggestedHost } from '@/utils/routes'
+import type { DropdownMenuItem } from '@nuxt/ui'
 import { useForm } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const open = defineModel<boolean>('open')
 
@@ -16,6 +17,10 @@ const props = defineProps<{
   wildcard: string | null
   /** The proxy defaults' domain, which other hostnames are suggested under. */
   domain: string | null
+  /** Where the proxy can reach the application's containers. */
+  reachable: ReachableUpstreamData[]
+  /** The kinds of upstream, from UpstreamReach. */
+  reaches: UpstreamReachOption[]
 }>()
 
 type Row = {
@@ -32,24 +37,26 @@ const form = useForm<{ rows: Row[] }>({ rows: [] })
 
 const isShowingUpstreams = ref(false)
 
+const reachOf = (reachable: ReachableUpstreamData): UpstreamReachOption | undefined =>
+  props.reaches.find((reach) => reach.value === reachable.reach)
+
+const isUsable = (reachable: ReachableUpstreamData): boolean => reachOf(reachable)?.usable ?? false
+
+const usable = computed(() => props.reachable.filter(isUsable))
+
 /**
- * The upstreams the proxy can reach, as docs/proxy.md explains them.
+ * The kinds of upstream a route can use, with an example of each.
  */
-const upstreamKinds = [
-  {
-    example: 'systemd-hello:8000',
-    description: "A container on one of the application's networks, which the proxy joins. The usual choice.",
-  },
-  {
-    example: 'host.containers.internal:3000',
-    description:
-      "A port on this host, for an application with no network of its own, such as one on the host network. The port has to be published on an address other than 127.0.0.1. The host's own IP and 127.0.0.1 don't reach it from the proxy.",
-  },
-  {
-    example: '192.168.1.20:8080',
-    description: "Another machine on your network. IPv6 addresses aren't supported.",
-  },
-]
+const kinds = computed(() => props.reaches.filter((reach) => reach.usable && reach.example))
+
+const pickItems = (row: Row): DropdownMenuItem[] =>
+  usable.value.map((reachable) => ({
+    label: reachableUpstream(reachable),
+    description: `${reachable.container} · ${reachOf(reachable)?.label}`,
+    onSelect: () => {
+      row.upstream = reachableUpstream(reachable)
+    },
+  }))
 
 watch(open, (isOpen) => {
   if (!isOpen) {
@@ -217,7 +224,24 @@ const onSubmit = (close: () => void): void => {
                 :disabled="row.fromManifest"
                 placeholder="systemd-app:8000"
                 class="w-full font-mono"
-              />
+              >
+                <template
+                  v-if="!row.fromManifest && !row.upstream && usable.length"
+                  #trailing
+                >
+                  <UDropdownMenu
+                    :items="pickItems(row)"
+                    :content="{ align: 'end' }"
+                  >
+                    <UButton
+                      label="Pick"
+                      color="neutral"
+                      variant="link"
+                      size="xs"
+                    />
+                  </UDropdownMenu>
+                </template>
+              </UInput>
             </UFormField>
           </div>
 
@@ -242,6 +266,32 @@ const onSubmit = (close: () => void): void => {
 
         <USeparator />
 
+        <div
+          v-if="reachable.length"
+          class="flex flex-col gap-2"
+        >
+          <h3 class="text-sm font-medium text-highlighted">Where {{ application }} listens</h3>
+          <ul class="flex flex-col gap-2 text-sm">
+            <li
+              v-for="item in reachable"
+              :key="`${item.reach}-${item.container}-${item.port}`"
+              class="flex flex-col"
+            >
+              <span
+                class="font-mono"
+                :class="isUsable(item) ? 'text-highlighted' : 'text-muted'"
+                >{{ reachableUpstream(item) }}</span
+              >
+              <span class="text-muted">{{ item.container }} · {{ reachOf(item)?.label }}</span>
+              <span
+                v-if="!isUsable(item)"
+                class="text-muted"
+                >{{ reachOf(item)?.description }}</span
+              >
+            </li>
+          </ul>
+        </div>
+
         <UCollapsible v-model:open="isShowingUpstreams">
           <UButton
             label="Which upstream?"
@@ -256,10 +306,13 @@ const onSubmit = (close: () => void): void => {
           <template #content>
             <dl class="flex flex-col gap-3 pt-2 text-sm">
               <div
-                v-for="kind in upstreamKinds"
-                :key="kind.example"
+                v-for="kind in kinds"
+                :key="kind.value"
               >
-                <dt class="font-mono text-highlighted">{{ kind.example }}</dt>
+                <dt>
+                  <span class="font-medium text-highlighted">{{ kind.label }}</span>
+                  <span class="ms-2 font-mono text-muted">{{ kind.example }}</span>
+                </dt>
                 <dd class="text-muted">{{ kind.description }}</dd>
               </div>
             </dl>

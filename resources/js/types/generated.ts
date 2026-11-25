@@ -30,6 +30,7 @@ export type ApplicationRoutesData = {
   domain: string | null
   default_domain: string | null
   routes: RouteSuggestionData[]
+  reachable: ReachableUpstreamData[]
 }
 export type CatalogApplicationData = {
   name: string
@@ -465,6 +466,13 @@ export type QuadletSourceData = {
   manifest_yaml: string | null
   manifest_path: string | null
 }
+export type ReachableUpstreamData = {
+  container: string
+  reach: UpstreamReach
+  name: string
+  port: number | null
+  published: string | null
+}
 export type RouteData = {
   application: string | null
   role: string
@@ -520,6 +528,7 @@ export type TimerData = {
   last_result: string | null
 }
 export type UnitStatus = 'running' | 'activating' | 'deactivating' | 'reloading' | 'failed' | 'inactive' | 'unknown'
+export type UpstreamReach = 'network' | 'host' | 'machine' | 'loopback' | 'unknown'
 export type UserData = {
   id: string
   name: string | null
