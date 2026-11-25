@@ -4,7 +4,7 @@ import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData, RouteSuggestionData } from '@/types'
 import { suggestedHost } from '@/utils/routes'
 import { useForm } from '@inertiajs/vue3'
-import { watch } from 'vue'
+import { ref, watch } from 'vue'
 
 const open = defineModel<boolean>('open')
 
@@ -29,6 +29,27 @@ type Row = {
 }
 
 const form = useForm<{ rows: Row[] }>({ rows: [] })
+
+const isShowingUpstreams = ref(false)
+
+/**
+ * The upstreams the proxy can reach, as docs/proxy.md explains them.
+ */
+const upstreamKinds = [
+  {
+    example: 'systemd-hello:8000',
+    description: "A container on one of the application's networks, which the proxy joins. The usual choice.",
+  },
+  {
+    example: 'host.containers.internal:3000',
+    description:
+      "A port on this host, for an application with no network of its own, such as one on the host network. The port has to be published on an address other than 127.0.0.1. The host's own IP and 127.0.0.1 don't reach it from the proxy.",
+  },
+  {
+    example: '192.168.1.20:8080',
+    description: "Another machine on your network. IPv6 addresses aren't supported.",
+  },
+]
 
 watch(open, (isOpen) => {
   if (!isOpen) {
@@ -184,7 +205,11 @@ const onSubmit = (close: () => void): void => {
             </UFormField>
             <UFormField
               label="Upstream"
-              :description="row.fromManifest ? 'From pods.yml' : 'A container and its port'"
+              :description="
+                row.fromManifest
+                  ? 'From pods.yml'
+                  : 'A container and its port, or host.containers.internal:PORT for a port on this host'
+              "
               :error="errorOf(row, 'upstream')"
             >
               <UInput
@@ -214,6 +239,32 @@ const onSubmit = (close: () => void): void => {
           class="self-start"
           @click="addRow"
         />
+
+        <USeparator />
+
+        <UCollapsible v-model:open="isShowingUpstreams">
+          <UButton
+            label="Which upstream?"
+            color="neutral"
+            variant="ghost"
+            trailing-icon="i-lucide-chevron-down"
+            :ui="{ trailingIcon: isShowingUpstreams ? 'rotate-180 transition-transform' : 'transition-transform' }"
+            class="-mx-2.5 w-[calc(100%+1.25rem)]"
+            block
+          />
+
+          <template #content>
+            <dl class="flex flex-col gap-3 pt-2 text-sm">
+              <div
+                v-for="kind in upstreamKinds"
+                :key="kind.example"
+              >
+                <dt class="font-mono text-highlighted">{{ kind.example }}</dt>
+                <dd class="text-muted">{{ kind.description }}</dd>
+              </div>
+            </dl>
+          </template>
+        </UCollapsible>
       </div>
     </template>
   </FormModal>
