@@ -1,0 +1,68 @@
+# How Pods installs its own development source. Pods reads the root pods.yml
+# to offer Pods, and this one once you choose the development source: lpod
+# returns the pods.yml nearest to the units. The units are named pods-dev, so
+# they can run next to an installed Pods; give the application that name when
+# Pods asks. See docs/development.md.
+version: 1
+name: pods-dev
+description: Pods, built and run from your checkout in ~/projects/pods
+
+# The development units read .env from your checkout, so there are no
+# secrets to enter.
+
+# Steps the application page in Pods offers once the units are up. Each one
+# runs in the container of a Quadlet, and is safe to run again.
+after_install:
+  migrate:
+    label: Migrate the database
+    container: pods-dev
+    user: docker
+    command: php artisan migrate --seed --force --no-interaction
+  connect:
+    label: Connect this host
+    description: Generates the SSH key of pods-dev, prints it, and registers this host as the local environment (PODS_LOCAL_SSH_USER in .env). Add the key to ~/.ssh/authorized_keys, then run it again.
+    container: pods-dev
+    user: docker
+    command: php artisan pods:install --no-interaction
+  owner:
+    label: Create the owner
+    container: pods-dev
+    user: docker
+    command: php artisan users:create --super-admin --password-stdin --no-interaction
+    inputs:
+      name:
+        label: Name
+        option: --name
+      email:
+        label: Email
+        type: email
+        option: --email
+      password:
+        label: Password
+        type: password
+
+# Steps the application page offers after Pods updates the checkout's units.
+after_update:
+  update:
+    label: Migrate the database
+    container: pods-dev
+    user: docker
+    command: php artisan migrate --force --no-interaction
+
+# The containers the Pods proxy can give a hostname, in place of copying
+# containers/proxy/sites/pods-dev.Caddyfile. Pods asks for the hostnames when
+# installing; they must match APP_URL, VITE_HMR_HOST and REVERB_HOST in your
+# .env. Leave one empty for no route.
+routes:
+  app:
+    upstream: systemd-pods-dev:8000
+    description: The web app (the host in APP_URL)
+  vite:
+    upstream: systemd-pods-dev-vite:5173
+    description: The Vite dev server (VITE_HMR_HOST)
+  ws:
+    upstream: systemd-pods-dev-reverb:8080
+    description: Laravel Reverb (REVERB_HOST)
+  mail:
+    upstream: systemd-pods-dev-mailpit:8025
+    description: Mailpit's web UI

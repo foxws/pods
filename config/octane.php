@@ -51,9 +51,12 @@ return [
     | framework that all absolute links must be generated using the HTTPS
     | protocol. Otherwise your links may be generated using plain HTTP.
     |
+    | Pods leaves it off: it answers plain HTTP on 127.0.0.1:PORT, and behind
+    | the proxy links get https from the trusted X-Forwarded-Proto header.
+    |
     */
 
-    'https' => env('OCTANE_HTTPS', true),
+    'https' => env('OCTANE_HTTPS', false),
 
     /*
     |--------------------------------------------------------------------------

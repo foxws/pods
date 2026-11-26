@@ -1,0 +1,96 @@
+# How Pods offers and installs itself from Git, for example on a second host
+# or as a user that install.sh didn't set up. install.sh stays the easiest
+# way to install Pods; it does what this file describes for you. Pods reads
+# it when you add Pods from Git, and it never changes the Quadlet files.
+# The development source has its own pods.yml next to its units, because
+# its containers are named pods-dev.
+version: 1
+name: pods
+label: Pods
+description: A self-hosted web UI for Podman Quadlet, made for homelabs
+author: foxws
+icon: i-lucide-box
+category: Management
+website: https://github.com/foxws/pods
+repository: https://github.com/foxws/pods
+notes: Pods reaches its own host over SSH. Run "Connect this host" after installing, and add the key it prints to ~/.ssh/authorized_keys of this user.
+
+sources:
+  production:
+    path: containers/quadlets/production
+    description: The published image from ghcr.io/foxws/pods, on 127.0.0.1:9393
+  development:
+    path: containers/quadlets/development
+    description: Builds and runs a checkout in ~/projects/pods on the host, as pods-dev
+
+# The units read Pods' .env from this secret. Start from the one install.sh
+# writes (install.sh, create_env): APP_KEY, APP_URL, the SQLite database on
+# the storage volume (DB_DATABASE=/app/storage/app/private/database.sqlite),
+# PODS_LOCAL_SSH_USER (this user) and the Reverb settings, with
+# OCTANE_REVERB_UPSTREAM=systemd-pods-reverb:8080.
+secrets:
+  pods-env:
+    description: Pods' .env file, with APP_KEY, APP_URL and PODS_LOCAL_SSH_USER
+    format: dotenv
+
+# Steps the application page in Pods offers once the units are up. The web
+# container migrates the database when it starts, so there's no migrate step.
+# Each one is safe to run again.
+after_install:
+  connect:
+    label: Connect this host
+    description: Generates Pods' SSH key, prints it, and registers this host as the local environment. Add the key to ~/.ssh/authorized_keys of this user, then run it again.
+    container: pods
+    user: docker
+    command: php artisan pods:install --no-interaction
+  owner:
+    label: Create the owner
+    description: Or open Pods and use the setup code it prints in its log.
+    container: pods
+    user: docker
+    command: php artisan users:create --super-admin --password-stdin --no-interaction
+    inputs:
+      name:
+        label: Name
+        option: --name
+      email:
+        label: Email
+        type: email
+        option: --email
+      password:
+        label: Password
+        type: password
+
+# Updates need no steps: the web container migrates before it starts.
+
+# The containers the Pods proxy can give a hostname. Pods asks for the
+# hostname when installing; it must match APP_URL in pods-env. Reverb needs
+# no route of its own: Pods' Caddy forwards /app/* to it
+# (OCTANE_REVERB_UPSTREAM).
+routes:
+  app:
+    upstream: systemd-pods:8000
+    description: The web UI (the host in APP_URL)
+
+# Optional: start Pods on its first request, and let it sleep when idle, as
+# install.sh does unless --no-idle. The listen address comes from the unit's
+# PublishPort= (127.0.0.1), which the proxy can't reach: clear it when a
+# route should wake Pods, and block the port in the host's firewall.
+ondemand:
+  port: 9393
+  app_port: 8000
+  idle_timeout: 10min
+  # Keeps running while Pods sleeps, so a volume export finishes.
+  workers:
+    - pods-queue
+  # Succeeds when the queue has no jobs waiting or running.
+  idle_check:
+    container: pods-queue
+    user: docker
+    command: php -d variables_order=EGPCS /app/artisan pods:queue-idle
+  # Every scheduled task runs daily at 01:00 UTC (routes/console.php).
+  schedule:
+    container: pods-schedule
+    at: ['01:00']
+    environment:
+      APP_COMMAND: php -d variables_order=EGPCS /app/artisan schedule:run

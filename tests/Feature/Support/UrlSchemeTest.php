@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 use Foxws\Essentials\Essentials;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Octane\Events\RequestReceived;
+use Laravel\Octane\Listeners\EnforceRequestScheme;
 
 beforeEach(function () {
     app()->detectEnvironment(fn () => 'production');
@@ -26,4 +29,14 @@ it('links to https in production behind the proxy', function () {
         ->withHeader('X-Forwarded-Proto', 'https')
         ->get('http://pods.example.com/')
         ->assertRedirect('https://pods.example.com/setup');
+});
+
+it('keeps plain http links on an octane request', function () {
+    $request = Request::create('http://127.0.0.1:9393/');
+    app('url')->setRequest($request);
+
+    (new EnforceRequestScheme)->handle(new RequestReceived(app(), app(), $request));
+
+    expect(url('/setup'))->toBe('http://127.0.0.1:9393/setup')
+        ->and($request->isSecure())->toBeFalse();
 });
