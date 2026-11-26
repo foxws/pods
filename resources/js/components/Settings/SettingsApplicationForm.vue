@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import SaveButton from '@/components/Ui/SaveButton.vue'
+import FormRow from '@/components/Ui/FormRow.vue'
 import { show, update } from '@/actions/Modules/Web/Settings/Controllers/ApplicationSettingsController'
 import type { ApplicationSettings } from '@/types'
 import { useForm, useHttp, usePage } from '@inertiajs/vue3'
@@ -32,8 +34,6 @@ onMounted(async () => {
   form.reset()
   loaded.value = true
 })
-
-const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
 </script>
 
 <template>
@@ -56,80 +56,71 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
         />
 
         <template v-else>
-          <UFormField
+          <FormRow
             label="Site name"
             :error="form.errors.site_name"
-            :class="fieldClass"
           >
             <UInput
               v-model="form.site_name"
               class="w-56"
             />
-          </UFormField>
+          </FormRow>
 
           <USeparator />
 
-          <UFormField
+          <FormRow
             label="Timezone"
             :error="form.errors.timezone"
-            :class="fieldClass"
           >
             <UInput
               v-model="form.timezone"
               class="w-56"
             />
-          </UFormField>
+          </FormRow>
 
           <USeparator />
 
-          <UFormField
+          <FormRow
             label="Default locale"
             :error="form.errors.default_locale"
-            :class="fieldClass"
           >
             <USelect
               v-model="form.default_locale"
               :items="locales"
               class="w-56"
             />
-          </UFormField>
+          </FormRow>
 
           <USeparator />
 
-          <UFormField
+          <FormRow
             label="Allow registration"
             description="Let visitors create their own account."
             :error="form.errors.allow_registration"
-            :class="fieldClass"
           >
             <USwitch v-model="form.allow_registration" />
-          </UFormField>
+          </FormRow>
 
           <USeparator />
 
-          <UFormField
+          <FormRow
             label="Refresh host pages"
             description="How often open host pages reload what changed outside Pods, such as CPU, memory and crashed units. Pods' own changes show at once, and a unit that starts or stops is followed every 5 seconds. Each refresh asks the host again, so a short interval means more SSH commands."
             :error="form.errors.host_refresh"
-            :class="fieldClass"
           >
             <USelect
               v-model="form.host_refresh"
               :items="hostRefreshChoices"
               class="w-56"
             />
-          </UFormField>
+          </FormRow>
         </template>
       </template>
 
       <template #footer>
-        <UButton
+        <SaveButton
           v-if="loaded"
-          type="submit"
-          :label="form.recentlySuccessful ? 'Saved' : 'Save changes'"
-          :icon="form.recentlySuccessful ? 'i-lucide-check' : undefined"
-          :color="form.recentlySuccessful ? 'success' : 'primary'"
-          :loading="form.processing"
+          :form="form"
         />
       </template>
     </UPageCard>

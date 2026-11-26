@@ -5,6 +5,7 @@
 # SetWorkingDirectory= only sets the build context, so podman build would
 # look for a relative File= or IgnoreFile= in the service's own directory.
 ImageTag=localhost/pods-dev:latest
+Target=development
 BuildArg=UID=%U
 BuildArg=GID=%G
 SetWorkingDirectory=%h/projects/pods

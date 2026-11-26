@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { show as applicationShow } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { index as containersIndex } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import ContainerOperationController from '@/actions/Modules/Web/Containers/Controllers/ContainerOperationController'
@@ -300,16 +301,17 @@ const memoryHint = computed(() =>
           <div class="flex min-w-0 flex-col gap-4 lg:col-span-2">
             <UCard :ui="{ body: 'p-0 sm:p-0' }">
               <template #header>
-                <div class="flex items-center justify-between">
-                  <h2 class="font-semibold text-highlighted">Logs</h2>
-                  <UButton
-                    label="Open journal"
-                    color="neutral"
-                    variant="link"
-                    size="sm"
-                    :to="journal.url(environment.id)"
-                  />
-                </div>
+                <CardHeader title="Logs">
+                  <template #actions>
+                    <UButton
+                      label="Open journal"
+                      color="neutral"
+                      variant="link"
+                      size="sm"
+                      :to="journal.url(environment.id)"
+                    />
+                  </template>
+                </CardHeader>
               </template>
 
               <HostError
@@ -329,7 +331,7 @@ const memoryHint = computed(() =>
 
             <UCard :ui="{ body: 'p-0 sm:p-0' }">
               <template #header>
-                <h2 class="font-semibold text-highlighted">Ports and mounts</h2>
+                <CardHeader title="Ports and mounts" />
               </template>
 
               <UTable
@@ -354,7 +356,7 @@ const memoryHint = computed(() =>
           <div class="flex flex-col gap-4">
             <UCard>
               <template #header>
-                <h2 class="font-semibold text-highlighted">Details</h2>
+                <CardHeader title="Details" />
               </template>
 
               <dl
@@ -406,7 +408,7 @@ const memoryHint = computed(() =>
 
             <UCard>
               <template #header>
-                <h2 class="font-semibold text-highlighted">Environment</h2>
+                <CardHeader title="Environment" />
               </template>
 
               <dl

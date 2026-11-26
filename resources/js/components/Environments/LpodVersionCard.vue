@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentLpodController'
 import { store as verify } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentVerificationController'
 import { useHostAction } from '@/composables/hostActions'
@@ -24,11 +25,12 @@ const checkAgain = (): void => sendCheck('post', verify.url(props.environment.id
 <template>
   <UCard>
     <template #header>
-      <h2 class="font-semibold text-highlighted">lpod</h2>
-      <p class="text-sm text-muted">
-        Pods manages this host through lpod, installed for {{ environment.user }}. Each user on a host has their own.
-        Pods checks the versions daily, or when you check again.
-      </p>
+      <CardHeader title="lpod">
+        <template #description>
+          Pods manages this host through lpod, installed for {{ environment.user }}. Each user on a host has their own.
+          Pods checks the versions daily, or when you check again.
+        </template>
+      </CardHeader>
     </template>
 
     <div class="flex items-start justify-between gap-4 max-sm:flex-col">

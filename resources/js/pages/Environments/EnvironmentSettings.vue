@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
+import FormRow from '@/components/Ui/FormRow.vue'
 import { update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentSettingsController'
 import HostError from '@/components/Environments/HostError.vue'
 import LpodVersionCard from '@/components/Environments/LpodVersionCard.vue'
@@ -54,8 +56,6 @@ const isReadOnly = computed(() => !props.settings?.data?.editable)
 
 const schedules = ['daily', 'weekly', '*-*-* 04:00', 'Mon..Fri 04:00']
 
-const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
-
 const liveVisit = useLiveVisit()
 
 const submit = (): void => {
@@ -96,15 +96,16 @@ const submit = (): void => {
 
       <UCard>
         <template #header>
-          <h2 class="font-semibold text-highlighted">Auto-update</h2>
-          <p class="text-sm text-muted">
-            <code class="font-mono">podman-auto-update.timer</code> pulls new images for containers with
-            <code class="font-mono">AutoUpdate=registry</code>.
-          </p>
+          <CardHeader title="Auto-update">
+            <template #description>
+              <code class="font-mono">podman-auto-update.timer</code> pulls new images for containers with
+              <code class="font-mono">AutoUpdate=registry</code>.
+            </template>
+          </CardHeader>
         </template>
 
         <div class="flex flex-col gap-4">
-          <UFormField
+          <FormRow
             label="Enable the timer"
             :description="
               settings.data.next_run
@@ -114,22 +115,20 @@ const submit = (): void => {
                   : undefined
             "
             :error="form.errors.auto_update"
-            :class="fieldClass"
           >
             <USwitch
               v-model="form.auto_update"
               :disabled="isReadOnly"
             />
-          </UFormField>
+          </FormRow>
 
           <template v-if="settings.data.schedule !== null">
             <USeparator />
 
-            <UFormField
+            <FormRow
               label="Schedule"
               description="A systemd OnCalendar expression for the timer."
               :error="form.errors.schedule"
-              :class="fieldClass"
             >
               <div class="flex w-full flex-col gap-2 sm:w-64">
                 <UInput
@@ -153,46 +152,43 @@ const submit = (): void => {
                   />
                 </div>
               </div>
-            </UFormField>
+            </FormRow>
 
             <USeparator />
 
-            <UFormField
+            <FormRow
               label="Roll back on failure"
               description="Restore the previous image when a unit fails to start on the new one."
               :error="form.errors.rollback"
-              :class="fieldClass"
             >
               <USwitch
                 v-model="form.rollback"
                 :disabled="isReadOnly || !form.auto_update"
               />
-            </UFormField>
+            </FormRow>
           </template>
         </div>
       </UCard>
 
       <UCard>
         <template #header>
-          <h2 class="font-semibold text-highlighted">Defaults for applications</h2>
+          <CardHeader title="Defaults for applications" />
         </template>
 
         <div class="flex flex-col gap-4">
-          <UFormField
+          <FormRow
             label="Quadlet directory"
             description="Where podman quadlet install puts the files."
-            :class="fieldClass"
           >
             <code class="font-mono text-sm">{{ settings.data.quadlet_dir ?? '–' }}</code>
-          </UFormField>
+          </FormRow>
 
           <USeparator />
 
-          <UFormField
+          <FormRow
             label="Enable lingering"
             description="Keep user services running after logout (loginctl enable-linger)."
             :error="form.errors.linger"
-            :class="fieldClass"
           >
             <USwitch
               v-if="settings.data.linger !== null"
@@ -204,7 +200,7 @@ const submit = (): void => {
               class="text-sm text-muted"
               >Unknown</span
             >
-          </UFormField>
+          </FormRow>
         </div>
       </UCard>
 

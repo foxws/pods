@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { index as containersIndex } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import QuadletCheckStatus from '@/components/Quadlets/QuadletCheckStatus.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
@@ -209,10 +210,10 @@ const fileErrors = computed(() =>
         >
           <UCard>
             <template #header>
-              <div class="flex items-baseline justify-between gap-2">
-                <h2 class="font-semibold text-highlighted">General</h2>
-                <span class="font-mono text-xs text-muted">Image= · Pod= · Network=</span>
-              </div>
+              <CardHeader
+                title="General"
+                hint="Image= · Pod= · Network="
+              />
             </template>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -277,10 +278,10 @@ const fileErrors = computed(() =>
 
           <UCard>
             <template #header>
-              <div class="flex items-baseline justify-between gap-2">
-                <h2 class="font-semibold text-highlighted">Ports</h2>
-                <span class="font-mono text-xs text-muted">PublishPort=</span>
-              </div>
+              <CardHeader
+                title="Ports"
+                hint="PublishPort="
+              />
             </template>
 
             <div class="flex flex-col gap-2">
@@ -327,10 +328,10 @@ const fileErrors = computed(() =>
 
           <UCard>
             <template #header>
-              <div class="flex items-baseline justify-between gap-2">
-                <h2 class="font-semibold text-highlighted">Volumes</h2>
-                <span class="font-mono text-xs text-muted">Volume=</span>
-              </div>
+              <CardHeader
+                title="Volumes"
+                hint="Volume="
+              />
             </template>
 
             <div class="flex flex-col gap-2">
@@ -384,10 +385,10 @@ const fileErrors = computed(() =>
 
           <UCard>
             <template #header>
-              <div class="flex items-baseline justify-between gap-2">
-                <h2 class="font-semibold text-highlighted">Environment and secrets</h2>
-                <span class="font-mono text-xs text-muted">Environment= · Secret=</span>
-              </div>
+              <CardHeader
+                title="Environment and secrets"
+                hint="Environment= · Secret="
+              />
             </template>
 
             <div class="flex flex-col gap-4">
@@ -476,10 +477,10 @@ const fileErrors = computed(() =>
 
           <UCard>
             <template #header>
-              <div class="flex items-baseline justify-between gap-2">
-                <h2 class="font-semibold text-highlighted">Runtime</h2>
-                <span class="font-mono text-xs text-muted">[Service] · [Install]</span>
-              </div>
+              <CardHeader
+                title="Runtime"
+                hint="[Service] · [Install]"
+              />
             </template>
 
             <div class="flex flex-col gap-4">

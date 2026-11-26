@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { update as acceptFiles } from '@/actions/Modules/Web/Applications/Controllers/ApplicationInstallationController'
 import { store as updateApplication } from '@/actions/Modules/Web/Applications/Controllers/ApplicationUpdateController'
 import ApplicationSourceModal from '@/components/Applications/ApplicationSourceModal.vue'
@@ -119,7 +120,7 @@ const accept = (): void => {
 <template>
   <UCard>
     <template #header>
-      <h2 class="font-semibold text-highlighted">Source</h2>
+      <CardHeader title="Source" />
     </template>
 
     <HostError

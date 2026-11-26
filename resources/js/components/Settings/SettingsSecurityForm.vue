@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SaveButton from '@/components/Ui/SaveButton.vue'
 import SettingsPasskeys from '@/components/Settings/SettingsPasskeys.vue'
 import SettingsTwoFactor from '@/components/Settings/SettingsTwoFactor.vue'
 import { update } from '@/routes/user-password'
@@ -80,13 +81,7 @@ const onSubmit = () =>
         </template>
 
         <template #footer>
-          <UButton
-            type="submit"
-            :label="form.recentlySuccessful ? 'Saved' : 'Save changes'"
-            :icon="form.recentlySuccessful ? 'i-lucide-check' : undefined"
-            :color="form.recentlySuccessful ? 'success' : 'primary'"
-            :loading="form.processing"
-          />
+          <SaveButton :form="form" />
         </template>
       </UPageCard>
     </UForm>

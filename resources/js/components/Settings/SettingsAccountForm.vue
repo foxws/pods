@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SaveButton from '@/components/Ui/SaveButton.vue'
 import { useAuth } from '@/composables/auth'
 import { update } from '@/routes/user-profile-information'
 import { useForm } from '@inertiajs/vue3'
@@ -84,13 +85,7 @@ const onSubmit = () =>
         </template>
 
         <template #footer>
-          <UButton
-            type="submit"
-            :label="form.recentlySuccessful ? 'Saved' : 'Save changes'"
-            :icon="form.recentlySuccessful ? 'i-lucide-check' : undefined"
-            :color="form.recentlySuccessful ? 'success' : 'primary'"
-            :loading="form.processing"
-          />
+          <SaveButton :form="form" />
         </template>
       </UPageCard>
     </UForm>

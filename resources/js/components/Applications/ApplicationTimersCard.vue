@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { store as runTimer } from '@/actions/Modules/Web/Applications/Controllers/ApplicationTimerController'
 import HostError from '@/components/Environments/HostError.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
@@ -54,7 +55,7 @@ const run = (timer: TimerData): void => {
 <template>
   <UCard>
     <template #header>
-      <h2 class="font-semibold text-highlighted">Timers</h2>
+      <CardHeader title="Timers" />
     </template>
 
     <HostError

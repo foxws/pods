@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import ApplicationRoutesModal from '@/components/Applications/ApplicationRoutesModal.vue'
 import HostError from '@/components/Environments/HostError.vue'
 import type { ApplicationRoutesData, EnvironmentData, HostProperty, UpstreamReachOption } from '@/types'
@@ -26,17 +27,18 @@ const isEditing = ref(false)
 <template>
   <UCard>
     <template #header>
-      <div class="flex items-center justify-between gap-2">
-        <h2 class="font-semibold text-highlighted">Routes</h2>
-        <UButton
-          v-if="data?.proxy_installed"
-          :label="active.length ? 'Edit' : 'Add'"
-          color="neutral"
-          variant="link"
-          size="sm"
-          @click="isEditing = true"
-        />
-      </div>
+      <CardHeader title="Routes">
+        <template #actions>
+          <UButton
+            v-if="data?.proxy_installed"
+            :label="active.length ? 'Edit' : 'Add'"
+            color="neutral"
+            variant="link"
+            size="sm"
+            @click="isEditing = true"
+          />
+        </template>
+      </CardHeader>
     </template>
 
     <HostError

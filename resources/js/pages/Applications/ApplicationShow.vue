@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { show as containerShow } from '@/actions/Modules/Web/Containers/Controllers/ContainerController'
 import { destroy as disableOnDemand } from '@/actions/Modules/Web/Applications/Controllers/ApplicationOnDemandController'
@@ -347,14 +348,15 @@ const isRemoving = ref(false)
         <div class="flex flex-col gap-4 lg:col-span-2">
           <UCard :ui="{ body: 'p-0 sm:p-0' }">
             <template #header>
-              <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-highlighted">Containers</h2>
-                <span
-                  v-if="summary?.kind === 'pod'"
-                  class="text-sm text-muted"
-                  >in pod {{ name }}</span
-                >
-              </div>
+              <CardHeader title="Containers">
+                <template #actions>
+                  <span
+                    v-if="summary?.kind === 'pod'"
+                    class="text-sm text-muted"
+                    >in pod {{ name }}</span
+                  >
+                </template>
+              </CardHeader>
             </template>
 
             <ul
@@ -397,16 +399,17 @@ const isRemoving = ref(false)
 
           <UCard :ui="{ body: 'p-0 sm:p-0' }">
             <template #header>
-              <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-highlighted">Journal</h2>
-                <UButton
-                  label="All logs"
-                  color="neutral"
-                  variant="link"
-                  size="sm"
-                  @click="tab = 'logs'"
-                />
-              </div>
+              <CardHeader title="Journal">
+                <template #actions>
+                  <UButton
+                    label="All logs"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    @click="tab = 'logs'"
+                  />
+                </template>
+              </CardHeader>
             </template>
 
             <HostError
@@ -460,7 +463,7 @@ const isRemoving = ref(false)
 
           <UCard>
             <template #header>
-              <h2 class="font-semibold text-highlighted">Details</h2>
+              <CardHeader title="Details" />
             </template>
 
             <dl
@@ -500,16 +503,17 @@ const isRemoving = ref(false)
 
           <UCard>
             <template #header>
-              <div class="flex items-center justify-between gap-2">
-                <h2 class="font-semibold text-highlighted">On demand</h2>
-                <USwitch
-                  v-if="onDemand"
-                  :model-value="onDemand.enabled"
-                  aria-label="Run on demand"
-                  :disabled="!ondemandSuggestion"
-                  @update:model-value="onToggleOnDemand"
-                />
-              </div>
+              <CardHeader title="On demand">
+                <template #actions>
+                  <USwitch
+                    v-if="onDemand"
+                    :model-value="onDemand.enabled"
+                    aria-label="Run on demand"
+                    :disabled="!ondemandSuggestion"
+                    @update:model-value="onToggleOnDemand"
+                  />
+                </template>
+              </CardHeader>
             </template>
 
             <HostError
@@ -572,16 +576,17 @@ const isRemoving = ref(false)
 
           <UCard>
             <template #header>
-              <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-highlighted">Secrets</h2>
-                <UButton
-                  label="Manage"
-                  color="neutral"
-                  variant="link"
-                  size="sm"
-                  :to="secretsIndex.url(environment.id)"
-                />
-              </div>
+              <CardHeader title="Secrets">
+                <template #actions>
+                  <UButton
+                    label="Manage"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    :to="secretsIndex.url(environment.id)"
+                  />
+                </template>
+              </CardHeader>
             </template>
 
             <ul
@@ -666,16 +671,17 @@ const isRemoving = ref(false)
 
         <UCard :ui="{ body: 'p-0 sm:p-0' }">
           <template #header>
-            <div class="flex items-center justify-between">
-              <h2 class="font-semibold text-highlighted">Secrets</h2>
-              <UButton
-                label="Manage"
-                color="neutral"
-                variant="link"
-                size="sm"
-                :to="secretsIndex.url(environment.id)"
-              />
-            </div>
+            <CardHeader title="Secrets">
+              <template #actions>
+                <UButton
+                  label="Manage"
+                  color="neutral"
+                  variant="link"
+                  size="sm"
+                  :to="secretsIndex.url(environment.id)"
+                />
+              </template>
+            </CardHeader>
           </template>
 
           <UTable
