@@ -1,9 +1,11 @@
 [Volume]
 # Your checkout of Pods, mounted into the app, the queue worker, the
-# scheduler, Reverb and Vite as /app. Change the path below (here and in
-# pods-dev.build) if it isn't in ~/projects/pods. The volume is created
-# once, so remove it ("podman volume rm pods-dev-source") after changing
-# the path. Removing it never deletes your checkout.
+# scheduler, Reverb and Vite as /app. If it isn't in ~/projects/pods,
+# override Device= with a pods-dev-source.volume.d/ drop-in (and
+# pods-dev.build's paths), see "Another checkout folder" in
+# docs/development.md. The volume is created once, so remove it
+# ("podman volume rm pods-dev-source") after changing the path.
+# Removing it never deletes your checkout.
 VolumeName=pods-dev-source
 Label=pods-dev-source
 Type=none

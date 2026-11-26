@@ -29,7 +29,7 @@ Add remote hosts from **Environments** in the UI, with the same public key.
 
 ## Running Pods under Podman
 
-The units in `containers/quadlets/development` run Pods itself from a checkout in `~/projects/pods` (Octane, the queue worker, the scheduler, Reverb, Vite, Valkey and Mailpit). They're named `pods-dev`, so they can run next to an installed Pods. Change the path in `pods-dev.build` and `pods-dev-source.volume` if your checkout is elsewhere.
+The units in `containers/quadlets/development` run Pods itself from a checkout in `~/projects/pods` (Octane, the queue worker, the scheduler, Reverb, Vite, Valkey and Mailpit). They're named `pods-dev`, so they can run next to an installed Pods. If your checkout is elsewhere, see [Another checkout folder](#another-checkout-folder).
 
 ```bash
 podman quadlet install --application=pods-dev containers/quadlets/development
@@ -37,6 +37,26 @@ systemctl --user start pods-dev
 ```
 
 The first start builds the image from `containers/runtimes/development/Containerfile`, on the official FrankenPHP image with PHP 8.6, which takes a while. Add `BuildArg=PHP_VERSION=8.5` to `pods-dev.build` for another PHP version. The units publish no ports. Reach them through the Pods proxy: copy `containers/proxy/sites/pods-dev.Caddyfile` to `~/.config/pods-proxy/sites/`, and `containers/proxy/pods-proxy.container.d/pods-dev.conf` to `~/.config/containers/systemd/pods-proxy.container.d/` with your hostnames. Then set `APP_URL`, `VITE_HMR_HOST` and `REVERB_HOST` (with `REVERB_PORT=443` and `REVERB_SCHEME=https`) in `.env` to match, and restart the proxy. Or install `containers/quadlets/development` from Git in Pods, as `pods-dev`: its `pods.yml` offers these hostnames as routes, and setup steps that migrate, connect the host and create the owner. Without the proxy, publish the app with a drop-in instead (see the comment in `pods-dev.container`). Vite's hot reload then won't reach the browser.
+
+### Another checkout folder
+
+If your checkout isn't in `~/projects/pods`, give `pods-dev.build` and `pods-dev-source.volume` a drop-in with its path, instead of editing the files: an update, with Pods or `podman quadlet install --replace`, replaces those files, but keeps your drop-ins. Use absolute paths, as `podman build` looks for a relative `File=` in the service's own directory. For a checkout in `~/code/pods`, create `~/.config/containers/systemd/pods-dev/pods-dev.build.d/path.conf`:
+
+```ini
+[Build]
+SetWorkingDirectory=%h/code/pods
+File=%h/code/pods/containers/runtimes/development/Containerfile
+IgnoreFile=%h/code/pods/containers/runtimes/development/dockerignore
+```
+
+and `~/.config/containers/systemd/pods-dev/pods-dev-source.volume.d/path.conf`:
+
+```ini
+[Volume]
+Device=%h/code/pods
+```
+
+Then run `systemctl --user daemon-reload`. The `pods-dev-source` volume is created once, so if you move your checkout later, stop `pods-dev` and remove it (`podman volume rm pods-dev-source`) before you start it again. Removing it never deletes your checkout.
 
 ## VS Code Dev Containers
 
