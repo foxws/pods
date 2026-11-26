@@ -3,6 +3,7 @@ import { update } from '@/actions/Modules/Web/Applications/Controllers/Applicati
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData, QuadletFileData } from '@/types'
 import { dropInTemplate, isLocalDropIn, localDropInName } from '@/utils/quadlet'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
 
@@ -46,6 +47,8 @@ watch(quadlet, (current, previous) => {
   }
 })
 
+const liveVisit = useLiveVisit()
+
 const onSubmit = (close: () => void): void => {
   if (props.file && form.content === props.file.content) {
     close()
@@ -56,7 +59,7 @@ const onSubmit = (close: () => void): void => {
   form
     .transform((data) => ({ ...data, name: name.value }))
     .put(update.url([props.environment.id, props.application]), {
-      preserveScroll: true,
+      ...liveVisit(),
       onSuccess: () => close(),
     })
 }

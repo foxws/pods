@@ -3,6 +3,7 @@ import { store } from '@/actions/Modules/Web/Secrets/Controllers/SecretControlle
 import SecretFileButton from '@/components/Secrets/SecretFileButton.vue'
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { ApplicationData, EnvironmentData } from '@/types'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
 
@@ -87,9 +88,11 @@ const preview = computed(() =>
 
 const submitLabel = computed(() => (form.restart && form.attachments.length ? 'Create and restart' : 'Create secret'))
 
+const liveVisit = useLiveVisit()
+
 const onSubmit = (close: () => void) => {
   form.post(store.url(props.environment.id), {
-    preserveScroll: true,
+    ...liveVisit(),
     onSuccess: () => close(),
     onFinish: () => form.reset('value'),
   })

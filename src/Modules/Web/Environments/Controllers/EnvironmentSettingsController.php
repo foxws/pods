@@ -39,8 +39,8 @@ class EnvironmentSettingsController implements HasMiddleware
         return Inertia::render('Environments/EnvironmentSettings', [
             'environment' => EnvironmentData::fromModel($environment),
             'lpod' => LpodVersionData::fromEnvironment($environment),
-            'settings' => $this->deferFromHost(fn () => $lpod->hostSettings($environment), live: $environment),
-            'proxy' => $this->deferFromHost(fn () => $lpod->proxySettings($environment), 'proxy', live: $environment),
+            'settings' => $this->deferFromHost(fn () => $lpod->hostSettings($environment), live: $this->changesTo($environment, 'settings')),
+            'proxy' => $this->deferFromHost(fn () => $lpod->proxySettings($environment), 'proxy', live: $this->changesTo($environment, 'proxy.settings')),
             'proxyDefaults' => $proxyDefaults->toArray(),
         ]);
     }

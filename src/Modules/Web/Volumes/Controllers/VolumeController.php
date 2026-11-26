@@ -36,7 +36,7 @@ class VolumeController implements HasMiddleware
 
         return Inertia::render('Volumes/VolumeIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'volumes' => $this->deferFromHost(fn (): array => $lpod->volumes($environment), live: $environment),
+            'volumes' => $this->deferFromHost(fn (): array => $lpod->volumes($environment), live: $this->changesTo($environment, 'volumes')),
             // Slow (lpod walks every file), so in a group of its own, and neither live nor polled.
             'sizes' => $this->deferFromHost(fn (): array => $lpod->volumeSizes($environment), 'sizes'),
             'exports' => fn (): array => VolumeExportData::collect($environment->volumeExports()->latest('id')->limit(25)->get())->all(),

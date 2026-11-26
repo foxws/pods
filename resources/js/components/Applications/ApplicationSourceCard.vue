@@ -6,6 +6,7 @@ import HostError from '@/components/Environments/HostError.vue'
 import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
 import type { EnvironmentData, GitTagData, HostProperty, InstallationData } from '@/types'
 import { formatRelative } from '@/utils/format'
+import { useLiveVisit } from '@/composables/hostActions'
 import { router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 
@@ -86,12 +87,14 @@ const removeOldFilesLabel = computed(() => {
   return `Remove files the ${isBranchUpdate.value ? 'commit' : 'tag'} no longer has`
 })
 
+const liveVisit = useLiveVisit()
+
 const update = (close: () => void): void => {
   router.post(
     updateApplication.url([props.environment.id, props.application]),
     { tag: updateTag.value, remove_old_files: removeOldFiles.value },
     {
-      preserveScroll: true,
+      ...liveVisit(['updates']),
       onStart: () => (isUpdating.value = true),
       onFinish: () => (isUpdating.value = false),
       onError: (errors) => (updateError.value = errors.tag),
@@ -105,7 +108,7 @@ const accept = (): void => {
     acceptFiles.url([props.environment.id, props.application]),
     {},
     {
-      preserveScroll: true,
+      ...liveVisit(),
       onStart: () => (isAccepting.value = true),
       onFinish: () => (isAccepting.value = false),
     },

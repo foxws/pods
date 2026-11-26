@@ -13,6 +13,7 @@ import type {
   ProxySettingsData,
 } from '@/types'
 import { formatRelative } from '@/utils/format'
+import { useLiveVisit } from '@/composables/hostActions'
 import { Head, useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
 
@@ -55,8 +56,10 @@ const schedules = ['daily', 'weekly', '*-*-* 04:00', 'Mon..Fri 04:00']
 
 const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
 
+const liveVisit = useLiveVisit()
+
 const submit = (): void => {
-  form.put(update.url(props.environment.id), { preserveScroll: true })
+  form.put(update.url(props.environment.id), liveVisit())
 }
 </script>
 

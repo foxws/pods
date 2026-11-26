@@ -18,4 +18,4 @@ use Modules\Api\Users\Broadcasting\UserChannel;
 */
 
 Broadcast::channel('users.{user}', UserChannel::class);
-Broadcast::channel('environments.{environment}', EnvironmentChannel::class);
+Broadcast::channel('environments.{environment}.{topic}', EnvironmentChannel::class);

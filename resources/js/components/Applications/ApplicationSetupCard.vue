@@ -3,6 +3,7 @@ import { store as runStep } from '@/actions/Modules/Web/Applications/Controllers
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData, InstallationData, ManifestSetupStepData, SetupOutput } from '@/types'
 import { formatRelative } from '@/utils/format'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 
@@ -114,9 +115,11 @@ const statusOf = (
   }
 }
 
+const liveVisit = useLiveVisit()
+
 const submit = (step: ManifestSetupStepData, close?: () => void): void => {
   form.post(runStep.url([props.environment.id, props.application, step.name]), {
-    preserveScroll: true,
+    ...liveVisit(),
     onStart: () => (running.value = step.name),
     onFinish: () => (running.value = null),
     onFlash: ({ setup }) => {

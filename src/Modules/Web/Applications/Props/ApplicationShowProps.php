@@ -72,26 +72,35 @@ class ApplicationShowProps implements ProvidesInertiaProperties
             'name' => $this->application,
             'pinned' => $this->pin($context),
             'upstreamReaches' => UpstreamReach::options(),
-            'application' => $this->deferFromHost(fn () => $this->lpod->application($this->environment, $this->application), live: $this->environment),
-            'ondemand' => $this->deferFromHost(fn () => $this->lpod->onDemand($this->environment, $this->application), live: $this->environment),
+            'application' => $this->deferFromHost(fn () => $this->lpod->application($this->environment, $this->application), live: $this->changesTo($this->environment, $this->key())),
+            'ondemand' => $this->deferFromHost(fn () => $this->lpod->onDemand($this->environment, $this->application), live: $this->changesTo($this->environment, $this->key('ondemand'))),
             'ondemandSuggestion' => $this->deferFromHost(fn () => ($this->suggestOnDemandSettings)(
                 $this->lpod->application($this->environment, $this->application)->application,
                 $this->files(),
                 $this->installation()?->manifest(),
             ), 'details'),
-            'files' => $this->deferFromHost(fn (): array => $this->files(), 'details', live: $this->environment),
-            'installation' => $this->deferFromHost(fn (): ?InstallationData => $this->installationData(), 'details', live: $this->environment),
+            'files' => $this->deferFromHost(fn (): array => $this->files(), 'details', live: $this->changesTo($this->environment, $this->key())),
+            'installation' => $this->deferFromHost(fn (): ?InstallationData => $this->installationData(), 'details', live: $this->changesTo($this->environment, $this->key())),
             'routes' => $this->deferFromHost(fn () => ($this->suggestRoutes)(
                 $this->application,
                 $this->lpod->proxyRoutes($this->environment),
                 $this->installation()?->manifest(),
                 $this->reachable(),
-            ), 'routes', live: $this->environment),
-            'timers' => $this->deferFromHost(fn (): array => $this->timers(), 'details', live: $this->environment),
+            ), 'routes', live: $this->changesTo($this->environment, 'proxy.routes', 'containers', 'networks')),
+            'timers' => $this->deferFromHost(fn (): array => $this->timers(), 'details', live: $this->changesTo($this->environment, $this->key('timers'))),
             'updates' => $this->deferFromHost(fn (): array => $this->installation() !== null ? ($this->listApplicationUpdates)($this->installation()) : [], 'updates'),
             'logs' => $this->deferFromHost(fn (): array => $this->lpod->logs($this->environment, $this->application), 'details'),
-            'secrets' => $this->deferFromHost(fn (): array => $this->lpod->secrets($this->environment), 'details', live: $this->environment),
+            'secrets' => $this->deferFromHost(fn (): array => $this->lpod->secrets($this->environment), 'details', live: $this->changesTo($this->environment, 'secrets')),
         ];
+    }
+
+    /**
+     * The `LpodClient` cache key of the application's status, or of a part of it (`ondemand`, `timers`).
+     * Every write to its files forgets the status too, so the files and the installation reload on it.
+     */
+    protected function key(?string $part = null): string
+    {
+        return $part === null ? "apps.{$this->application}" : "apps.{$this->application}.{$part}";
     }
 
     /**

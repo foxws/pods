@@ -41,8 +41,8 @@ class SecretController implements HasMiddleware
 
         return Inertia::render('Secrets/SecretIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment), live: $environment),
-            'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $environment),
+            'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment), live: $this->changesTo($environment, 'secrets')),
+            'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $this->changesTo($environment, 'apps')),
             'prefill' => [
                 'name' => $this->queryName($request, 'secret'),
                 'application' => $this->queryName($request, 'application'),
