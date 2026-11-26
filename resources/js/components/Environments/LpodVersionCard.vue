@@ -10,12 +10,15 @@ const props = defineProps<{
   lpod: LpodVersionData
 }>()
 
+// Both verify the host, which stores its facts (shown here and in the host switcher).
+const verifiedProps = ['environment', 'lpod', 'environments']
+
 const { send: sendUpdate, processing: isUpdating } = useHostAction()
 const { send: sendCheck, processing: isChecking } = useHostAction()
 
-const updateLpod = (): void => sendUpdate('put', update.url(props.environment.id))
+const updateLpod = (): void => sendUpdate('put', update.url(props.environment.id), {}, undefined, verifiedProps)
 
-const checkAgain = (): void => sendCheck('post', verify.url(props.environment.id))
+const checkAgain = (): void => sendCheck('post', verify.url(props.environment.id), {}, undefined, verifiedProps)
 </script>
 
 <template>

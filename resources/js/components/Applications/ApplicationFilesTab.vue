@@ -6,6 +6,7 @@ import QuadletEditModal from '@/components/Quadlets/QuadletEditModal.vue'
 import ConfirmModal from '@/components/Ui/ConfirmModal.vue'
 import type { EnvironmentData, HostProperty, QuadletFileData } from '@/types'
 import { dropInQuadlet, isLocalDropIn, isLpodDropIn, takesDropIns } from '@/utils/quadlet'
+import { useLiveVisit } from '@/composables/hostActions'
 import { router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 
@@ -65,10 +66,12 @@ const shouldRestartAfterRemoving = ref(true)
 
 const isRemovingDropInNow = ref(false)
 
+const liveVisit = useLiveVisit()
+
 const onRemoveDropIn = (close: () => void): void => {
   router.delete(removeDropIn.url([props.environment.id, props.application]), {
     data: { name: removingDropIn.value, restart: shouldRestartAfterRemoving.value },
-    preserveScroll: true,
+    ...liveVisit(),
     onStart: () => (isRemovingDropInNow.value = true),
     onFinish: () => (isRemovingDropInNow.value = false),
     onSuccess: () => close(),

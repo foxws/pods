@@ -78,7 +78,7 @@ const { send, processing } = useHostAction()
           size="xs"
           :aria-label="`Remove the export of ${item.volume}`"
           :disabled="processing"
-          @click="send('delete', destroy.url([environment.id, item.id]))"
+          @click="send('delete', destroy.url([environment.id, item.id]), {}, undefined, ['exports'])"
         />
       </li>
     </ul>

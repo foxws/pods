@@ -2,6 +2,7 @@ import QuadletCheckController from '@/actions/Modules/Web/Quadlets/Controllers/Q
 import { store } from '@/actions/Modules/Web/Quadlets/Controllers/QuadletController'
 import type { EnvironmentData, HostProperty, QuadletCheckData } from '@/types'
 import type { QuadletFile } from '@/utils/quadlet'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm, useHttp } from '@inertiajs/vue3'
 import { watchDebounced } from '@vueuse/core'
 import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue'
@@ -58,9 +59,11 @@ export function useQuadletInstall(environment: MaybeRefOrGetter<EnvironmentData>
     routes: [],
   })
 
+  const liveVisit = useLiveVisit()
+
   const install = (onSuccess?: () => void): void => {
     form.post(store.url(toValue(environment).id), {
-      preserveScroll: true,
+      ...liveVisit(),
       onSuccess: () => onSuccess?.(),
       onFinish: () => {
         form.secrets = form.secrets.map((secret) => ({ ...secret, value: '' }))

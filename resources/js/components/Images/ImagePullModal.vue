@@ -2,6 +2,7 @@
 import { store } from '@/actions/Modules/Web/Images/Controllers/ImageController'
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData } from '@/types'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm } from '@inertiajs/vue3'
 import { watch } from 'vue'
 
@@ -20,9 +21,11 @@ watch(open, (isOpen) => {
   }
 })
 
+const liveVisit = useLiveVisit()
+
 const onSubmit = (close: () => void): void => {
   form.post(store.url(props.environment.id), {
-    preserveScroll: true,
+    ...liveVisit(),
     onSuccess: () => close(),
   })
 }

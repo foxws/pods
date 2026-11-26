@@ -4,6 +4,7 @@ import HostError from '@/components/Environments/HostError.vue'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import type { EnvironmentData, HostProperty, ManifestTimerData, TimerData } from '@/types'
 import { formatRelative } from '@/utils/format'
+import { useLiveVisit } from '@/composables/hostActions'
 import { router } from '@inertiajs/vue3'
 import type { BadgeProps } from '@nuxt/ui'
 import { ref } from 'vue'
@@ -35,12 +36,14 @@ const lastRun = (timer: TimerData): { label: string; color: BadgeProps['color'] 
     : { label: `Failed (${timer.last_result})`, color: 'error' }
 }
 
+const liveVisit = useLiveVisit()
+
 const run = (timer: TimerData): void => {
   router.post(
     runTimer.url([props.environment.id, props.application, timer.name]),
     {},
     {
-      preserveScroll: true,
+      ...liveVisit(),
       onStart: () => (running.value = timer.name),
       onFinish: () => (running.value = null),
     },

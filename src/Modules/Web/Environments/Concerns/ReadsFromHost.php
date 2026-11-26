@@ -35,11 +35,11 @@ trait ReadsFromHost
 
     /**
      * A host read the page loads after it renders, in the request of its group, as fromHost() gives it.
-     * Given the environment as `live`, the page reloads it whenever Pods changes something on that host.
+     * Given `live`, the page reloads it whenever Pods changes one of the reads it names on that host.
      *
      * @param  Closure(): mixed  $callback
      */
-    protected function deferFromHost(Closure $callback, string $group = 'default', ?Environment $live = null): DeferProp
+    protected function deferFromHost(Closure $callback, string $group = 'default', ?EnvironmentChanged $live = null): DeferProp
     {
         return $this->liveOn(Inertia::defer(fn (): array => $this->fromHost($callback), $group), $live);
     }
@@ -49,9 +49,18 @@ trait ReadsFromHost
      *
      * @param  Closure(): mixed  $callback
      */
-    protected function optionalFromHost(Closure $callback, ?Environment $live = null): OptionalProp
+    protected function optionalFromHost(Closure $callback, ?EnvironmentChanged $live = null): OptionalProp
     {
         return $this->liveOn(Inertia::optional(fn (): array => $this->fromHost($callback)), $live);
+    }
+
+    /**
+     * The changes a live prop reloads on: the `LpodClient` cache keys of the reads it shows,
+     * such as `apps` for the list of applications or `apps.hello` for one's status.
+     */
+    protected function changesTo(Environment $environment, string ...$keys): EnvironmentChanged
+    {
+        return EnvironmentChanged::of($environment, ...$keys);
     }
 
     /**
@@ -63,12 +72,12 @@ trait ReadsFromHost
      * @param  TProp  $prop
      * @return TProp
      */
-    protected function liveOn(DeferProp|OptionalProp $prop, ?Environment $environment): DeferProp|OptionalProp
+    protected function liveOn(DeferProp|OptionalProp $prop, ?EnvironmentChanged $changes): DeferProp|OptionalProp
     {
-        if ($environment === null) {
+        if ($changes === null) {
             return $prop;
         }
 
-        return $prop->live(on: new EnvironmentChanged($environment));
+        return $prop->live(on: $changes);
     }
 }

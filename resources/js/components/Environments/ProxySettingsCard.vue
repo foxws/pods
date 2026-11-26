@@ -13,6 +13,7 @@ import type {
   ProxySettingsData,
   ProxySettingsFormValues,
 } from '@/types'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
 
@@ -80,9 +81,11 @@ const status = computed(() => {
     : { label: 'Stopped', color: 'warning' as const }
 })
 
+const liveVisit = useLiveVisit()
+
 const submit = (): void => {
   const options = {
-    preserveScroll: true,
+    ...liveVisit(),
     onSuccess: () => form.reset('dns_token'),
   }
 

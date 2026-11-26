@@ -1,5 +1,6 @@
 import ApplicationOperationController from '@/actions/Modules/Web/Applications/Controllers/ApplicationOperationController'
 import type { ApplicationData, ApplicationOperation, EnvironmentData, HostProperty } from '@/types'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useHostReload } from '@/composables/polling'
 import { router, usePage } from '@inertiajs/vue3'
 import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue'
@@ -19,6 +20,8 @@ export function useApplicationOperations(environment: MaybeRefOrGetter<Environme
   const url = (name: string, operation: ApplicationOperation): string =>
     ApplicationOperationController.url([toValue(environment).id, name, operation])
 
+  const liveVisit = useLiveVisit()
+
   const run = (name: string, operation: ApplicationOperation): void => {
     router
       .optimistic<{ applications?: HostProperty<ApplicationData[]> }>(({ applications }) => {
@@ -35,7 +38,7 @@ export function useApplicationOperations(environment: MaybeRefOrGetter<Environme
           },
         }
       })
-      .post(url(name, operation), {}, { preserveScroll: true })
+      .post(url(name, operation), {}, liveVisit())
   }
 
   return { run }

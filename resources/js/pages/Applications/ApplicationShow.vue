@@ -40,6 +40,7 @@ import type {
 import { containerState, shortImage } from '@/utils/containers'
 import { formatBytes, formatPercent, formatPort, formatRelative } from '@/utils/format'
 import { isTransitioning } from '@/utils/status'
+import { useLiveVisit } from '@/composables/hostActions'
 import { Head, Link, router } from '@inertiajs/vue3'
 import type { BreadcrumbItem, TableColumn, TabsItem } from '@nuxt/ui'
 import { computed, ref } from 'vue'
@@ -163,9 +164,11 @@ const onToggleOnDemand = (enabled: boolean): void => {
   }
 }
 
+const liveVisit = useLiveVisit()
+
 const onDisableOnDemand = (close: () => void): void => {
   router.delete(disableOnDemand.url([props.environment.id, props.name]), {
-    preserveScroll: true,
+    ...liveVisit(),
     onStart: () => (isTurningOffOnDemand.value = true),
     onFinish: () => (isTurningOffOnDemand.value = false),
     onSuccess: () => close(),

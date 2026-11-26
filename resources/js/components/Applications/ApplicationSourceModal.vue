@@ -2,6 +2,7 @@
 import { update as linkSource } from '@/actions/Modules/Web/Applications/Controllers/ApplicationSourceController'
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData } from '@/types'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm } from '@inertiajs/vue3'
 import { watch } from 'vue'
 
@@ -24,9 +25,11 @@ watch(open, (isOpen) => {
   }
 })
 
+const liveVisit = useLiveVisit()
+
 const submit = (close: () => void): void => {
   form.put(linkSource.url([props.environment.id, props.application]), {
-    preserveScroll: true,
+    ...liveVisit(['updates']),
     onSuccess: () => close(),
   })
 }

@@ -4,6 +4,7 @@ import { destroy, update } from '@/actions/Modules/Web/Secrets/Controllers/Secre
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData, SecretData } from '@/types'
 import { formatRelative } from '@/utils/format'
+import { useLiveVisit } from '@/composables/hostActions'
 import { router, useForm } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
 
@@ -36,13 +37,15 @@ const generate = (): void => {
   form.value = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '')
 }
 
+const liveVisit = useLiveVisit()
+
 const onSubmit = (close: () => void): void => {
   if (!props.secret) {
     return
   }
 
   form.put(update.url([props.environment.id, props.secret.name]), {
-    preserveScroll: true,
+    ...liveVisit(),
     onSuccess: () => close(),
     onFinish: () => form.reset('value'),
   })
@@ -60,7 +63,7 @@ const remove = (): void => {
   }
 
   router.delete(destroy.url([props.environment.id, props.secret.name]), {
-    preserveScroll: true,
+    ...liveVisit(),
     onStart: () => {
       isDeleting.value = true
     },

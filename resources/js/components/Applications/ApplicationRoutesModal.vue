@@ -4,6 +4,7 @@ import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData, ReachableUpstreamData, RouteSuggestionData, UpstreamReachOption } from '@/types'
 import { reachableUpstream, suggestedHost } from '@/utils/routes'
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
 
@@ -114,6 +115,8 @@ const errorOf = (row: Row, field: 'host' | 'upstream' | 'role'): string | undefi
   return index === -1 ? undefined : form.errors[`routes.${index}.${field}` as keyof typeof form.errors]
 }
 
+const liveVisit = useLiveVisit()
+
 const onSubmit = (close: () => void): void => {
   form
     .transform(() => ({
@@ -126,7 +129,7 @@ const onSubmit = (close: () => void): void => {
       })),
     }))
     .put(update.url([props.environment.id, props.application]), {
-      preserveScroll: true,
+      ...liveVisit(),
       onSuccess: () => close(),
     })
 }

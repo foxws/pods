@@ -40,11 +40,11 @@ class EnvironmentOverviewController implements HasMiddleware
         return Inertia::render('Environments/EnvironmentOverview', [
             'environment' => EnvironmentData::fromModel($environment),
             'pinned' => PinData::collect($user->pins()->ofType(PinType::Application)->on($environment)->orderBy('name')->get()),
-            'host' => $this->deferFromHost(fn () => $lpod->host($environment), live: $environment),
-            'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $environment),
-            'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment), 'secrets', live: $environment),
-            'events' => $this->deferFromHost(fn (): array => $lpod->events($environment), 'events', live: $environment),
-            'images' => $this->deferFromHost(fn (): array => $lpod->images($environment), 'secrets', live: $environment),
+            'host' => $this->deferFromHost(fn () => $lpod->host($environment), live: $this->changesTo($environment, 'host')),
+            'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $this->changesTo($environment, 'apps')),
+            'secrets' => $this->deferFromHost(fn (): array => $lpod->secrets($environment), 'secrets', live: $this->changesTo($environment, 'secrets')),
+            'events' => $this->deferFromHost(fn (): array => $lpod->events($environment), 'events', live: $this->changesTo($environment, 'host', 'networks', 'secrets')),
+            'images' => $this->deferFromHost(fn (): array => $lpod->images($environment), 'secrets', live: $this->changesTo($environment, 'images')),
         ]);
     }
 }

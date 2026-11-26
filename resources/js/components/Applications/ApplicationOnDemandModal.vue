@@ -2,6 +2,7 @@
 import { update } from '@/actions/Modules/Web/Applications/Controllers/ApplicationOnDemandController'
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData, OnDemandSettingsData, OnDemandSuggestionData } from '@/types'
+import { useLiveVisit } from '@/composables/hostActions'
 import { useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
 
@@ -75,6 +76,8 @@ const splitList = (value: string, separator: RegExp): string[] =>
 const firstError = (prefix: string): string | undefined =>
   Object.entries(form.errors).find(([key]) => key === prefix || key.startsWith(`${prefix}.`))?.[1]
 
+const liveVisit = useLiveVisit()
+
 const onSubmit = (close: () => void): void => {
   form
     .transform((data) => {
@@ -94,7 +97,7 @@ const onSubmit = (close: () => void): void => {
       }
     })
     .put(update.url([props.environment.id, props.application]), {
-      preserveScroll: true,
+      ...liveVisit(),
       onSuccess: () => close(),
     })
 }

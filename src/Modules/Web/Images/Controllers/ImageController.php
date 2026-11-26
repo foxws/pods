@@ -36,7 +36,7 @@ class ImageController implements HasMiddleware
 
         return Inertia::render('Images/ImageIndex', [
             'environment' => EnvironmentData::fromModel($environment),
-            'images' => $this->deferFromHost(fn (): array => $lpod->images($environment), live: $environment),
+            'images' => $this->deferFromHost(fn (): array => $lpod->images($environment), live: $this->changesTo($environment, 'images')),
         ]);
     }
 

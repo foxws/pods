@@ -49,6 +49,13 @@ class LpodClient
 {
     public const int Contract = 1;
 
+    /**
+     * The cache keys this request forgot, per host (by ULID), for the one broadcast after the response.
+     *
+     * @var array<string, array<string, true>>
+     */
+    protected array $changed = [];
+
     public function __construct(
         protected RunsHostCommands $runner,
     ) {}
@@ -756,7 +763,7 @@ class LpodClient
     }
 
     /**
-     * Forgets what a write changed, and tells the host's open pages to reload their live props.
+     * Forgets what a write changed, and tells the host's open pages to reload the live props that show it.
      */
     protected function forget(Environment $environment, string ...$keys): void
     {
@@ -764,17 +771,25 @@ class LpodClient
             Cache::forget($this->cacheKey($environment, $key));
         }
 
-        $this->broadcastChanged($environment);
+        $this->broadcastChanged($environment, array_values($keys));
     }
 
     /**
-     * Broadcasts once per request and host, after the response: a write that runs several lpod
-     * commands sends one event. The tab that made the change has its own redirect, so it's left
-     * out, and a broadcaster that can't be reached never fails the write.
+     * Broadcasts once per request and host, after the response, on the channels of every key the
+     * request forgot: a write that runs several lpod commands sends one event, and only the props
+     * that show one of those reads reload. Each call replaces the deferred callback, so the last
+     * one, with every key, runs. The tab that made the change reloads with its own redirect, so
+     * it's left out, and a broadcaster that can't be reached never fails the write.
+     *
+     * @param  list<string>  $keys
      */
-    protected function broadcastChanged(Environment $environment): void
+    protected function broadcastChanged(Environment $environment, array $keys): void
     {
-        $event = new EnvironmentChanged($environment);
+        foreach ($keys as $key) {
+            $this->changed[$environment->ulid][$key] = true;
+        }
+
+        $event = new EnvironmentChanged($environment, array_keys($this->changed[$environment->ulid]));
         $event->dontBroadcastToCurrentUser();
 
         defer(fn () => rescue(fn () => event($event)), "pods.environment-changed.{$environment->ulid}");

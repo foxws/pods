@@ -31,7 +31,9 @@ const { send, processing } = useHostAction()
 const confirm = (close: () => void): void => {
   const data = props.volume ? { volumes: [props.volume] } : { application: props.application }
 
-  send('post', store.url(props.environment.id), { ...data, stop_applications: stopApplications.value }, close)
+  send('post', store.url(props.environment.id), { ...data, stop_applications: stopApplications.value }, close, [
+    'exports',
+  ])
 }
 </script>
 
