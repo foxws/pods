@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { index as applications } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { destroy } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentController'
 import EnvironmentCreateModal from '@/components/Environments/EnvironmentCreateModal.vue'
@@ -51,10 +52,11 @@ const remove = () => {
 
     <UCard variant="subtle">
       <template #header>
-        <h2 class="font-semibold text-highlighted">SSH key of this Pods instance</h2>
-        <p class="text-sm text-muted">
-          Add it to <code class="font-mono">~/.ssh/authorized_keys</code> of every user Pods manages.
-        </p>
+        <CardHeader title="SSH key of this Pods instance">
+          <template #description>
+            Add it to <code class="font-mono">~/.ssh/authorized_keys</code> of every user Pods manages.
+          </template>
+        </CardHeader>
       </template>
 
       <div

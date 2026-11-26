@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import {
   create,
   index as applicationsIndex,
@@ -299,7 +300,7 @@ const podmanLine = computed(() =>
             :ui="{ body: 'p-0 sm:p-0' }"
           >
             <template #header>
-              <h2 class="font-semibold text-highlighted">Pinned</h2>
+              <CardHeader title="Pinned" />
             </template>
 
             <ul
@@ -389,16 +390,19 @@ const podmanLine = computed(() =>
 
           <UCard :ui="{ body: 'p-0 sm:p-0' }">
             <template #header>
-              <div class="flex items-center gap-2">
-                <h2 class="font-semibold text-highlighted">Needs attention</h2>
-                <UBadge
+              <CardHeader title="Needs attention">
+                <template
                   v-if="attentionViews.length"
-                  :label="String(attentionViews.length)"
-                  color="error"
-                  variant="subtle"
-                  size="sm"
-                />
-              </div>
+                  #badge
+                >
+                  <UBadge
+                    :label="String(attentionViews.length)"
+                    color="error"
+                    variant="subtle"
+                    size="sm"
+                  />
+                </template>
+              </CardHeader>
             </template>
 
             <ul
@@ -457,16 +461,17 @@ const podmanLine = computed(() =>
 
           <UCard :ui="{ body: 'p-0 sm:p-0' }">
             <template #header>
-              <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-highlighted">Recent activity</h2>
-                <UButton
-                  label="Open journal"
-                  color="neutral"
-                  variant="link"
-                  size="sm"
-                  :to="journal.url(environment.id)"
-                />
-              </div>
+              <CardHeader title="Recent activity">
+                <template #actions>
+                  <UButton
+                    label="Open journal"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    :to="journal.url(environment.id)"
+                  />
+                </template>
+              </CardHeader>
             </template>
 
             <ul
@@ -510,16 +515,17 @@ const podmanLine = computed(() =>
 
           <UCard :ui="{ body: 'p-0 sm:p-0' }">
             <template #header>
-              <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-highlighted">Applications</h2>
-                <UButton
-                  label="View all"
-                  color="neutral"
-                  variant="link"
-                  size="sm"
-                  :to="applicationsIndex.url(environment.id)"
-                />
-              </div>
+              <CardHeader title="Applications">
+                <template #actions>
+                  <UButton
+                    label="View all"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    :to="applicationsIndex.url(environment.id)"
+                  />
+                </template>
+              </CardHeader>
             </template>
 
             <ul
@@ -571,7 +577,7 @@ const podmanLine = computed(() =>
 
         <UCard>
           <template #header>
-            <h2 class="font-semibold text-highlighted">System</h2>
+            <CardHeader title="System" />
           </template>
 
           <dl

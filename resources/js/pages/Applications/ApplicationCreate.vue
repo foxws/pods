@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { index as applicationsIndex } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import QuadletFetchController from '@/actions/Modules/Web/Quadlets/Controllers/QuadletFetchController'
 import HostError from '@/components/Environments/HostError.vue'
@@ -1058,14 +1059,15 @@ const serverErrors = computed(() =>
         <div class="flex min-w-0 flex-col gap-4 lg:sticky lg:top-0 lg:self-start">
           <UCard>
             <template #header>
-              <div class="flex items-center justify-between">
-                <h2 class="font-semibold text-highlighted">Summary</h2>
-                <QuadletCheckStatus
-                  :result="result"
-                  :checking="checking"
-                  :show-errors="false"
-                />
-              </div>
+              <CardHeader title="Summary">
+                <template #actions>
+                  <QuadletCheckStatus
+                    :result="result"
+                    :checking="checking"
+                    :show-errors="false"
+                  />
+                </template>
+              </CardHeader>
             </template>
 
             <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">

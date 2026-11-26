@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import FormRow from '@/components/Ui/FormRow.vue'
 import { update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentSettingsController'
 import HostError from '@/components/Environments/HostError.vue'
@@ -95,11 +96,12 @@ const submit = (): void => {
 
       <UCard>
         <template #header>
-          <h2 class="font-semibold text-highlighted">Auto-update</h2>
-          <p class="text-sm text-muted">
-            <code class="font-mono">podman-auto-update.timer</code> pulls new images for containers with
-            <code class="font-mono">AutoUpdate=registry</code>.
-          </p>
+          <CardHeader title="Auto-update">
+            <template #description>
+              <code class="font-mono">podman-auto-update.timer</code> pulls new images for containers with
+              <code class="font-mono">AutoUpdate=registry</code>.
+            </template>
+          </CardHeader>
         </template>
 
         <div class="flex flex-col gap-4">
@@ -170,7 +172,7 @@ const submit = (): void => {
 
       <UCard>
         <template #header>
-          <h2 class="font-semibold text-highlighted">Defaults for applications</h2>
+          <CardHeader title="Defaults for applications" />
         </template>
 
         <div class="flex flex-col gap-4">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { store as runStep } from '@/actions/Modules/Web/Applications/Controllers/ApplicationSetupController'
 import FormModal from '@/components/Ui/FormModal.vue'
 import type { EnvironmentData, InstallationData, ManifestSetupStepData, SetupOutput } from '@/types'
@@ -151,16 +152,17 @@ const run = (step: ManifestSetupStepData): void => {
 <template>
   <UCard>
     <template #header>
-      <div class="flex items-center justify-between gap-2">
-        <h2 class="font-semibold text-highlighted">{{ heading }}</h2>
-        <UBadge
-          v-if="isFinished"
-          label="Done"
-          color="success"
-          variant="subtle"
-          size="sm"
-        />
-      </div>
+      <CardHeader :title="heading">
+        <template #actions>
+          <UBadge
+            v-if="isFinished"
+            label="Done"
+            color="success"
+            variant="subtle"
+            size="sm"
+          />
+        </template>
+      </CardHeader>
     </template>
 
     <div class="flex flex-col gap-3 text-sm">

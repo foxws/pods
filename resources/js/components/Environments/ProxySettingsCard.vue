@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { certificate, store, update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentProxyController'
 import { show } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import HostError from '@/components/Environments/HostError.vue'
@@ -79,17 +80,14 @@ const submit = (): void => {
 <template>
   <UCard id="proxy">
     <template #header>
-      <div class="flex items-start justify-between gap-2">
-        <div>
-          <h2 class="font-semibold text-highlighted">Proxy</h2>
-          <p class="text-sm text-muted">
-            <code class="font-mono">pods-proxy</code> is Caddy. It sends hostnames to the applications on this host, and
-            gets their certificates.
-          </p>
-        </div>
-        <div
+      <CardHeader title="Proxy">
+        <template #description>
+          <code class="font-mono">pods-proxy</code> is Caddy. It sends hostnames to the applications on this host, and
+          gets their certificates.
+        </template>
+        <template
           v-if="data"
-          class="flex shrink-0 items-center gap-2"
+          #actions
         >
           <UBadge
             :label="status.label"
@@ -104,8 +102,8 @@ const submit = (): void => {
             size="sm"
             :to="show.url([environment.id, 'pods-proxy'])"
           />
-        </div>
-      </div>
+        </template>
+      </CardHeader>
     </template>
 
     <HostError

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CardHeader from '@/components/Ui/CardHeader.vue'
 import { destroy } from '@/actions/Modules/Web/Volumes/Controllers/VolumeExportController'
 import StateBadge from '@/components/Ui/StateBadge.vue'
 import { useHostAction } from '@/composables/hostActions'
@@ -28,10 +29,11 @@ const { send, processing } = useHostAction()
 <template>
   <UCard>
     <template #header>
-      <h2 class="font-semibold text-highlighted">Exports</h2>
-      <p class="text-sm text-muted">
-        Archives of volumes, kept on Pods' own data volume. Pods keeps the newest few of each volume.
-      </p>
+      <CardHeader title="Exports">
+        <template #description>
+          Archives of volumes, kept on Pods' own data volume. Pods keeps the newest few of each volume.
+        </template>
+      </CardHeader>
     </template>
 
     <ul
