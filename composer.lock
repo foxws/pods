@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a0ef8371d3b4a0db384787b368dc40fb",
+    "content-hash": "ec524dfdf5b8bc3bd58df01009c86d8e",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -986,16 +986,16 @@
         },
         {
             "name": "foxws/laravel-essentials",
-            "version": "3.2.1",
+            "version": "3.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/foxws/laravel-essentials.git",
-                "reference": "4b5f72d9883048236db13c3d10f9a1d2185ca5b0"
+                "reference": "7eea9c432c87a520325c14ee127ad712b476afe1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/foxws/laravel-essentials/zipball/4b5f72d9883048236db13c3d10f9a1d2185ca5b0",
-                "reference": "4b5f72d9883048236db13c3d10f9a1d2185ca5b0",
+                "url": "https://api.github.com/repos/foxws/laravel-essentials/zipball/7eea9c432c87a520325c14ee127ad712b476afe1",
+                "reference": "7eea9c432c87a520325c14ee127ad712b476afe1",
                 "shasum": ""
             },
             "require": {
@@ -1053,7 +1053,7 @@
             ],
             "support": {
                 "issues": "https://github.com/foxws/laravel-essentials/issues",
-                "source": "https://github.com/foxws/laravel-essentials/tree/3.2.1"
+                "source": "https://github.com/foxws/laravel-essentials/tree/3.3.0"
             },
             "funding": [
                 {
@@ -1061,8 +1061,8 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-25T22:33:48+00:00",
-            "published-time": "2026-11-25T22:34:01+00:00"
+            "time": "2026-11-26T15:44:04+00:00",
+            "published-time": "2026-11-26T15:45:34+00:00"
         },
         {
             "name": "foxws/laravel-pwa",
@@ -2938,16 +2938,16 @@
         },
         {
             "name": "league/commonmark",
-            "version": "2.10.9",
+            "version": "2.10.10",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thephpleague/commonmark.git",
-                "reference": "ab5ff8c80fd69abaeb4d57d7711d389248f219e4"
+                "reference": "3e956235b26ea34ea721a302e27eae9a32cb9ef0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/ab5ff8c80fd69abaeb4d57d7711d389248f219e4",
-                "reference": "ab5ff8c80fd69abaeb4d57d7711d389248f219e4",
+                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/3e956235b26ea34ea721a302e27eae9a32cb9ef0",
+                "reference": "3e956235b26ea34ea721a302e27eae9a32cb9ef0",
                 "shasum": ""
             },
             "require": {
@@ -3041,8 +3041,8 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-11-25T20:08:31+00:00",
-            "published-time": "2026-11-25T20:11:11+00:00"
+            "time": "2026-11-26T14:08:53+00:00",
+            "published-time": "2026-11-26T14:12:37+00:00"
         },
         {
             "name": "league/config",
@@ -6375,16 +6375,16 @@
         },
         {
             "name": "spatie/laravel-permission",
-            "version": "8.5.0",
+            "version": "8.5.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spatie/laravel-permission.git",
-                "reference": "31c6a4f649c6bc4703ae5546cebb7ce1a20a15e0"
+                "reference": "088c3c643c11f0fc1f711e0e05ee9682560bd562"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spatie/laravel-permission/zipball/31c6a4f649c6bc4703ae5546cebb7ce1a20a15e0",
-                "reference": "31c6a4f649c6bc4703ae5546cebb7ce1a20a15e0",
+                "url": "https://api.github.com/repos/spatie/laravel-permission/zipball/088c3c643c11f0fc1f711e0e05ee9682560bd562",
+                "reference": "088c3c643c11f0fc1f711e0e05ee9682560bd562",
                 "shasum": ""
             },
             "require": {
@@ -6451,7 +6451,7 @@
             ],
             "support": {
                 "issues": "https://github.com/spatie/laravel-permission/issues",
-                "source": "https://github.com/spatie/laravel-permission/tree/8.5.0"
+                "source": "https://github.com/spatie/laravel-permission/tree/8.5.1"
             },
             "funding": [
                 {
@@ -6459,8 +6459,8 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-06T11:43:27+00:00",
-            "published-time": "2026-11-06T11:43:46+00:00"
+            "time": "2026-11-26T14:02:58+00:00",
+            "published-time": "2026-11-26T14:03:16+00:00"
         },
         {
             "name": "spatie/laravel-responsecache",
