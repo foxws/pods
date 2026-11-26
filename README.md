@@ -81,7 +81,7 @@ For Pods itself: PHP 8.5+, Node with pnpm, and `ssh` and `ssh-keygen` on the mac
 Pods runs on a host as rootless Podman Quadlets, for the user whose applications it manages. One command installs it:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.4.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.4.1/install.sh | bash
 ```
 
 It checks Podman, systemd, lingering and SSH, installs lpod, installs Pods' units from `containers/quadlets/production` and its image from `ghcr.io/foxws/pods`, adds Pods' SSH key to your `~/.ssh/authorized_keys` so the host shows up as the local environment, and prints a one-time setup code. Open Pods, which sends you to its setup page, and enter the code to create the owner (or pass `--name`, `--email` and `PODS_OWNER_PASSWORD` to create the owner from the terminal instead). Pods listens on `127.0.0.1:9393` (`--port` picks another; Cockpit has 9090): open it on the host, or through an SSH tunnel (`ssh -L 9393:127.0.0.1:9393 HOST`). To update it later, run `pods-update`, which keeps your setup.
