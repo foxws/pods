@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { show as environmentSettings } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentSettingsController'
 import type { ProxySettingsFormValues } from '@/types'
-import type { InertiaForm } from '@inertiajs/vue3'
+import { usePage, type InertiaForm } from '@inertiajs/vue3'
 import type { RadioGroupItem } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
+
+const page = usePage()
 
 const props = defineProps<{
   form: InertiaForm<ProxySettingsFormValues>
@@ -40,6 +43,8 @@ const modes: RadioGroupItem[] = [
 ]
 
 const isWildcard = computed(() => props.form.mode === 'wildcard')
+
+const hosts = computed(() => page.props.environments ?? [])
 
 const defaultImage = computed(() => (isWildcard.value ? 'ghcr.io/foxws/pods-proxy:main' : 'docker.io/library/caddy:2'))
 
@@ -102,15 +107,18 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
       />
     </UFormField>
 
-    <template v-if="isWildcard || defaults">
-      <USeparator />
+    <div
+      v-if="isWildcard || defaults"
+      :class="['flex flex-col gap-4', defaults && 'order-first']"
+    >
+      <USeparator v-if="!defaults" />
 
       <UFormField
         label="Domain"
         :description="
-          isWildcard
-            ? 'The proxy serves *.DOMAIN. Hostnames are one label under it, such as hello-ws.DOMAIN.'
-            : 'Hostnames are suggested under it, such as hello.DOMAIN and ws.hello.DOMAIN. Empty for home.arpa.'
+          defaults
+            ? 'Every host suggests hostnames under it, such as hello.DOMAIN, also after its proxy is installed. Empty for home.arpa.'
+            : 'The proxy serves *.DOMAIN. Hostnames are one label under it, such as hello-ws.DOMAIN.'
         "
         :required="isWildcard && !defaults"
         :error="form.errors.domain"
@@ -124,20 +132,50 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
           spellcheck="false"
         />
       </UFormField>
-    </template>
+
+      <USeparator v-if="defaults" />
+    </div>
+
+    <UAlert
+      v-if="isWildcard && defaults"
+      color="info"
+      variant="subtle"
+      icon="i-lucide-key-round"
+      title="Each host asks for its own Cloudflare API token"
+    >
+      <template #description>
+        Enter it in the host's Proxy settings, where it's kept as a Podman secret and never in Pods. It needs
+        <strong>Zone · Zone · Read</strong> and <strong>Zone · DNS · Edit</strong> on the domain's zone.
+        <span
+          v-if="hosts.length"
+          class="mt-1 flex flex-wrap gap-x-3"
+        >
+          <ULink
+            v-for="host in hosts"
+            :key="host.id"
+            :to="`${environmentSettings.url(host.id)}#proxy`"
+            class="text-primary"
+          >
+            {{ host.name }}
+          </ULink>
+        </span>
+      </template>
+    </UAlert>
 
     <template v-if="isWildcard && !defaults">
       <UFormField
         label="Cloudflare API token"
-        :description="
-          dnsTokenStored
-            ? 'The host has one. Leave this empty to keep it.'
-            : 'A token that may edit the DNS records of the domain. Kept as a Podman secret on the host, never in Pods.'
-        "
         :required="!dnsTokenStored"
         :error="form.errors.dns_token"
         :class="fieldClass"
       >
+        <template #description>
+          <template v-if="dnsTokenStored">The host has one. Leave this empty to keep it.</template>
+          <template v-else>
+            Create one in Cloudflare under My Profile, API Tokens, with <strong>Zone · Zone · Read</strong> and
+            <strong>Zone · DNS · Edit</strong> on the domain's zone. Kept as a Podman secret on the host, never in Pods.
+          </template>
+        </template>
         <UInput
           v-model="form.dns_token"
           type="password"
@@ -204,11 +242,6 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
           <template v-if="isWildcard">
             <UFormField
               label="DNS provider"
-              :description="
-                defaults
-                  ? 'Its API token is entered per host, in the host\'s Proxy settings, and kept only on that host.'
-                  : undefined
-              "
               :error="form.errors.dns_provider"
               :class="fieldClass"
             >
@@ -250,6 +283,7 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
                 :max="65535"
                 aria-label="HTTP port"
                 class="w-full font-mono"
+                :ui="{ base: 'ps-14' }"
               >
                 <template #leading><span class="text-xs text-muted">HTTP</span></template>
               </UInput>
@@ -261,6 +295,7 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
                 :max="65535"
                 aria-label="HTTPS port"
                 class="w-full font-mono"
+                :ui="{ base: 'ps-14' }"
               >
                 <template #leading><span class="text-xs text-muted">HTTPS</span></template>
               </UInput>

@@ -1,53 +1,29 @@
 <script setup lang="ts">
 import { show, update } from '@/actions/Modules/Web/Settings/Controllers/ProxyDefaultsController'
 import ProxySettingsFields from '@/components/Environments/ProxySettingsFields.vue'
-import type { ProxyDefaults, ProxySettingsFormValues } from '@/types'
-import { useForm, useHttp } from '@inertiajs/vue3'
+import { toProxySettingsPayload, useProxySettingsForm } from '@/composables/proxySettings'
+import type { ProxyDefaults } from '@/types'
+import { useHttp } from '@inertiajs/vue3'
 import { onMounted, ref } from 'vue'
 
 const loaded = ref(false)
 
 const http = useHttp<object, ProxyDefaults>({})
 
-const form = useForm<ProxySettingsFormValues>({
-  mode: 'letsencrypt',
-  email: '',
-  domain: '',
-  dns_provider: 'cloudflare',
-  dns_token: '',
-  resolvers: '',
-  http_port: 80,
-  https_port: 443,
-  image: '',
-})
+const { form, fill } = useProxySettingsForm()
 
 onMounted(async () => {
-  const defaults = await http.get(show.url())
-
-  form.defaults({
-    mode: defaults.mode,
-    email: defaults.email ?? '',
-    domain: defaults.domain ?? '',
-    dns_provider: defaults.dns_provider,
-    dns_token: '',
-    resolvers: defaults.resolvers ?? '',
-    http_port: defaults.http_port,
-    https_port: defaults.https_port,
-    image: defaults.image ?? '',
-  })
-  form.reset()
+  fill(await http.get(show.url()))
   loaded.value = true
 })
 
 const onSubmit = (): void => {
   form
-    .transform(({ dns_token: _token, ...values }) => ({
-      ...values,
-      email: values.email.trim() || null,
-      domain: values.domain.trim() || null,
-      resolvers: values.resolvers.trim() || null,
-      image: values.image.trim() || null,
-    }))
+    .transform((values) => {
+      const { dns_token: _token, ...payload } = toProxySettingsPayload(values)
+
+      return payload
+    })
     .put(update.url(), {
       preserveScroll: true,
       onSuccess: () => form.defaults(),
@@ -58,8 +34,8 @@ const onSubmit = (): void => {
 <template>
   <form @submit.prevent="onSubmit">
     <UPageCard
-      title="Proxy defaults"
-      description="What a host's Proxy section starts from before its proxy is installed, and the domain Pods suggests hostnames under. Hosts with a proxy keep their own settings. The token for a DNS challenge is asked for per host, and only kept there."
+      title="Defaults for new hosts"
+      description="The domain applies to every host. The rest only fills in a host's Proxy form until its proxy is installed; after that, the host keeps its own settings, which you change in that host's settings."
       variant="naked"
       orientation="vertical"
       :ui="{ body: 'flex w-full flex-col gap-3' }"

@@ -32,7 +32,7 @@ const sections: Record<Section, { title: string; description: string; component:
   },
   proxy: {
     title: 'Proxy',
-    description: 'Defaults for the Pods proxy on your hosts, and the domain hostnames are suggested under.',
+    description: "The domain Pods suggests hostnames under, and what a new host's proxy starts from.",
     component: SettingsProxyForm,
   },
   catalog: {

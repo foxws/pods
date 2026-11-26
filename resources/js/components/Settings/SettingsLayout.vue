@@ -47,7 +47,7 @@ const groups = computed<NavigationMenuItem[][]>(() => [
   ...((page.props.environments ?? []).length
     ? [
         [
-          { label: 'Auto-update and defaults', type: 'label' } as NavigationMenuItem,
+          { label: 'Host settings', type: 'label' } as NavigationMenuItem,
           ...(page.props.environments ?? []).map((environment) =>
             link(
               environment.name,

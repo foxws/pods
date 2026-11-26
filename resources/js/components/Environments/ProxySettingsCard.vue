@@ -5,16 +5,9 @@ import HostError from '@/components/Environments/HostError.vue'
 import ProxySettingsFields from '@/components/Environments/ProxySettingsFields.vue'
 import { useAuth } from '@/composables/auth'
 import { useNavigation } from '@/composables/navigation'
-import type {
-  EnvironmentData,
-  HostProperty,
-  ProxyDefaults,
-  ProxyMode,
-  ProxySettingsData,
-  ProxySettingsFormValues,
-} from '@/types'
+import { toProxySettingsPayload, useProxySettingsForm } from '@/composables/proxySettings'
+import type { EnvironmentData, HostProperty, ProxyDefaults, ProxySettingsData } from '@/types'
 import { useLiveVisit } from '@/composables/hostActions'
-import { useForm } from '@inertiajs/vue3'
 import { computed, watch } from 'vue'
 
 const props = defineProps<{
@@ -27,17 +20,7 @@ const props = defineProps<{
 const { hasRole } = useAuth()
 const { settingsUrl } = useNavigation()
 
-const form = useForm<ProxySettingsFormValues>({
-  mode: 'letsencrypt',
-  email: '',
-  domain: '',
-  dns_provider: 'cloudflare',
-  dns_token: '',
-  resolvers: '',
-  http_port: 80,
-  https_port: 443,
-  image: '',
-})
+const { form, fill } = useProxySettingsForm()
 
 const data = computed(() => props.proxy?.data ?? null)
 
@@ -53,20 +36,14 @@ watch(
       return
     }
 
-    const source = proxy.installed ? proxy : props.defaults
+    if (proxy.installed) {
+      fill({ ...proxy, mode: proxy.mode ?? props.defaults.mode })
 
-    form.defaults({
-      mode: (source.mode as ProxyMode | null) ?? props.defaults.mode,
-      email: source.email ?? '',
-      domain: proxy.installed ? (proxy.domain ?? '') : source.mode === 'wildcard' ? (source.domain ?? '') : '',
-      dns_provider: source.dns_provider ?? 'cloudflare',
-      dns_token: '',
-      resolvers: source.resolvers ?? '',
-      http_port: source.http_port ?? 80,
-      https_port: source.https_port ?? 443,
-      image: source.image ?? '',
-    })
-    form.reset()
+      return
+    }
+
+    /** The defaults' domain only names the wildcard site; elsewhere it's for suggestions alone. */
+    fill({ ...props.defaults, domain: props.defaults.mode === 'wildcard' ? props.defaults.domain : null })
   },
   { immediate: true },
 )
@@ -89,13 +66,7 @@ const submit = (): void => {
     onSuccess: () => form.reset('dns_token'),
   }
 
-  form.transform((values) => ({
-    ...values,
-    email: values.email.trim() || null,
-    resolvers: values.resolvers.trim() || null,
-    image: values.image.trim() || null,
-    dns_token: values.dns_token.trim() || null,
-  }))
+  form.transform(toProxySettingsPayload)
 
   if (data.value?.installed) {
     form.put(update.url(props.environment.id), options)
@@ -106,7 +77,7 @@ const submit = (): void => {
 </script>
 
 <template>
-  <UCard>
+  <UCard id="proxy">
     <template #header>
       <div class="flex items-start justify-between gap-2">
         <div>
