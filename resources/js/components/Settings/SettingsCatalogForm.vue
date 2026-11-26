@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SaveButton from '@/components/Ui/SaveButton.vue'
 import { show, update } from '@/actions/Modules/Web/Settings/Controllers/CatalogSettingsController'
 import type { CatalogSettings } from '@/types'
 import { useForm, useHttp } from '@inertiajs/vue3'
@@ -138,13 +139,10 @@ const onSubmit = (): void => {
       </template>
 
       <template #footer>
-        <UButton
+        <SaveButton
           v-if="loaded"
-          type="submit"
-          :label="form.recentlySuccessful ? 'Saved' : 'Save catalog'"
-          :icon="form.recentlySuccessful ? 'i-lucide-check' : undefined"
-          :color="form.recentlySuccessful ? 'success' : 'primary'"
-          :loading="form.processing"
+          :form="form"
+          label="Save catalog"
           :disabled="!form.isDirty"
         />
       </template>

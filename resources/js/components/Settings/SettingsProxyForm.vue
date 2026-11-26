@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SaveButton from '@/components/Ui/SaveButton.vue'
 import { show, update } from '@/actions/Modules/Web/Settings/Controllers/ProxyDefaultsController'
 import ProxySettingsFields from '@/components/Environments/ProxySettingsFields.vue'
 import { toProxySettingsPayload, useProxySettingsForm } from '@/composables/proxySettings'
@@ -54,13 +55,10 @@ const onSubmit = (): void => {
       </template>
 
       <template #footer>
-        <UButton
+        <SaveButton
           v-if="loaded"
-          type="submit"
-          :label="form.recentlySuccessful ? 'Saved' : 'Save defaults'"
-          :icon="form.recentlySuccessful ? 'i-lucide-check' : undefined"
-          :color="form.recentlySuccessful ? 'success' : 'primary'"
-          :loading="form.processing"
+          :form="form"
+          label="Save defaults"
           :disabled="!form.isDirty"
         />
       </template>

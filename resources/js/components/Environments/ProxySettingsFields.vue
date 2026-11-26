@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FormRow from '@/components/Ui/FormRow.vue'
 import { show as environmentSettings } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentSettingsController'
 import type { ProxySettingsFormValues } from '@/types'
 import { usePage, type InertiaForm } from '@inertiajs/vue3'
@@ -90,8 +91,6 @@ const summary = computed(() => {
 
   return `${props.form.image || defaultImage.value} on ${ports}`
 })
-
-const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
 </script>
 
 <template>
@@ -113,7 +112,7 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
     >
       <USeparator v-if="!defaults" />
 
-      <UFormField
+      <FormRow
         label="Domain"
         :description="
           defaults
@@ -122,7 +121,6 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
         "
         :required="isWildcard && !defaults"
         :error="form.errors.domain"
-        :class="fieldClass"
       >
         <UInput
           v-model="form.domain"
@@ -131,7 +129,7 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
           class="w-full font-mono sm:w-64"
           spellcheck="false"
         />
-      </UFormField>
+      </FormRow>
 
       <USeparator v-if="defaults" />
     </div>
@@ -163,11 +161,10 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
     </UAlert>
 
     <template v-if="isWildcard && !defaults">
-      <UFormField
+      <FormRow
         label="Cloudflare API token"
         :required="!dnsTokenStored"
         :error="form.errors.dns_token"
-        :class="fieldClass"
       >
         <template #description>
           <template v-if="dnsTokenStored">The host has one. Leave this empty to keep it.</template>
@@ -183,17 +180,16 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
           :placeholder="dnsTokenStored ? 'Stored on the host' : ''"
           class="w-full font-mono sm:w-64"
         />
-      </UFormField>
+      </FormRow>
     </template>
 
     <template v-if="form.mode === 'letsencrypt' || isWildcard">
       <USeparator />
 
-      <UFormField
+      <FormRow
         label="Email"
         description="Let's Encrypt writes here about certificates that are about to expire."
         :error="form.errors.email"
-        :class="fieldClass"
       >
         <UInput
           v-model="form.email"
@@ -201,7 +197,7 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
           :model-modifiers="{ trim: true }"
           class="w-full sm:w-64"
         />
-      </UFormField>
+      </FormRow>
     </template>
 
     <UAlert
@@ -240,23 +236,21 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
       <template #content>
         <div class="flex flex-col gap-4 pt-4">
           <template v-if="isWildcard">
-            <UFormField
+            <FormRow
               label="DNS provider"
               :error="form.errors.dns_provider"
-              :class="fieldClass"
             >
               <USelect
                 v-model="form.dns_provider"
                 :items="[{ label: 'Cloudflare', value: 'cloudflare' }]"
                 class="w-full sm:w-64"
               />
-            </UFormField>
+            </FormRow>
 
-            <UFormField
+            <FormRow
               label="Resolvers"
               description="DNS servers that check the challenge record, such as 1.1.1.1, when the local ones answer for the domain themselves."
               :error="form.errors.resolvers"
-              :class="fieldClass"
             >
               <UInput
                 v-model="form.resolvers"
@@ -264,16 +258,15 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
                 class="w-full font-mono sm:w-64"
                 spellcheck="false"
               />
-            </UFormField>
+            </FormRow>
 
             <USeparator />
           </template>
 
-          <UFormField
+          <FormRow
             label="Ports"
             description="The host ports the proxy publishes for HTTP and HTTPS."
             :error="form.errors.http_port ?? form.errors.https_port"
-            :class="fieldClass"
           >
             <div class="flex w-full gap-2 sm:w-64">
               <UInput
@@ -300,15 +293,14 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
                 <template #leading><span class="text-xs text-muted">HTTPS</span></template>
               </UInput>
             </div>
-          </UFormField>
+          </FormRow>
 
           <USeparator />
 
-          <UFormField
+          <FormRow
             label="Image"
             :description="`Leave empty for ${defaultImage}.`"
             :error="form.errors.image"
-            :class="fieldClass"
           >
             <UInput
               v-model="form.image"
@@ -316,7 +308,7 @@ const fieldClass = 'flex max-sm:flex-col justify-between items-start gap-4'
               class="w-full font-mono sm:w-64"
               spellcheck="false"
             />
-          </UFormField>
+          </FormRow>
         </div>
       </template>
     </UCollapsible>
