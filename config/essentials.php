@@ -7,7 +7,6 @@ use Foxws\Essentials\Configurables\AggressivePrefetching;
 use Foxws\Essentials\Configurables\AutomaticallyEagerLoadRelationships;
 use Foxws\Essentials\Configurables\EnforceMorphMap;
 use Foxws\Essentials\Configurables\FakeSleep;
-use Foxws\Essentials\Configurables\ForceHttpsScheme;
 use Foxws\Essentials\Configurables\ForceSecurePassword;
 use Foxws\Essentials\Configurables\ImmutableDates;
 use Foxws\Essentials\Configurables\ModelShouldBeStrict;
@@ -33,6 +32,10 @@ return [
     | proxy's hostname, which can change in Pods after APP_URL was written,
     | so links and redirects keep the request's own origin.
     |
+    | ForceHttpsScheme is left out too: Pods answers plain HTTP on
+    | 127.0.0.1:PORT in production. Behind the proxy, links still get https
+    | from the trusted X-Forwarded-Proto header.
+    |
     */
 
     'configurables' => [
@@ -40,7 +43,6 @@ return [
         AutomaticallyEagerLoadRelationships::class,
         EnforceMorphMap::class,
         FakeSleep::class,
-        ForceHttpsScheme::class,
         ForceSecurePassword::class,
         ImmutableDates::class,
         ModelShouldBeStrict::class,
