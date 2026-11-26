@@ -189,7 +189,7 @@ const onSubmit = (close: () => void): void => {
             </div>
           </div>
 
-          <div class="grid gap-2 sm:grid-cols-2">
+          <div class="flex flex-col gap-3">
             <UFormField
               label="Hostname"
               :error="errorOf(row, 'host') ?? errorOf(row, 'role')"
