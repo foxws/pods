@@ -72,7 +72,7 @@ For each application it installs, Pods does keep an installation (`src/Domain/Ap
 
 ## Web layer
 
-Each page is a module in `src/Modules/Web` with an Inertia controller and a Vue page in `resources/js/pages`. Host routes are nested under `/environments/{environment}` in `routes/web.php` (pages) and `routes/actions.php` (actions), so several tabs can stay on different hosts. Slow host data is loaded with deferred props and skeletons, status pages poll, and host state props are live (see above).
+Each page is a module in `src/Modules/Web` with an Inertia controller and a Vue page in `resources/js/pages`. Host routes are nested under `/environments/{environment}` in `routes/web.php` (pages) and `routes/actions.php` (actions), so several tabs can stay on different environments. Slow host data is loaded with deferred props and skeletons, status pages poll, and host state props are live (see above).
 
 ## Users
 

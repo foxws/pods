@@ -47,7 +47,7 @@ const onSubmit = (): void => {
   <form @submit.prevent="onSubmit">
     <UPageCard
       title="Repositories"
-      description="Every directory at a repository's root with a pods.yml is one application. The list is the same for all hosts, and removing a repository keeps what you installed from it."
+      description="Every directory at a repository's root with a pods.yml is one application. The list is the same for all environments, and removing a repository keeps what you installed from it."
       variant="naked"
       orientation="vertical"
       :ui="{ body: 'flex w-full flex-col gap-3' }"
@@ -64,7 +64,7 @@ const onSubmit = (): void => {
             variant="subtle"
             icon="i-lucide-shield-alert"
             title="Only add repositories you trust"
-            description="Your hosts clone them, and what you install from them runs as your user there. A private repository needs an SSH URL and a key on each host."
+            description="Your environments clone them, and what you install from them runs as your user there. A private repository needs an SSH URL and a key in each environment."
           />
 
           <p

@@ -24,7 +24,7 @@ const onSubmit = () =>
 
   <UPageCard
     title="Set up Pods"
-    description="Create the owner of this Pods instance. The owner manages its hosts and can invite others later."
+    description="Create the owner of this Pods instance. The owner manages its environments and can invite others later."
     class="sm:min-w-md"
   >
     <UForm

@@ -9,7 +9,7 @@ type PinnedProps = { pinned?: PinData[] | PinData | null }
 const pendingId = 0
 
 /**
- * Pins things on a host for the current user, such as an application to the overview, or unpins them.
+ * Pins things in an environment for the current user, such as an application to the overview, or unpins them.
  * Only the page's `pinned` prop (the pins on a list page, or the one pin on a detail page) changes,
  * right away, and then reloads with what the server stored.
  */

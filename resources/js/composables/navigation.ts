@@ -114,7 +114,7 @@ export function useNavigation() {
   )
 
   /**
-   * The user's notifications, inside the selected environment like the settings, so the sidebar keeps its host.
+   * The user's notifications, inside the selected environment like the settings, so the sidebar keeps its environment.
    */
   const notificationsLink = computed(() => {
     const to = environment.value ? notificationsInEnvironment.url(environment.value.id) : notifications.url()
@@ -123,7 +123,7 @@ export function useNavigation() {
   })
 
   /**
-   * Settings stay inside the selected environment, so the sidebar keeps its host; without one they're under /settings.
+   * Settings stay inside the selected environment, so the sidebar keeps its environment; without one they're under /settings.
    */
   const settingsUrl = (section: SettingsSection = 'account'): string =>
     environment.value ? showInEnvironment.url([environment.value.id, section]) : settingsShow.url(section)

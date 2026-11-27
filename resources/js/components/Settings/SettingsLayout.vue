@@ -42,12 +42,12 @@ const groups = computed<NavigationMenuItem[][]>(() => [
           link('Catalog', 'i-lucide-layout-grid', settingsUrl('catalog')),
         ]
       : []),
-    link('Hosts', 'i-lucide-server', environmentsIndex.url()),
+    link('Environments', 'i-lucide-server', environmentsIndex.url()),
   ],
   ...((page.props.environments ?? []).length
     ? [
         [
-          { label: 'Host settings', type: 'label' } as NavigationMenuItem,
+          { label: 'Environment settings', type: 'label' } as NavigationMenuItem,
           ...(page.props.environments ?? []).map((environment) =>
             link(
               environment.name,

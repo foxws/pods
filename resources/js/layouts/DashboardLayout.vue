@@ -48,7 +48,7 @@ if (user.value) {
 const page = usePage()
 
 /**
- * Settings covers the account pages, the hosts list and the settings of each host.
+ * Settings covers the account pages, the environments list and the settings of each environment.
  */
 const isSettingsPage = computed(() =>
   /^\/(settings(\/|$|\?)|environments\/?($|\?)|environments\/[^/]+\/settings)/.test(page.url),
@@ -109,7 +109,7 @@ const footerItems = computed<NavigationMenuItem[]>(() => [
       >
         <template #empty>
           <p class="py-6 text-center text-sm text-muted">
-            {{ searchError ?? (isSearching ? 'Searching the host…' : 'Nothing found.') }}
+            {{ searchError ?? (isSearching ? 'Searching the environment…' : 'Nothing found.') }}
           </p>
         </template>
       </UDashboardSearch>

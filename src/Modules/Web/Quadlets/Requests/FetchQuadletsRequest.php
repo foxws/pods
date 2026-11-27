@@ -56,7 +56,7 @@ class FetchQuadletsRequest extends FormRequest
     {
         return [
             "{$key}.regex" => __('Use an https://, ssh:// or git@ repository URL.'),
-            "{$key}.not_regex" => __('Leave credentials out of the URL. For a private repository, use SSH and a key on each host.'),
+            "{$key}.not_regex" => __('Leave credentials out of the URL. For a private repository, use SSH and a key in each environment.'),
         ];
     }
 

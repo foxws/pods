@@ -36,11 +36,11 @@ const remove = () => {
 </script>
 
 <template>
-  <Head title="Hosts" />
+  <Head title="Environments" />
 
   <SettingsLayout
-    title="Hosts"
-    description="The Podman hosts and users Pods manages over SSH."
+    title="Environments"
+    description="Each environment is a user on a Podman host that Pods manages over SSH."
   >
     <template #actions>
       <UButton
@@ -86,7 +86,7 @@ const remove = () => {
       v-if="!environments.length"
       icon="i-lucide-server"
       title="No environments yet"
-      description="Add the hosts whose Podman Quadlets you want to manage."
+      description="Add an environment for each host and user whose Podman Quadlets you want to manage."
       :actions="[{ label: 'Add environment', icon: 'i-lucide-plus', onClick: () => (isCreating = true) }]"
     />
 

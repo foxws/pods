@@ -11,7 +11,7 @@ const props = defineProps<{
   lpod: LpodVersionData
 }>()
 
-// Both verify the host, which stores its facts (shown here and in the host switcher).
+// Both verify the host, which stores its facts (shown here and in the environment switcher).
 const verifiedProps = ['environment', 'lpod', 'environments']
 
 const { send: sendUpdate, processing: isUpdating } = useHostAction()
@@ -27,8 +27,8 @@ const checkAgain = (): void => sendCheck('post', verify.url(props.environment.id
     <template #header>
       <CardHeader title="lpod">
         <template #description>
-          Pods manages this host through lpod, installed for {{ environment.user }}. Each user on a host has their own.
-          Pods checks the versions daily, or when you check again.
+          Pods manages this environment through lpod, installed for {{ environment.user }}. Each user on a host has
+          their own. Pods checks the versions daily, or when you check again.
         </template>
       </CardHeader>
     </template>

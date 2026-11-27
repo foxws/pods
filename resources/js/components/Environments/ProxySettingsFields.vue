@@ -10,9 +10,9 @@ const page = usePage()
 
 const props = defineProps<{
   form: InertiaForm<ProxySettingsFormValues>
-  /** The Pods-wide defaults rather than a host's proxy: no DNS token, and the domain for every mode. */
+  /** The Pods-wide defaults rather than an environment's proxy: no DNS token, and the domain for every mode. */
   defaults?: boolean
-  /** Whether the host already has a token for the DNS challenge. */
+  /** Whether the environment already has a token for the DNS challenge. */
   dnsTokenStored?: boolean
   /** The lowest port rootless Podman may publish on the host, when it runs rootless. */
   unprivilegedPortStart?: number | null
@@ -45,7 +45,7 @@ const modes: RadioGroupItem[] = [
 
 const isWildcard = computed(() => props.form.mode === 'wildcard')
 
-const hosts = computed(() => page.props.environments ?? [])
+const environments = computed(() => page.props.environments ?? [])
 
 const defaultImage = computed(() => (isWildcard.value ? 'ghcr.io/foxws/pods-proxy:main' : 'docker.io/library/caddy:2'))
 
@@ -139,22 +139,22 @@ const summary = computed(() => {
       color="info"
       variant="subtle"
       icon="i-lucide-key-round"
-      title="Each host asks for its own Cloudflare API token"
+      title="Each environment asks for its own Cloudflare API token"
     >
       <template #description>
-        Enter it in the host's Proxy settings, where it's kept as a Podman secret and never in Pods. It needs
+        Enter it in the environment's Proxy settings, where it's kept as a Podman secret and never in Pods. It needs
         <strong>Zone · Zone · Read</strong> and <strong>Zone · DNS · Edit</strong> on the domain's zone.
         <span
-          v-if="hosts.length"
+          v-if="environments.length"
           class="mt-1 flex flex-wrap gap-x-3"
         >
           <ULink
-            v-for="host in hosts"
-            :key="host.id"
-            :to="`${environmentSettings.url(host.id)}#proxy`"
+            v-for="environment in environments"
+            :key="environment.id"
+            :to="`${environmentSettings.url(environment.id)}#proxy`"
             class="text-primary"
           >
-            {{ host.name }}
+            {{ environment.name }}
           </ULink>
         </span>
       </template>
@@ -167,7 +167,7 @@ const summary = computed(() => {
         :error="form.errors.dns_token"
       >
         <template #description>
-          <template v-if="dnsTokenStored">The host has one. Leave this empty to keep it.</template>
+          <template v-if="dnsTokenStored">This environment has one. Leave this empty to keep it.</template>
           <template v-else>
             Create one in Cloudflare under My Profile, API Tokens, with <strong>Zone · Zone · Read</strong> and
             <strong>Zone · DNS · Edit</strong> on the domain's zone. Kept as a Podman secret on the host, never in Pods.

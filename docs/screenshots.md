@@ -19,7 +19,7 @@ The screenshots can be a release or two behind, so the current version can look 
 
 Each host starts on its overview: CPU, memory, disk and containers, what needs attention (such as failed units), the host's recent activity from its journal, its applications, and the Podman and systemd settings that matter, such as auto-update and lingering.
 
-![Host overview with CPU, memory, disk and container cards, recent activity, applications and system details](https://raw.githubusercontent.com/francoism90/.github/main/assets/pods/overview.webp)
+![Environment overview with CPU, memory, disk and container cards, recent activity, applications and system details](https://raw.githubusercontent.com/francoism90/.github/main/assets/pods/overview.webp)
 
 ## Applications
 

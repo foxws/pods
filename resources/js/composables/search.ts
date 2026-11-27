@@ -37,7 +37,7 @@ export function useHostSearch(environment: MaybeRefOrGetter<EnvironmentData | nu
       results.value = response.data ?? []
       error.value = response.error
     } catch {
-      error.value = 'Pods could not search this host.'
+      error.value = 'Pods could not search this environment.'
     }
   }
 

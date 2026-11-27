@@ -91,7 +91,7 @@ const submit = (): void => {
         variant="subtle"
         icon="i-lucide-triangle-alert"
         title="Update lpod to change these settings"
-        description="The lpod on this host has no settings command yet, so Pods shows what lpod host reports and can't change it."
+        description="The lpod of this environment has no settings command yet, so Pods shows what lpod host reports and can't change it."
       />
 
       <UCard>

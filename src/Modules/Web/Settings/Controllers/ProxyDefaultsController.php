@@ -37,7 +37,7 @@ class ProxyDefaultsController implements HasMiddleware
         $settings->fill($request->defaults());
         $settings->save();
 
-        toast(title: __('Proxy defaults saved'), description: __('Hosts without a proxy start from them, and hostnames are suggested under the domain.'));
+        toast(title: __('Proxy defaults saved'), description: __('Environments without a proxy start from them, and hostnames are suggested under the domain.'));
 
         return back();
     }
