@@ -523,7 +523,7 @@ const podmanLine = computed(() =>
               <CardHeader title="Applications">
                 <template #actions>
                   <UButton
-                    label="View all"
+                    label="Manage"
                     color="neutral"
                     variant="link"
                     size="sm"
