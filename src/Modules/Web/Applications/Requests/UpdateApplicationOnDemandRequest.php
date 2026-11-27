@@ -4,18 +4,25 @@ declare(strict_types=1);
 
 namespace Modules\Web\Applications\Requests;
 
+use Domain\Applications\Actions\SuggestSocketPort;
 use Domain\Applications\DataObjects\OnDemandIdleCheckData;
 use Domain\Applications\DataObjects\OnDemandScheduleData;
 use Domain\Applications\DataObjects\OnDemandSettingsData;
+use Domain\Applications\Rules\SocketPortIsFree;
+use Domain\Environments\Models\Environment;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class UpdateApplicationOnDemandRequest extends FormRequest
 {
+    /**
+     * Before validation, which reads the host's applications.
+     */
     public function authorize(): bool
     {
-        return true;
+        return Gate::allows('operate', $this->route('environment'));
     }
 
     /**
@@ -23,9 +30,12 @@ class UpdateApplicationOnDemandRequest extends FormRequest
      */
     public function rules(): array
     {
+        /** @var Environment $environment */
+        $environment = $this->route('environment');
+
         return [
             // lpod gives the app the socket's port + 10000 on 127.0.0.1.
-            'port' => ['required', 'integer', 'between:1,55535'],
+            'port' => ['bail', 'required', 'integer', 'between:1,'.SuggestSocketPort::HighestPort, new SocketPortIsFree($environment, (string) $this->route('application'))],
             'app_port' => ['required', 'integer', 'between:1,65535'],
             // Present, so leaving it out never means every address
             'listen' => ['present', 'nullable', 'string', 'ip'],

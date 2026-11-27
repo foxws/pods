@@ -15,11 +15,16 @@ use Illuminate\Support\Str;
 /**
  * The on-demand settings to offer for an application. Its stored pods.yml says them in its ondemand
  * section. Without one, Pods reads its Quadlet files: the port its main unit listens on, and for a
- * Laravel application, its queue workers and its scheduler. The socket stays on the address the main
- * unit publishes on, unless the pods.yml names one.
+ * Laravel application, its queue workers and its scheduler. The socket stays on the address and port
+ * the main unit publishes on, unless the pods.yml names them. It takes the first free port from 8000
+ * when the unit publishes none, or another application has it.
  */
 class SuggestOnDemandSettings
 {
+    public function __construct(
+        protected SuggestSocketPort $suggestSocketPort,
+    ) {}
+
     /**
      * A container that runs Laravel's queue (or Horizon), and keeps running while the app sleeps.
      */
@@ -29,8 +34,9 @@ class SuggestOnDemandSettings
 
     /**
      * @param  list<QuadletFileData>  $files
+     * @param  list<ApplicationData>  $applications  Every application on the host, whose ports the socket avoids.
      */
-    public function __invoke(ApplicationData $application, array $files, ?ManifestData $manifest = null): OnDemandSuggestionData
+    public function __invoke(ApplicationData $application, array $files, ?ManifestData $manifest = null, array $applications = []): OnDemandSuggestionData
     {
         $mainFileName = $this->mainFileName($application);
 
@@ -61,15 +67,21 @@ class SuggestOnDemandSettings
 
         $containerNames = array_map(strval(...), array_keys($containers));
 
+        $socketPort = fn (): ?int => ($this->suggestSocketPort)(
+            $application->name,
+            $main !== null ? $this->hostPort($main->content) : null,
+            $applications,
+        );
+
         if ($manifest?->ondemand !== null) {
-            return $this->fromManifest($manifest->ondemand, $containerNames, $isLaravel, $main);
+            return $this->fromManifest($manifest->ondemand, $containerNames, $isLaravel, $main, $socketPort);
         }
 
         return new OnDemandSuggestionData(
             laravel: $isLaravel,
             containers: $containerNames,
             settings: new OnDemandSettingsData(
-                port: null,
+                port: $socketPort(),
                 app_port: $main !== null ? $this->appPort($main->content) : null,
                 listen: $main !== null ? $this->listenAddress($main->content) : null,
                 idle_timeout: '10min',
@@ -86,8 +98,9 @@ class SuggestOnDemandSettings
      * workers or a scheduler in it show the Laravel settings, whatever the files look like.
      *
      * @param  list<string>  $containers
+     * @param  callable(): ?int  $socketPort
      */
-    protected function fromManifest(OnDemandSettingsData $settings, array $containers, bool $isLaravel, ?QuadletFileData $main): OnDemandSuggestionData
+    protected function fromManifest(OnDemandSettingsData $settings, array $containers, bool $isLaravel, ?QuadletFileData $main, callable $socketPort): OnDemandSuggestionData
     {
         $hasBackgroundWork = $settings->workers !== [] || $settings->idle_check !== null || $settings->schedule !== null;
 
@@ -95,7 +108,7 @@ class SuggestOnDemandSettings
             laravel: $isLaravel || $hasBackgroundWork,
             containers: $containers,
             settings: new OnDemandSettingsData(
-                port: $settings->port,
+                port: $settings->port ?? $socketPort(),
                 app_port: $settings->app_port ?? ($main !== null ? $this->appPort($main->content) : null),
                 listen: $settings->listen ?? ($main !== null ? $this->listenAddress($main->content) : null),
                 idle_timeout: $settings->idle_timeout,
@@ -130,6 +143,23 @@ class SuggestOnDemandSettings
 
         if (preg_match('/^\s*PublishPort\s*=\s*(?:\S*:)?(\d+)(?:\/\w+)?\s*$/m', $content, $matches) === 1) {
             return (int) $matches[1];
+        }
+
+        return null;
+    }
+
+    /**
+     * The first TCP port it publishes on the host: 9393 of PublishPort=127.0.0.1:9393:8000 or PublishPort=9393:8000.
+     * A port Podman picks itself (PublishPort=127.0.0.1::8000 or PublishPort=8000) isn't one to keep.
+     */
+    protected function hostPort(string $content): ?int
+    {
+        preg_match_all('/^\s*PublishPort\s*=\s*(\S+)\s*$/m', $content, $matches);
+
+        foreach ($matches[1] as $published) {
+            if (preg_match('/(?:^|:)(\d+):\d+(?:\/tcp)?$/', $published, $parts) === 1) {
+                return (int) $parts[1];
+            }
         }
 
         return null;

@@ -33,6 +33,29 @@ class ApplicationData extends Data
     ) {}
 
     /**
+     * The TCP ports it publishes on the host: 8080 of 0.0.0.0:8080->80/tcp, and each of a range such as 0.0.0.0:8000-8002->8000-8002/tcp.
+     *
+     * @return list<int>
+     */
+    public function hostPorts(): array
+    {
+        $ports = [];
+
+        foreach ($this->ports as $published) {
+            if (preg_match('/:(\d+)(?:-(\d+))?->[\d-]+(?:\/tcp)?$/', $published, $matches) !== 1) {
+                continue;
+            }
+
+            $first = (int) $matches[1];
+            $last = isset($matches[2]) ? (int) $matches[2] : $first;
+
+            array_push($ports, ...range($first, max($first, $last)));
+        }
+
+        return $ports;
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      */
     public static function fromLpod(array $payload): self

@@ -78,6 +78,7 @@ class ApplicationShowProps implements ProvidesInertiaProperties
                 $this->lpod->application($this->environment, $this->application)->application,
                 $this->files(),
                 $this->installation()?->manifest(),
+                $this->lpod->applications($this->environment),
             ), 'details'),
             'files' => $this->deferFromHost(fn (): array => $this->files(), 'details', live: $this->changesTo($this->environment, $this->key())),
             'installation' => $this->deferFromHost(fn (): ?InstallationData => $this->installationData(), 'details', live: $this->changesTo($this->environment, $this->key())),
