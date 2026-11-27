@@ -239,7 +239,7 @@ it('refuses settings lpod would refuse or misread', function (array $settings, s
         ])
         ->assertSessionHasErrors($field);
 
-    $lpod->assertNothingRan();
+    expect(collect($lpod->recorded())->pluck('arguments')->flatten())->not->toContain('enable');
 })->with([
     'a listen address that is no IP address' => [['listen' => '--help'], 'listen'],
     'a socket port without room for the local port' => [['port' => 60000], 'port'],
@@ -313,7 +313,7 @@ it('refuses settings that leave the listen address out', function () {
         ->put(action([ApplicationOnDemandController::class, 'update'], [$this->environment, 'immich']), ['port' => 2283, 'app_port' => 2283, 'idle_timeout' => '10min'])
         ->assertSessionHasErrors('listen');
 
-    $lpod->assertNothingRan();
+    expect(collect($lpod->recorded())->pluck('arguments')->flatten())->not->toContain('enable');
 });
 
 it('suggests the address the main unit publishes on', function (string $published, ?string $manifest, ?string $listen) {
@@ -378,7 +378,7 @@ it('refuses a socket port another application has', function (int $port, string 
         ])
         ->assertSessionHasErrors(['port' => $message]);
 
-    expect(collect($lpod->recorded())->pluck('arguments')->contains(fn (array $arguments): bool => in_array('enable', $arguments, true)))->toBeFalse();
+    expect(collect($lpod->recorded())->pluck('arguments')->flatten())->not->toContain('enable');
 })->with([
     'the port itself' => [8080, 'vaultwarden publishes port 8080 already.'],
     'its local port' => [9000, 'sleeper publishes port 19000 already, which the app gets on 127.0.0.1.'],
