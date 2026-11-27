@@ -71,7 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.4.3/install.sh | bash
 
 On a host shared with other users, give the proxy other ports with `--proxy-ports 28080,28443`, and add `--behind-proxy` when another proxy in front handles HTTPS. `--uninstall` removes Pods and keeps its data; add `--purge` to remove that too. `--help` lists every option.
 
-To prepare a host (or another user on the same machine) for a Pods that runs elsewhere, use `--no-pods`. It checks the requirements and installs lpod, and `--authorized-key` adds Pods' public key (**Hosts**, **Copy public key**) to that user's `~/.ssh/authorized_keys`. It installs no Pods and no proxy: install the proxy from Pods, in the new environment's settings.
+To prepare a host (or another user on the same machine) for a Pods that runs elsewhere, use `--no-pods`. It checks the requirements and installs lpod, and `--authorized-key` adds Pods' public key (**Environments**, **Copy public key**) to that user's `~/.ssh/authorized_keys`. It installs no Pods and no proxy: install the proxy from Pods, in the new environment's settings.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/foxws/pods/v1.4.3/install.sh | bash -s -- --no-pods --authorized-key 'ssh-ed25519 AAAA… pods'

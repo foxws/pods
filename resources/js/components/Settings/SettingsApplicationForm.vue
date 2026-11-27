@@ -104,8 +104,8 @@ onMounted(async () => {
           <USeparator />
 
           <FormRow
-            label="Refresh host pages"
-            description="How often open host pages reload what changed outside Pods, such as CPU, memory and crashed units. Pods' own changes show at once, and a unit that starts or stops is followed every 5 seconds. Each refresh asks the host again, so a short interval means more SSH commands."
+            label="Refresh environment pages"
+            description="How often open environment pages reload what changed outside Pods, such as CPU, memory and crashed units. Pods' own changes show at once, and a unit that starts or stops is followed every 5 seconds. Each refresh asks the host again, so a short interval means more SSH commands."
             :error="form.errors.host_refresh"
           >
             <USelect

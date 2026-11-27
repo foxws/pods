@@ -14,7 +14,7 @@ import { computed, watch } from 'vue'
 const props = defineProps<{
   environment: EnvironmentData
   proxy?: HostProperty<ProxySettingsData>
-  /** What a host without a proxy starts from (Settings, Proxy). */
+  /** What an environment without a proxy starts from (Settings, Proxy). */
   defaults: ProxyDefaults
 }>()
 
@@ -26,7 +26,7 @@ const { form, fill } = useProxySettingsForm()
 const data = computed(() => props.proxy?.data ?? null)
 
 /**
- * An installed proxy shows what its host has. One that isn't starts from Pods' defaults.
+ * An installed proxy shows what its environment has. One that isn't starts from Pods' defaults.
  */
 const fromDefaults = computed(() => data.value !== null && !data.value.installed)
 

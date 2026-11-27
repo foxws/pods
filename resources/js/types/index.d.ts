@@ -124,7 +124,7 @@ export type ApplicationSettings = {
 export type ProxyMode = 'letsencrypt' | 'local' | 'wildcard' | 'http'
 
 /**
- * Foundation\Settings\ProxySettings: what a host's Proxy section starts from, and the domain
+ * Foundation\Settings\ProxySettings: what an environment's Proxy section starts from, and the domain
  * hostnames are suggested under.
  */
 export type ProxyDefaults = {

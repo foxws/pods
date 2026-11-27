@@ -212,7 +212,7 @@ const podmanLine = computed(() =>
         <HostError :error="hostError" />
 
         <p class="text-sm text-muted">
-          Check the host under
+          Check the environment under
           <Link
             :href="environmentsIndex.url()"
             class="text-primary"

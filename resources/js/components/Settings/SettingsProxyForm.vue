@@ -35,8 +35,8 @@ const onSubmit = (): void => {
 <template>
   <form @submit.prevent="onSubmit">
     <UPageCard
-      title="Defaults for new hosts"
-      description="The domain applies to every host. The rest only fills in a host's Proxy form until its proxy is installed; after that, the host keeps its own settings, which you change in that host's settings."
+      title="Defaults for new environments"
+      description="The domain applies to every environment. The rest only fills in an environment's Proxy form until its proxy is installed; after that, the environment keeps its own settings, which you change in that environment's settings."
       variant="naked"
       orientation="vertical"
       :ui="{ body: 'flex w-full flex-col gap-3' }"

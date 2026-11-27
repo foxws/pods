@@ -18,7 +18,7 @@ declare module '@inertiajs/core' {
     readonly locale: string
     readonly locales: OptionItem[] | undefined
     readonly languages: OptionItem[] | undefined
-    /** The choices of how often an idle host page reloads, from HostRefresh. */
+    /** The choices of how often an idle environment page reloads, from HostRefresh. */
     readonly hostRefreshes: OptionItem[] | undefined
     /** The labels of the unit statuses, from UnitStatus. */
     readonly unitStatuses: OptionItem[] | undefined
@@ -31,7 +31,7 @@ declare module '@inertiajs/core' {
     readonly echo: EchoConfig | undefined
     /** The number of unread notifications. */
     readonly notifications: number | undefined
-    /** Seconds between reloads of an idle host page; 0 turns them off. */
+    /** Seconds between reloads of an idle environment page; 0 turns them off. */
     readonly refresher: number | undefined
   }
 }
