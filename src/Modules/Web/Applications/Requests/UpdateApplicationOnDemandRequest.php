@@ -4,18 +4,27 @@ declare(strict_types=1);
 
 namespace Modules\Web\Applications\Requests;
 
+use Domain\Applications\Actions\SuggestSocketPort;
 use Domain\Applications\DataObjects\OnDemandIdleCheckData;
 use Domain\Applications\DataObjects\OnDemandScheduleData;
 use Domain\Applications\DataObjects\OnDemandSettingsData;
+use Domain\Environments\Models\Environment;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Validator;
+use Integrations\Lpod\Exceptions\LpodException;
+use Integrations\Lpod\LpodClient;
 
 class UpdateApplicationOnDemandRequest extends FormRequest
 {
+    /**
+     * Before validation, which reads the host's applications.
+     */
     public function authorize(): bool
     {
-        return true;
+        return Gate::allows('operate', $this->route('environment'));
     }
 
     /**
@@ -25,7 +34,7 @@ class UpdateApplicationOnDemandRequest extends FormRequest
     {
         return [
             // lpod gives the app the socket's port + 10000 on 127.0.0.1.
-            'port' => ['required', 'integer', 'between:1,55535'],
+            'port' => ['required', 'integer', 'between:1,'.SuggestSocketPort::HighestPort],
             'app_port' => ['required', 'integer', 'between:1,65535'],
             // Present, so leaving it out never means every address
             'listen' => ['present', 'nullable', 'string', 'ip'],
@@ -56,6 +65,46 @@ class UpdateApplicationOnDemandRequest extends FormRequest
             'schedule_at.*.regex' => __('Use *:MM (every hour) or HH:MM (every day), in UTC.'),
             'schedule_env.*.regex' => __('Use KEY=VALUE, one per line.'),
             'schedule_env.*.not_regex' => __('Values can\'t contain $.'),
+        ];
+    }
+
+    /**
+     * The socket can't take a port another application publishes, nor can the app get its local port then.
+     * When the host's applications can't be read, lpod finds out itself.
+     *
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $environment = $this->route('environment');
+
+                if (! $environment instanceof Environment) {
+                    return;
+                }
+
+                try {
+                    $applications = app(LpodClient::class)->applications($environment);
+                } catch (LpodException) {
+                    return;
+                }
+
+                $port = $this->integer('port');
+                $conflict = app(SuggestSocketPort::class)->conflict((string) $this->route('application'), $port, $applications);
+
+                if ($conflict === null) {
+                    return;
+                }
+
+                $validator->errors()->add('port', $conflict['port'] === $port
+                    ? __(':application publishes port :port already.', $conflict)
+                    : __(':application publishes port :port already, which the app gets on 127.0.0.1.', $conflict));
+            },
         ];
     }
 
