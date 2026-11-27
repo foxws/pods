@@ -42,6 +42,15 @@ const containers = computed(() => props.suggestion?.containers ?? [])
 const suggestedPort = computed(() => props.suggestion?.settings.port ?? null)
 
 /**
+ * The description of the socket port, naming the port lpod moves the application to: the socket's port + 10000 on 127.0.0.1.
+ */
+const socketPortDescription = computed(() => {
+  const local = typeof form.port === 'number' ? `127.0.0.1:${form.port + 10000}` : '127.0.0.1'
+
+  return `Where requests arrive on the host. While it's awake, the app itself moves to ${local}, the socket port + 10000, so both have to be free.`
+})
+
+/**
  * Reka UI refuses a select item with an empty value, so None is null here and an empty string in the form.
  */
 const scheduleItems = computed(() => [
@@ -140,7 +149,7 @@ const onSubmit = (close: () => void): void => {
 
         <UFormField
           label="Socket port"
-          description="On the host, free for the socket and for itself + 10000."
+          :description="socketPortDescription"
           required
           :error="form.errors.port"
         >
