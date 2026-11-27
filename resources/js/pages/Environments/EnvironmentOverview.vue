@@ -14,6 +14,7 @@ import HostError from '@/components/Environments/HostError.vue'
 import AppNavbar from '@/components/Ui/AppNavbar.vue'
 import PageHeading from '@/components/Ui/PageHeading.vue'
 import { useApplicationOperations, useHostPolling } from '@/composables/applications'
+import { useLpodActions } from '@/composables/lpod'
 import { usePins } from '@/composables/pins'
 import type {
   ApplicationData,
@@ -22,6 +23,7 @@ import type {
   HostProperty,
   HostStatsData,
   ImageData,
+  LpodVersionData,
   PinData,
   SecretData,
 } from '@/types'
@@ -38,6 +40,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{
   environment: EnvironmentData
+  lpod: LpodVersionData
   pinned: PinData[]
   host?: HostProperty<HostStatsData>
   applications?: HostProperty<ApplicationData[]>
@@ -45,6 +48,8 @@ const props = defineProps<{
   images?: HostProperty<ImageData[]>
   events?: HostProperty<HostEventData[]>
 }>()
+
+const { updateLpod, checkAgain, isUpdating, isChecking } = useLpodActions(() => props.environment)
 
 const activity = computed(() =>
   (props.events?.data ?? []).slice(0, 8).map((event, index) => ({
@@ -518,7 +523,7 @@ const podmanLine = computed(() =>
               <CardHeader title="Applications">
                 <template #actions>
                   <UButton
-                    label="View all"
+                    label="Manage"
                     color="neutral"
                     variant="link"
                     size="sm"
@@ -577,7 +582,19 @@ const podmanLine = computed(() =>
 
         <UCard>
           <template #header>
-            <CardHeader title="System" />
+            <CardHeader title="System">
+              <template #actions>
+                <UButton
+                  label="Check for updates"
+                  color="neutral"
+                  variant="link"
+                  size="sm"
+                  :loading="isChecking"
+                  :disabled="isUpdating"
+                  @click="checkAgain"
+                />
+              </template>
+            </CardHeader>
           </template>
 
           <dl
@@ -586,6 +603,25 @@ const podmanLine = computed(() =>
           >
             <dt class="text-muted">Podman</dt>
             <dd>{{ podmanLine || '–' }}</dd>
+
+            <dt class="text-muted">lpod</dt>
+            <dd class="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>{{ lpod.installed ?? 'unknown' }}</span>
+              <UButton
+                v-if="lpod.update_available"
+                :label="`Update to ${lpod.required}`"
+                icon="i-lucide-download"
+                size="xs"
+                :loading="isUpdating"
+                :disabled="isChecking"
+                @click="updateLpod"
+              />
+              <span
+                v-else
+                class="text-muted"
+                >· up to date</span
+              >
+            </dd>
 
             <template v-if="stats.storage_driver">
               <dt class="text-muted">Storage driver</dt>

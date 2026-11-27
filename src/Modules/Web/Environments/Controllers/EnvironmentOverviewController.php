@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Web\Environments\Controllers;
 
 use Domain\Environments\DataObjects\EnvironmentData;
+use Domain\Environments\DataObjects\LpodVersionData;
 use Domain\Environments\Models\Environment;
 use Domain\Users\DataObjects\PinData;
 use Domain\Users\Enums\PinType;
@@ -39,6 +40,7 @@ class EnvironmentOverviewController implements HasMiddleware
 
         return Inertia::render('Environments/EnvironmentOverview', [
             'environment' => EnvironmentData::fromModel($environment),
+            'lpod' => LpodVersionData::fromEnvironment($environment),
             'pinned' => PinData::collect($user->pins()->ofType(PinType::Application)->on($environment)->orderBy('name')->get()),
             'host' => $this->deferFromHost(fn () => $lpod->host($environment), live: $this->changesTo($environment, 'host')),
             'applications' => $this->deferFromHost(fn (): array => $lpod->applications($environment), live: $this->changesTo($environment, 'apps')),

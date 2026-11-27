@@ -2,6 +2,7 @@
 import CardHeader from '@/components/Ui/CardHeader.vue'
 import { index as applications } from '@/actions/Modules/Web/Applications/Controllers/ApplicationController'
 import { destroy } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentController'
+import { show as environmentSettings } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentSettingsController'
 import EnvironmentCreateModal from '@/components/Environments/EnvironmentCreateModal.vue'
 import SettingsLayout from '@/components/Settings/SettingsLayout.vue'
 import type { EnvironmentData } from '@/types'
@@ -112,13 +113,26 @@ const remove = () => {
             </span>
           </Link>
 
-          <UButton
-            icon="i-lucide-trash-2"
-            color="neutral"
-            variant="ghost"
-            :aria-label="`Remove ${environment.name}`"
-            @click="removing = environment"
-          />
+          <div class="flex shrink-0 gap-1">
+            <UTooltip text="Edit settings">
+              <UButton
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                :to="environmentSettings.url(environment.id)"
+                :aria-label="`Edit the settings of ${environment.name}`"
+              />
+            </UTooltip>
+            <UTooltip text="Remove">
+              <UButton
+                icon="i-lucide-trash-2"
+                color="neutral"
+                variant="ghost"
+                :aria-label="`Remove ${environment.name}`"
+                @click="removing = environment"
+              />
+            </UTooltip>
+          </div>
         </div>
 
         <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">

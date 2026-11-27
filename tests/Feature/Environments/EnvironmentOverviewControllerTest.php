@@ -55,6 +55,23 @@ it('shows the host, its applications, its secrets and the recent events', functi
     $lpod->assertRan(['events', '--json', '--since', '24h', '--limit', '20']);
 });
 
+it('shows the installed lpod and whether it can be updated', function (string $installed, bool $updateAvailable) {
+    config(['services.pods.lpod_version' => 'v4.1.1']);
+    $this->environment->update(['facts' => ['contract' => 1, 'lpod' => $installed]]);
+    fakeLpod();
+
+    $this->actingAs($this->owner)
+        ->get(action(EnvironmentOverviewController::class, $this->environment))
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('lpod.installed', $installed)
+            ->where('lpod.required', 'v4.1.1')
+            ->where('lpod.update_available', $updateAvailable));
+})->with([
+    'an older release' => ['4.0.0', true],
+    'the required release' => ['4.1.1', false],
+]);
+
 it('shows the applications the current user pinned on the host first', function () {
     $pin = Pin::factory()->for($this->owner)->for($this->environment)->application('jellyfin')->create();
     Pin::factory()->for($this->environment)->application('immich')->create();

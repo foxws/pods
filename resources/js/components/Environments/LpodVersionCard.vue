@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import CardHeader from '@/components/Ui/CardHeader.vue'
-import { update } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentLpodController'
-import { store as verify } from '@/actions/Modules/Web/Environments/Controllers/EnvironmentVerificationController'
-import { useHostAction } from '@/composables/hostActions'
+import { useLpodActions } from '@/composables/lpod'
 import type { EnvironmentData, LpodVersionData } from '@/types'
 import { formatRelative } from '@/utils/format'
 
@@ -11,15 +9,7 @@ const props = defineProps<{
   lpod: LpodVersionData
 }>()
 
-// Both verify the host, which stores its facts (shown here and in the environment switcher).
-const verifiedProps = ['environment', 'lpod', 'environments']
-
-const { send: sendUpdate, processing: isUpdating } = useHostAction()
-const { send: sendCheck, processing: isChecking } = useHostAction()
-
-const updateLpod = (): void => sendUpdate('put', update.url(props.environment.id), {}, undefined, verifiedProps)
-
-const checkAgain = (): void => sendCheck('post', verify.url(props.environment.id), {}, undefined, verifiedProps)
+const { updateLpod, checkAgain, isUpdating, isChecking } = useLpodActions(() => props.environment)
 </script>
 
 <template>
