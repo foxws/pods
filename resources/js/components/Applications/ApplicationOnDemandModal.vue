@@ -41,10 +41,20 @@ const containers = computed(() => props.suggestion?.containers ?? [])
  */
 const suggestedPort = computed(() => props.suggestion?.settings.port ?? null)
 
+/**
+ * Reka UI refuses a select item with an empty value, so None is null here and an empty string in the form.
+ */
 const scheduleItems = computed(() => [
-  { label: 'None', value: '' },
+  { label: 'None', value: null },
   ...containers.value.map((name) => ({ label: name, value: name })),
 ])
+
+const scheduleContainer = computed({
+  get: (): string | null => (form.schedule === '' ? null : form.schedule),
+  set: (container: string | null) => {
+    form.schedule = container ?? ''
+  },
+})
 
 watch(open, (isOpen) => {
   if (!isOpen) {
@@ -261,7 +271,7 @@ const onSubmit = (close: () => void): void => {
             :error="form.errors.schedule"
           >
             <USelect
-              v-model="form.schedule"
+              v-model="scheduleContainer"
               :items="scheduleItems"
               class="w-full font-mono"
             />
