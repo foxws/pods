@@ -36,6 +36,11 @@ const isLaravel = computed(() => props.suggestion?.laravel ?? false)
 
 const containers = computed(() => props.suggestion?.containers ?? [])
 
+/**
+ * The port Pods suggests for the socket: the one the application publishes, or else a free one.
+ */
+const suggestedPort = computed(() => props.suggestion?.settings.port ?? null)
+
 const scheduleItems = computed(() => [
   { label: 'None', value: '' },
   ...containers.value.map((name) => ({ label: name, value: name })),
@@ -123,39 +128,50 @@ const onSubmit = (close: () => void): void => {
           description="Change anything before turning it on, such as a longer idle timeout while you develop."
         />
 
-        <div class="grid gap-4 sm:grid-cols-2">
-          <UFormField
-            label="Socket port"
-            description="On the host. Send the application's hostname here."
-            required
-            :error="form.errors.port"
+        <UFormField
+          label="Socket port"
+          description="On the host, free for the socket and for itself + 10000."
+          required
+          :error="form.errors.port"
+        >
+          <template
+            v-if="suggestedPort !== null && form.port !== suggestedPort"
+            #hint
           >
-            <UInputNumber
-              v-model="form.port"
-              :min="1"
-              :max="55535"
-              :format-options="{ useGrouping: false }"
-              placeholder="8000"
-              class="w-full"
+            <UButton
+              :label="`Suggest ${suggestedPort}`"
+              color="neutral"
+              variant="link"
+              size="xs"
+              class="p-0"
+              @click="form.port = suggestedPort"
             />
-          </UFormField>
+          </template>
+          <UInputNumber
+            v-model="form.port"
+            :min="1"
+            :max="55535"
+            :format-options="{ useGrouping: false }"
+            :placeholder="String(suggestedPort ?? 8000)"
+            class="w-full"
+          />
+        </UFormField>
 
-          <UFormField
-            label="App port"
-            description="Inside its container."
-            required
-            :error="form.errors.app_port"
-          >
-            <UInputNumber
-              v-model="form.app_port"
-              :min="1"
-              :max="65535"
-              :format-options="{ useGrouping: false }"
-              placeholder="8000"
-              class="w-full"
-            />
-          </UFormField>
-        </div>
+        <UFormField
+          label="App port"
+          description="Inside its container."
+          required
+          :error="form.errors.app_port"
+        >
+          <UInputNumber
+            v-model="form.app_port"
+            :min="1"
+            :max="65535"
+            :format-options="{ useGrouping: false }"
+            placeholder="8000"
+            class="w-full"
+          />
+        </UFormField>
 
         <UFormField
           label="Listen address"
@@ -202,7 +218,7 @@ const onSubmit = (close: () => void): void => {
 
           <div
             v-if="form.workers.length"
-            class="grid gap-4 sm:grid-cols-[1fr_8rem]"
+            class="flex flex-col gap-4"
           >
             <UFormField
               label="Idle check"
@@ -217,6 +233,7 @@ const onSubmit = (close: () => void): void => {
             </UFormField>
             <UFormField
               label="Run as"
+              description="The user inside the container that runs the idle check."
               :error="form.errors.idle_user"
             >
               <UInput
@@ -228,7 +245,6 @@ const onSubmit = (close: () => void): void => {
             <UFormField
               v-if="form.idle_command"
               label="In container"
-              class="sm:col-span-2"
             >
               <USelect
                 v-model="form.idle_container"
