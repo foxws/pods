@@ -8,7 +8,7 @@ StartLimitIntervalSec=300
 StartLimitBurst=5
 
 [Container]
-Image=ghcr.io/foxws/pods:1.5.0
+Image=ghcr.io/foxws/pods:1.5.1
 AutoUpdate=registry
 HealthCmd=none
 Environment=PUID=%U

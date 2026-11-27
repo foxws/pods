@@ -27,7 +27,7 @@ return [
 
     'proxy' => [
         'repository' => 'https://github.com/foxws/pods',
-        'reference' => 'v1.5.0',
+        'reference' => 'v1.5.1',
         'path' => 'containers/proxy',
     ],
 
